@@ -391,7 +391,7 @@ def atom_interaction_matrix_d(path_to_pdb_file, dist_th=10, plot_matrices=False)
     uind = uind[u_sort]
     ucount = ucount[u_sort]
 
-    # reduce all distances to closest distance of one side chain atom to another per residue
+    # reduce all distances to the closest distance of one side chain atom to another per residue
     red1 = []
     for i, j in zip(uind, ucount):
         red = np.min(d[:, i:i + j], axis=1)
@@ -806,38 +806,6 @@ def validation(model, generator, labels, v_mutations, p_name, test_num, name,
         plt.show()
 
 
-def create_settings_file(number_mutations, name, variants, score, max_train_mutations, train_split,
-                         training_epochs, test_num, r_seed, deploy_early_stop, es_monitor, es_min_d, es_patience,
-                         es_mode, es_restore_bw, params, test_params):
-    sf = open("settings_file.txt", "w+")
-    sf.write(name + "\n")
-    sf.write("colum names\n")
-    sf.write("number_mutations," + number_mutations + "\n")
-    sf.write("variants," + variants + "\n")
-    sf.write("score," + score + "\n")
-
-    sf.write("max_train_mutations," + str(max_train_mutations) + "\n")
-    sf.write("train_split," + str(train_split) + "\n")
-    sf.write("training_epochs," + str(training_epochs) + "\n")
-    sf.write("test_num," + str(test_num) + "\n")
-    sf.write("numpy random seed," + str(r_seed) + "\n")
-
-    sf.write("sub parameters\n")
-    sf.write("deploy_early_stop," + str(deploy_early_stop) + "\n")
-    sf.write("es_monitor," + es_monitor + "\n")
-    sf.write("es_min_d," + str(es_min_d) + "\n")
-    sf.write("es_patience," + str(es_patience) + "\n")
-    sf.write("es_mode," + es_mode + "\n")
-    sf.write("es_restore_bw," + str(es_restore_bw) + "\n")
-    sf.write("training and validation parameters\n")
-    for i in list(params.items())[2:]:
-        sf.write(str(i[0]) + "," + str(i[1]) + "\n")
-    sf.write("test parameters\n")
-    for i in list(test_params.items())[2:]:
-        sf.write(str(i[0]) + "," + str(i[1]) + "\n")
-    sf.close()
-
-
 def log_file(file_path, write_str, optional_header=""):
     """reads and writes log info's to log file\n
         input:
@@ -848,6 +816,8 @@ def log_file(file_path, write_str, optional_header=""):
         log_file_read = open(file_path, "r")
         prev_log = log_file_read.readlines()
         log_file_read.close()
+        if len(list(prev_log)) == 0:
+            prev_log = optional_header + "\n"
     except FileNotFoundError:
         if len(optional_header) > 0:
             prev_log = optional_header + "\n"
@@ -914,8 +884,9 @@ def protein_settings(protein_name):
 def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_seq, number_mutations, variants, score,
             dist_thr, channel_num, max_train_mutations, train_split, training_epochs, test_num, r_seed=None,
             deploy_early_stop=True, es_monitor="val_loss", es_min_d=0.01, es_patience=20, es_mode="auto",
-            es_restore_bw=True, load_model=None, batch_size=64, create_settings_f=False, save_fig=None, show_fig=False,
-            write_to_log=True, silent=False, extensive_test=True, save_model=False, load_weights=None, no_nan=True):
+            es_restore_bw=True, load_model=None, batch_size=64, save_fig=None, show_fig=False,
+            write_to_log=True, silent=False, extensive_test=True, save_model=False, load_weights=None, no_nan=True,
+            settings_test=False):
     """
     - architecture_name: name of the architecture\n
     - model_to_use: function that returns the model\n
@@ -951,7 +922,11 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
     - save_model: if Ture saves the model as h5 format\n
     - load_weights: path to model of who's weights should be used None if it shouldn't be used\n
     - no_nan: if True terminates training on nan\n
+    - settings_test: if Ture doesn't train the model and only executes everything of the function that is before fit
     """
+
+    # dictionary with argument names as keys and the input as values
+    arg_dict = locals()
     starting_time = timer()
     wt_seq = list(wt_seq)
     # getting the raw data as well as the protein from the tsv file
@@ -962,6 +937,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
 
     # creates a directory where plots will be saved
     p_dir = "./result_files"
+    log_file_path = "result_files/log_file.csv"
     if save_fig is not None:
         try:
             result_path = create_folder(p_dir, name)
@@ -970,16 +946,12 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         if save_fig is not None:
             save_fig = result_path
 
-    # writes important stats to log file
+    # if not settings_test:
+    # writes used arguments to log file
     if write_to_log:
-        log_str = ",".join(
-            [name, architecture_name, tsv_file.strip().split("/")[-1], pdb_file.strip().split("/")[-1], "".join(wt_seq),
-             number_mutations, variants, score, str(dist_thr),
-             str(channel_num), str(max_train_mutations), str(train_split), str(training_epochs),
-             str(test_num), str(r_seed), str(deploy_early_stop), es_monitor, str(es_min_d),
-             str(es_patience), es_mode, str(es_restore_bw), str(load_model), str(batch_size),
-             str(create_settings_f), str(save_fig)])
-        log_file("result_files/log_file.csv", log_str)
+        header = ",".join(list(arg_dict.keys())) + ",training_time_in_min"
+        values = ",".join(np.asarray(list(arg_dict.values())).astype(str))
+        log_file(log_file_path, values, header)
 
     # starting index of the protein sequence
     first_ind = check_seq(raw_data, p_name, wt_seq, variants, save_fig=save_fig, plot_fig=show_fig, silent=silent)
@@ -1092,79 +1064,86 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
     if load_model is not None:
         model = keras.models.load_model(load_model)
 
-    # training
-    history = model.fit(training_generator, validation_data=validation_generator, epochs=training_epochs,
-                        use_multiprocessing=True, workers=12, callbacks=[all_callbacks])
+    if not settings_test:
+        # training
+        history = model.fit(training_generator, validation_data=validation_generator, epochs=training_epochs,
+                            use_multiprocessing=True, workers=12, callbacks=[all_callbacks])
 
-    end_time = timer()
+        end_time = timer()
 
-    # --------------------------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------------------
 
-    val_data = pd.read_csv("avgfp_augmentation_1/validate_avgfp.tsv", delimiter="\t")
-    t_data = np.asarray(val_data[variants])
-    t_labels = np.asarray(val_data[score])
-    val_bool = []
-    for i in t_data:
-        val_bool += ["*" not in i]
-    t_data = t_data[val_bool]
-    t_labels = t_labels[val_bool]
-    test_generator = DataGenerator(t_data, np.zeros(len(t_labels)), **test_params)
-    predicted_labels = model.predict(test_generator).flatten()
-    error = np.abs(predicted_labels - t_labels)
-    try:
-        pearson_r, pearson_r_p = scipy.stats.pearsonr(t_labels.astype(float), predicted_labels.astype(float))
-        spearman_r, spearman_r_p = scipy.stats.spearmanr(t_labels.astype(float), predicted_labels.astype(float))
-        print("MAE: {}\nSTD: {}\nPearson's r: {}\nPearson's r p-value:{}\nSpearman r: {}\nSpearman r p-value: {}\n".
-              format(str(np.mean(error)), str(error.std()), str(pearson_r), str(pearson_r_p), str(spearman_r),
-                     str(spearman_r_p)))
-    except ValueError:
-        print("Invalid loss")
-
-    # --------------------------------------------------------------------------------------------
-    # saves model in result path
-    if save_model:
+        val_data = pd.read_csv("avgfp_augmentation_1/validate_avgfp.tsv", delimiter="\t")
+        t_data = np.asarray(val_data[variants])
+        t_labels = np.asarray(val_data[score])
+        val_bool = []
+        for i in t_data:
+            val_bool += ["*" not in i]
+        t_data = t_data[val_bool]
+        t_labels = t_labels[val_bool]
+        test_generator = DataGenerator(t_data, np.zeros(len(t_labels)), **test_params)
+        predicted_labels = model.predict(test_generator).flatten()
+        error = np.abs(predicted_labels - t_labels)
         try:
-            result_path = create_folder(p_dir, name)
-            model.save(result_path + "/" + name)
-        except FileExistsError:
-            model.save(result_path + "/" + name)
+            pearson_r, pearson_r_p = scipy.stats.pearsonr(t_labels.astype(float), predicted_labels.astype(float))
+            spearman_r, spearman_r_p = scipy.stats.spearmanr(t_labels.astype(float), predicted_labels.astype(float))
+            print("MAE: {}\nSTD: {}\nPearson's r: {}\nPearson's r p-value:{}\nSpearman r: {}\nSpearman r p-value: {}\n".
+                  format(str(np.mean(error)), str(error.std()), str(pearson_r), str(pearson_r_p), str(spearman_r),
+                         str(spearman_r_p)))
+        except ValueError:
+            print("Invalid loss")
 
-    # training and validation plot of the training
-    try:
-        val_val, epochs_bw, test_loss = validate(validation_generator, model, history, name, max_train_mutations,
-                                                 save_fig_v=save_fig, plot_fig=show_fig)
-    except ValueError:
-        val_val = "nan"
-        epochs_bw = 0
-        test_loss = "nan"
-        log_file("result_files/log_file.csv", "nan in training history")
+        # --------------------------------------------------------------------------------------------
+        # saves model in result path
+        if save_model:
+            try:
+                result_path = create_folder(p_dir, name)
+                model.save(result_path + "/" + name)
+            except FileExistsError:
+                model.save(result_path + "/" + name)
 
-    # calculating pearsons' r and spearman r for the test dataset
-    try:
-        pearsonr, pp, spearmanr, sp = pearson_spearman(model, test_generator, t_labels)
-    except ValueError:
-        pearsonr, pp, spearmanr, sp = "nan", "nan", "nan", "nan"
+        # training and validation plot of the training
+        try:
+            val_val, epochs_bw, test_loss = validate(validation_generator, model, history, name, max_train_mutations,
+                                                     save_fig_v=save_fig, plot_fig=show_fig)
+        except ValueError:
+            val_val = "nan"
+            epochs_bw = 0
+            test_loss = "nan"
+            log_file("result_files/log_file.csv", "nan in training history")
 
-    # creating more detailed plots
-    if extensive_test:
-        validation(model, test_generator, t_labels, t_mutations, val_val, p_name, max_train_mutations, test_num, name,
-                   save_fig=save_fig, plot_fig=show_fig, silent=silent)
+        # calculating pearsons' r and spearman r for the test dataset
+        try:
+            pearsonr, pp, spearmanr, sp = pearson_spearman(model, test_generator, t_labels)
+        except ValueError:
+            pearsonr, pp, spearmanr, sp = "nan", "nan", "nan", "nan"
 
-    # writing results to the result file
-    result_string = ",".join([name, architecture_name, str(len(train_data)), str(len(test_data)), str(test_loss),
-                              str(epochs_bw), str(pearsonr), str(pp), str(spearmanr), str(sp)])
+        # creating more detailed plots
+        if extensive_test:
+            validation(model, test_generator, t_labels, t_mutations, val_val, p_name, max_train_mutations, test_num,
+                       name, save_fig=save_fig, plot_fig=show_fig, silent=silent)
 
-    log_file("result_files/results.csv", result_string, "name,train_data_size,test_data_size,mae,epochs_best_weight,"
-                                                        "pearson_r,pearson_p,spearman_r,spearman_p")
+        # writing results to the result file
+        result_string = ",".join([name, architecture_name, str(len(train_data)), str(len(test_data)), str(test_loss),
+                                  str(epochs_bw), str(pearsonr), str(pp), str(spearmanr), str(sp)])
 
-    if create_settings_f:
-        create_settings_file(number_mutations, name, variants, score, max_train_mutations, train_split,
-                             training_epochs, test_num, r_seed, deploy_early_stop, es_monitor, es_min_d,
-                             es_patience, es_mode, es_restore_bw, params, test_params)
+        log_file("result_files/results.csv", result_string, "name,train_data_size,test_data_size,mae,"
+                                                            "epochs_best_weight,pearson_r,pearson_p,"
+                                                            "spearman_r,spearman_p")
 
-    # adds training time to result_files
-    log_file("result_files/log_file.csv", "total training time in minutes: " +
-             str(np.round((end_time - starting_time) / 60, 0)))
+        # adds training time to result_files
+        log_f = open(log_file_path, "r")
+        prev_log = log_f.readlines()
+        log_f.close()
+        log_cont_len = len(prev_log)
+        w_log = open(log_file_path, "w+")
+        for ci, i in enumerate(prev_log):
+            if len(prev_log) > 1:
+                if log_cont_len - ci == 1:
+                    w_log.write(i.strip() + "," + str(np.round((end_time - starting_time) / 60, 0)) + "\n")
+                else:
+                    w_log.write(i)
+        w_log.close()
 
 
 aa_dict = {"ALA": "A", "ARG": "R", "ASN": "N", "ASP": "D", "CYS": "C", "GLN": "Q", "GLU": "E", "GLY": "G", "HIS": "H",
