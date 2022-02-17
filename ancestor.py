@@ -9,12 +9,12 @@ np.set_printoptions(threshold=sys.maxsize)
 def data_coord_extraction(target_pdb_file):
     """calculates vectors between CA (starting point) and CB (endpoint) and builds artificial CB for GLY based on the
         side chains of amino acids (!= GLY) before if there is an or after it if Gly is the start amino acid
-        No duplicated side chain entries allowed
-            input:
-                target_pdb_file: pdb file with data of protein of interest
-            output:
-                res_data: 2d list [[Atom type, Residue 3letter, ChainID, ResidueID],...]
-                res_coords: 2d list of corresponding coordinates to the new_data entries
+        No duplicated side chain entries allowed\n
+        input:
+            target_pdb_file: pdb file with data of protein of interest\n
+        output:
+            res_data: 2d list [[Atom type, Residue 3letter, ChainID, ResidueID],...]\n
+            res_coords: 2d list of corresponding coordinates to the new_data entries\n
                 """
     # list of all data of the entries like [[Atom type, Residue 3letter, ChainID, ResidueID],...]
     res_data = []
@@ -60,9 +60,13 @@ three_one = {v: k for k, v in one_three.items()}
 
 
 def create_sequence_from_alignment_3(file_path, num_seq, head_lines=3, lines_to_skip=2):
-    """num_seq: number of sequences in the alignment
-        head_lines: number of lines until the first sequence line starts
-        lines_to_skip: number of lines between the blocks of sequence lines"""
+    """extracts each aligned sequence of a sequence alignment and joins it to return each aligned sequence as a string
+        input:
+            num_seq: number of sequences in the alignment\n
+            head_lines: number of lines until the first sequence line starts\n
+            lines_to_skip: number of lines between the blocks of sequence lines\n
+        :return
+            final_seq: numpy array of strings like ["A-VL", "AI-L", "AIV-"] """
     alignment = open(file_path)
     seqs = []
     for i in range(num_seq):
@@ -94,11 +98,15 @@ def create_sequence_from_alignment_3(file_path, num_seq, head_lines=3, lines_to_
     final_seq = []
     for i in seqs:
         final_seq += ["".join(i)]
-    return final_seq
+    return np.asarray(final_seq)
 
 
 def read_dat(file_path):
-    """file_path: path to .dat file"""
+    """reads .dat file from SimulationInteractionsDiagram analysis of Schrödinger Desmond\n
+        input:
+            file_path: path to .dat file
+        :return
+            full_data_df: .dat file as a pandas dataframe"""
     rmsf_file = open(file_path)
     full_data = []
     colum_names = []
@@ -118,8 +126,14 @@ def read_dat(file_path):
 
 
 def return_seq_pdb(file_path, chains=None):
-    """file_path: path to pdb file
-            chains: list of chains that should be used eg ['A', 'B']"""
+    """ get protein sequence as present in the pdb file in file_path\n
+        input:
+            file_path: path to pdb file\n
+            chains: list of chains that should be used eg ['A', 'B'] - if None all chains will be used\n
+        :return
+            pdb_seq_sorted: numpy array that contains [[Residue 3letter, ChainID, ResidueID],...] of either
+             all chains if chains=None or of the specified chains in chains
+        """
     d, _ = data_coord_extraction(file_path)
     pdb_seq = np.unique(d[:, 1:], axis=0)
     pdb_seq_sorted = pdb_seq[np.lexsort((pdb_seq[:, 2].astype(int), pdb_seq[:, 1]))]
@@ -130,6 +144,12 @@ def return_seq_pdb(file_path, chains=None):
 
 
 def align_scores(sequences, seq_values):
+    """inserts np.Nan in list of seq_values when '-' in sequence\n
+        input:
+            sequences: list of sequences from an alignment as strings eg ["A-VL", "AI-L", "AIV-"]\n
+            seq_values: list of lists with corresponding scores to the sequences eg [[3, 3, 3], [2, 2, 2], [1, 1, 1]]\n
+        :return
+            scores: numpy array(s) with added np.Nan where a '-' is present in the sequence """
     # sequences = ["A-VL", "AI-L", "AIV-"]
     # seq_values = [[3, 3, 3], [2, 2, 2], [1, 1, 1]]
     index_counts = np.zeros(len(sequences)).astype(int)
@@ -147,39 +167,63 @@ def align_scores(sequences, seq_values):
             else:
                 scores[k] += [np.nan]
         index_counts[gap] += 1
-    return scores
+    return np.asarray(scores)
 
 
-def plot_scores(scores, names, save=False):
-    for i in range(len(scores)):
-        plt.plot(scores[i], label=names[i])
-    plt.xlabel("residue index")
-    plt.ylabel("RMSF")
+def plot_scores(scores, names, save=False, y_axis="Protein RMSF (\u212B)", x_axis="residue index", add_top=0.5,
+                add_bottom=-0.2):
+    """plots given scores\n
+        input:
+            scores: list or list of lists that should be displayed\n
+            names: list with names according to the scores\n
+            y_axis: ylabel\n
+            x_axis: xlabel\n
+            add_top: top limit of the ylim\n
+            add_bottom: bottom limit of the ylim\n
+        :return
+            None"""
+    if len(scores.shape) > 1:
+        for i in range(len(names)):
+            plt.plot(scores[i], label=names[i])
+    else:
+        plt.plot(scores, label=names)
+
+    plt.xlabel(x_axis)
+    plt.ylabel(y_axis)
     plt.legend()
+    plt.ylim(np.min(scores[~np.isnan(scores)]) + add_bottom, np.max(scores[~np.isnan(scores)]) + add_top)
     plt.rcParams['figure.dpi'] = 600
     if save:
         plt.savefig("aligned_rmsf", dpi=600)
     plt.show()
 
 
-def seq_aligned_rmsf(pdb_paths, chain_selections, dat_paths, alignment_path, data_sel, names, head_lines=3):
-    """pdb_paths: paths to the pdb files as list
-        chain_selections: which chains were used as list eg [['A', 'B'], ['A', 'D'], None] None if all chains should be
-         used
-        dat_paths: paths to the maestro dat files as list
-        alignment_path: path to the alignment file
-        data_sel: column name which should be used for the RMSF data
-        names: names of the proteins
-        head_lines: how many lines in the alignment file till the first sequence starts eg when the first sequence
-        is in the 4th line head_lines must be 3"""
+def seq_aligned_rmsf(pdb_paths, chain_selections, dat_paths, alignment_path, data_sel, names, head_lines=3, cut=10,
+                     selection=None):
+    """creates a plot of aligned RMSF values for each protein sequence based on a given sequence alignment\n
+        input:
+            pdb_paths: paths to the pdb files as list\n
+            chain_selections: which chains were used as list eg [['A', 'B'], ['A', 'D'], None] None if all chains should be
+            used\n
+            dat_paths: paths to the maestro dat files as list\n
+            alignment_path: path to the alignment file\n
+            data_sel: column name which should be used for the RMSF data\n
+            names: names of the proteins\n
+            head_lines: how many lines in the alignment file till the first sequence starts eg when the first sequence
+            is in the 4th line head_lines must be 3\n
+            selection: list with indices of the chains/sequences of choice as given in chain_selection\n
+        :return
+            None"""
     sequences = create_sequence_from_alignment_3(alignment_path, len(dat_paths), head_lines=head_lines)
 
     seq_values = []
     for i in range(len(pdb_paths)):
         pdb_seqi = return_seq_pdb(pdb_paths[i], chain_selections[i])
-        # print(i, "".join(list(map(three_one.get, pdb_seqi[:, 0]))))
         data_seqi = read_dat(dat_paths[i])
         rmsf_seqi = np.asarray(data_seqi[data_sel], dtype=float)
+        if cut > 0:
+            rmsf_seqi[:cut] = np.nan
+            rmsf_seqi[-cut:] = np.nan
         seq_values += [rmsf_seqi.tolist()]
         if not len(pdb_seqi) == len(data_seqi):
             raise ValueError("Length of the sequence from pdb file and "
@@ -189,31 +233,50 @@ def seq_aligned_rmsf(pdb_paths, chain_selections, dat_paths, alignment_path, dat
             raise ValueError("Length of the sequence used in the alignment doesn't match the length of the"
                              "sequence in the pdb file and the number of values from the dat file")
 
-    scores = align_scores(sequences, seq_values)
-    plot_scores(scores, names)
+    if selection is None:
+        selection = np.arange(len(seq_values))
+    else:
+        selection = np.asarray(selection)
+
+    scores = align_scores(sequences[selection], np.asarray(seq_values, dtype=object)[selection])
+    plot_scores(scores, np.asarray(names)[selection])
 
 
-def chain_aligned_rmsf(pdb_paths, chain_selections, dat_paths, alignment_path, data_sel, names, head_lines=3):
-    """pdb_paths: paths to the pdb files as list
-            chain_selections: which chains were used as list eg [['A', 'B'], ['A', 'D'], None] None if all chains should be
-             used
-            dat_paths: paths to the maestro dat files as list
-            alignment_path: path to the alignment file
-            data_sel: column name which should be used for the RMSF data
-            names: names of the proteins
+def chain_aligned_rmsf(pdb_paths, chain_selections, dat_paths, alignment_path, data_sel, names, head_lines=3, cut=10,
+                       selection=None):
+    """creates a plot of aligned RMSF values for each chain in a protein based on a given sequence alignment\n
+        input:
+            pdb_paths: paths to the pdb files as list\n
+            chain_selections: which chains were used as list eg [['A', 'B'], ['A', 'D'], None] None if all chains should
+            be used\n
+            dat_paths: paths to the maestro dat files as list\n
+            alignment_path: path to the alignment file\n
+            data_sel: column name which should be used for the RMSF data\n
+            names: names of the proteins\n
             head_lines: how many lines in the alignment file till the first sequence starts eg when the first sequence
-            is in the 4th line head_lines must be 3"""
+            is in the 4th line head_lines must be 3\n
+            selection: list with indices of the chains/sequences of choice as given in chain_selection\n
+        :return
+            None"""
     seq_values = []
     for i in range(len(pdb_paths)):
         pdb_seqi = return_seq_pdb(pdb_paths[i], chain_selections[i])
         data_seqi = read_dat(dat_paths[i])
         for j in np.unique(pdb_seqi[:, 1]):
             scores_per_chain = np.asarray(data_seqi[pdb_seqi[:, 1] == j][data_sel], dtype=float)
+            if cut > 0:
+                scores_per_chain[:cut] = np.nan
+                scores_per_chain[-cut:] = np.nan
             seq_values += [scores_per_chain.tolist()]
 
-    sequences = create_sequence_from_alignment_3(alignment_path, len(seq_values), head_lines=head_lines)
+    if selection is None:
+        selection = np.arange(len(seq_values))
+    else:
+        selection = np.asarray(selection)
 
-    scores = align_scores(sequences, seq_values)
+    sequences = create_sequence_from_alignment_3(alignment_path, len(seq_values), head_lines=head_lines)[selection]
+
+    scores = align_scores(sequences, np.asarray(seq_values, dtype=object)[selection])
 
     chain_names = []
     for i in range(len(names)):
@@ -224,43 +287,95 @@ def chain_aligned_rmsf(pdb_paths, chain_selections, dat_paths, alignment_path, d
             for j in np.unique(return_seq_pdb(pdb_paths[i], chain_selections[i])[:, 1]):
                 chain_names += [names[i] + "_" + j]
 
-    plot_scores(scores, chain_names)
+    plot_scores(scores, np.asarray(chain_names)[selection])
 
 
 def seq_chain_fasta(pdb_paths, chain_selections, names, seq_chain=False):
+    """creates fasta formatted string of the sequences given in pdb_paths\n
+        input:
+            pdb_paths: list of file_path to the pdb files\n
+            chain_selections: list of lists specifying the chain of interest eg [['A', 'B'], ['C', 'D']]\n
+            names: list of strings that contain the names of the proteins in pdb_paths\n
+            seq_chain:
+                if True fasta formats of all sequences get created\n
+                if False fasta formats of all chains of all sequences get created\n
+        :return
+            sequences: list of strings containing the sequences\n
+            """
+    sequences = []
     for i in range(len(pdb_paths)):
         pdbi = return_seq_pdb(pdb_paths[i], chain_selections[i])
         if seq_chain:
             print(">" + names[i])
-            print("".join(list(map(three_one.get, pdbi[:, 0]))))
+            seq = "".join(list(map(three_one.get, pdbi[:, 0])))
+            print(seq)
+            sequences += [seq]
         else:
             chains = np.unique(pdbi[:, 1])
             for cj, j in enumerate(chains):
                 print(">" + names[i] + "_" + str(cj))
-                print("".join(list(map(three_one.get, pdbi[pdbi[:, 1] == j][:, 0]))))
+                seq = "".join(list(map(three_one.get, pdbi[pdbi[:, 1] == j][:, 0])))
+                print(seq)
+                sequences += [seq]
+    return sequences
+
+
+def plot_rmsd(rmsd_dat_paths, names, data_sel, indices=None):
+    """plots RMSD plots of data in rmsd_dat_paths
+        input:
+            rmsd_dat_paths: list of paths to the .dat files
+            names: list of names corresponding to the .dat files in rmsd_dat_path
+            data_sel: string with the name of the data colum of the .dat file that should be used
+            indices: which data should be plotted - if None all get plotted
+        :return
+            None
+            """
+    if indices is None:
+        indices = np.arange(len(names))
+    names = np.asarray(names)[np.asarray(indices)]
+    rmsd_values = []
+    for i in range(len(rmsd_dat_paths)):
+        if i in indices:
+            rmsd_values += [read_dat(rmsd_dat_paths[i])["Prot_" + data_sel].values.tolist()]
+    plot_scores(np.asarray(rmsd_values, dtype=float), names=names, y_axis="Protein RMSD (\u212B)", x_axis="time (nsec)")
 
 
 if __name__ == "__main__":
-    names_ex = ["4ALB", "N134", "N31", "N55"]
-    pdb_paths_ex = ["4alb.pdb",
-                    "N134_0502.pdb",
-                    "N31_0502.pdb",
-                    "N55_refine_40.pdb"
-                    ]
-    chain_selections_ex = [['A', 'B'], ['C', 'D'], None, ['A', 'D']]  # add None if all chains should be used
-
-    dat_paths_ex = ["C:\\Users\\~/\\PycharmProjects\\phd\\ancestor\\4albAB_report\\raw-data\\P_RMSF.dat",
-                    "C:\\Users\\~/\\PycharmProjects\\phd\\ancestor\\N134_0502_report\\raw-data\\P_RMSF.dat",
-                    "C:\\Users\\~/\\PycharmProjects\\phd\\ancestor\\N31_5020_report\\raw-data\\P_RMSF.dat",
-                    "C:\\Users\\~/\\PycharmProjects\\phd\\ancestor\\N55_refine_40_report\\raw-data\\P_RMSF.dat"
-                    ]
-
-    alignment_path_seq_ex = "alignment_all.clustal_num"
-    alignment_path_chain_ex = "alignment_per_chain.clustal_num"
     data_sel_ex = "CA"
+    names_ex = ["4ALB", "N134", "N31", "N55"]
+    chain_selections_ex = [['A', 'B'], ['C', 'D'], None, ['A', 'D']]
+
+    pdb_paths_ex = ["~//Downloads/ancestors/4alb.pdb",
+                    "~//Downloads/ancestors/N134_0502.pdb",
+                    "~//Downloads/ancestors/N31_0502.pdb",
+                    "~//Downloads/ancestors/N55_refine_40.pdb"
+                    ]
+    rmsf_dat_paths_ex = ["/media/~//D/programs/schrodinger/SID_reports/4albAB_report/raw-data/P_RMSF.dat",
+                         "/media/~//D/programs/schrodinger/SID_reports/N134_0502_report/raw-data/P_RMSF.dat",
+                         "/media/~//D/programs/schrodinger/SID_reports/N31_5020_report/raw-data/P_RMSF.dat",
+                         "/media/~//D/programs/schrodinger/SID_reports/N55_refine_40_report/raw-data/P_RMSF.dat"
+                         ]
+    rmsd_dat_paths_ex = ["/media/~//D/programs/schrodinger/SID_reports/4albAB_report/raw-data/PL_RMSD.dat",
+                         "/media/~//D/programs/schrodinger/SID_reports/N134_0502_report/raw-data/PL_RMSD.dat",
+                         "/media/~//D/programs/schrodinger/SID_reports/N31_5020_report/raw-data/PL_RMSD.dat",
+                         "/media/~//D/programs/schrodinger/SID_reports/N55_refine_40_report/raw-data/PL_RMSD.dat"
+                         ]
+
+    alignment_path_seq_ex = "~//Downloads/ancestors/alignment_all.clustal_num"
+    alignment_path_chain_ex = "~//Downloads/ancestors/alignment_per_chain.clustal_num"
 
     # get fasta of each used chain or sequence
     # seq_chain_fasta(pdb_paths_ex, chain_selections_ex, names_ex, seq_chain=True)
-    # seq_aligned_rmsf(pdb_paths_ex, chain_selections_ex, dat_paths_ex, alignment_path_seq_ex, data_sel_ex, names_ex)
-    chain_aligned_rmsf(pdb_paths_ex, chain_selections_ex, dat_paths_ex, alignment_path_chain_ex, data_sel_ex, names_ex)
+
+    # plot aligned RMSF scores per sequence
+    # seq_aligned_rmsf(pdb_paths_ex, chain_selections_ex, rmsf_dat_paths_ex, alignment_path_seq_ex, data_sel_ex,
+    #                  names_ex, selection=[0, 1])
+
+    # plot aligned RMSF scores per chain
+    # chain_aligned_rmsf(pdb_paths_ex, chain_selections_ex, rmsf_dat_paths_ex, alignment_path_chain_ex, data_sel_ex,
+    #                    names_ex, selection=[0, 1])
+
+    # plot RMSD of different chains
+    # plot_rmsd(rmsd_dat_paths_ex, names_ex, data_sel_ex, [0, 1])
+
 
