@@ -7,11 +7,12 @@ import tensorflow as tf
 from tensorflow import keras
 from timeit import default_timer as timer
 import os
-
+import sys
+import warnings
 from datetime import datetime
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-np.set_printoptions(precision=3, suppress=True)
+np.set_printoptions(threshold=sys.maxsize)
 
 
 def read_and_process(path_to_file, variants, silent=True, remove_astrix=True):
@@ -30,6 +31,7 @@ def read_and_process(path_to_file, variants, silent=True, remove_astrix=True):
         p_name = path_to_file.strip().split("/")[-1].split(".")[0]
     else:
         p_name = path_to_file.strip().split(".")[0]
+    # some information about the file
     if not silent:
         print(" - ".join(raw_data.columns.tolist()))
         print()
@@ -104,8 +106,8 @@ def check_seq(raw_data_cs, name_cs, wt_seq_cs, variants_cs, save_fig=None, plot_
 
     if gap_count != len(wt_seq_cs) - len(pro_seq_sorted):
         if not silent:
-            print("*** wt sequence doesn't match the sequence reconstructed from the mutation file ***")
             print("    Sequence constructed from mutations:\n   ", "".join(pro_seq_sorted[:, 0]))
+        raise ValueError("Wild type sequence doesn't match the sequence reconstructed from the mutation file")
     elif gap_count > 0:
         fill = pro_seq_inds.copy().astype(object)
         offset = 0
@@ -312,7 +314,6 @@ def data_coord_extraction(target_pdb_file):
             # where this data is located as boolean list
             increase_bool = np.all(res_data[:, 1:] == residues[ci + i_increase], axis=1)
             # artificial CB coordinates of Gly
-
             cb_coords = art_cb(increase_bool)
             new_i_coords = np.append(i_coords, cb_coords, axis=0)
 
@@ -573,7 +574,7 @@ class DataGenerator(keras.utils.Sequence):
             only for pairs that are true in res_bool_matrix
             input:
                 res_bool_matrix: matrix (len(wt_seq) x len(wt_seq)) with interacting pairs as True
-                valid_vals: which values i the matrix should be True after multiplying the encoded sequence against itself
+                valid_vals: which values of the matrix are True after multiplying the encoded sequence against itself
                 converted: the sequence converted to the values of the corresponding dict as 1D numpy array
             :return
                 hb_mat: len(wt_seq) x len(wt_seq) matrix where pairs that can form h bonds are True"""
@@ -608,8 +609,8 @@ class DataGenerator(keras.utils.Sequence):
                 mut_converted: mutated sequence converted with the corresponding dict
                 norm: max value possible for interactions between two residues
             :return
-                ia_matrix: len(wt_seq) x len(wt_seq) matrix with values corresponding to the absolute magnitude of change
-                in the SASA of a residue pair """
+                ia_matrix: len(wt_seq) x len(wt_seq) matrix with values corresponding to the
+                absolute magnitude of change in the SASA of a residue pair """
         d = wt_converted - mut_converted
         dd = np.abs(d + d.reshape(len(d), -1)) / norm
         dd[np.invert(res_bool_matrix)] = 0
@@ -622,16 +623,19 @@ class DataGenerator(keras.utils.Sequence):
         batch_labels = np.empty(self.batch_size, dtype=float)
 
         for ci, i in enumerate(features_to_encode):
+            # hydrogen donging
             cur_hb = self.__mutate_sequences(self.hm_converted, i, h_bonding)
             part_hb = self.__hbond_matrix(self.interaction_matrix, cur_hb, self.hm_pos_vals) * self.factor
 
+            # hydrophobicity
             cur_hp = self.__mutate_sequences(self.hp_converted, i, hydrophobicity)
             part_hp = self.__hydrophobicity_matrix(self.interaction_matrix, cur_hp, self.hp_norm) * self.factor
 
+            # charge
             cur_cm = self.__mutate_sequences(self.cm_converted, i, charge)
             part_cm = self.__charge_matrix(self.interaction_matrix, cur_cm, self.ch_good_vals, self.ch_mid_vals,
                                            self.ch_bad_vals) * self.factor
-
+            # interaction area
             cur_ia = self.__mutate_sequences(self.ia_converted, i, sasa)
             part_ia = self.__interaction_area(self.interaction_matrix, self.ia_converted, cur_ia,
                                               self.ia_norm) * self.factor
@@ -831,7 +835,11 @@ def log_file(file_path, write_str, optional_header=""):
 
 
 def create_folder(parent_dir, dir_name, add=""):
-    """creates directory for current experiment"""
+    """creates directory for current experiment\n
+        input:
+            parent_dir: path where the new directory should be created\n
+            dir_name: name of the new directory\n
+            add: add to the name of the new directory\n"""
     if "/" in dir_name:
         dir_name = dir_name.replace("/", "_")
     directory = dir_name + add
@@ -841,8 +849,15 @@ def create_folder(parent_dir, dir_name, add=""):
 
 
 def data_generator_vals(wt_seq):
-    """returns values based on the wt_seq for the data-generator
-            hm_pos_vals, ch_good_vals, ch_mid_vals, ch_bad_vals, hp_norm, ia_norm, hm_converted, hp_converted,
+    """returns values based on the wt_seq for the DataGenerator:
+            - hm_pos_vals
+            - ch_good_vals
+            - ch_mid_vals
+            - ch_bad_vals
+            - hp_norm
+            - ia_norm
+            - hm_converted
+            - hp_converted,
             cm_converted, ia_converted, mat_index\n
         input:
             wt_seq: wild type sequence as list eg ['A', 'V', 'L']\n"""
@@ -873,7 +888,9 @@ def data_generator_vals(wt_seq):
 
 
 def protein_settings(protein_name):
-    """gets different setting for the protein of interest from the protein_settings file"""
+    """gets different setting for the protein of interest from the protein_settings file\n
+        input:
+            protein_name: name of the protein in the protein_settings file"""
     settings = pd.read_csv("datasets/protein_settings.txt", delimiter=",")
     protein_name = protein_name.lower()
     content = np.asarray(settings[settings["name"] == protein_name][["attribute", "value"]])
@@ -914,7 +931,6 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
     - es_restore_bw: True stores the best weights of the training - False stores the last\n
     - batch_size: after how many samples the gradient gets updated\n
     - load_model: path to an already trained model\n
-    - create_settings_f: creates a csv file where all used settings are listed\n
     - save_fig: whether the figures should be saved\n
     - show_fig: whether the figures should be shown\n
     - write_to_log: if True writes all parameters used in the log file - !should be always enabled!\n
@@ -925,11 +941,13 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
     - settings_test: if Ture doesn't train the model and only executes everything of the function that is before fit
     """
 
+    if not write_to_log:
+        warnings.warn("Write to log file disabled - not recommend behavior", UserWarning)
     # dictionary with argument names as keys and the input as values
     arg_dict = locals()
     starting_time = timer()
     wt_seq = list(wt_seq)
-    # getting the raw data as well as the protein from the tsv file
+    # getting the raw data as well as the protein name from the tsv file
     p_name, raw_data = read_and_process(tsv_file, variants, silent=silent)
     # creating a "unique" name for protein
     time_ = str(datetime.now().strftime("%d_%m_%Y_%H%M")).split(" ")[0]
@@ -937,7 +955,8 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
 
     # creates a directory where plots will be saved
     p_dir = "./result_files"
-    log_file_path = "result_files/log_file.csv"
+    # log_file_path = "result_files/log_file.csv"
+    log_file_path = p_dir + "/log_file.csv"
     if save_fig is not None:
         try:
             result_path = create_folder(p_dir, name)
@@ -946,12 +965,18 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         if save_fig is not None:
             save_fig = result_path
 
-    # if not settings_test:
-    # writes used arguments to log file
-    if write_to_log:
-        header = ",".join(list(arg_dict.keys())) + ",training_time_in_min"
-        values = ",".join(np.asarray(list(arg_dict.values())).astype(str))
-        log_file(log_file_path, values, header)
+    if not settings_test:
+        # writes used arguments to log file
+        if write_to_log:
+            header = "name," + ",".join(list(arg_dict.keys())) + ",training_time_in_min"
+            prep_values = []
+            for i in list(arg_dict.values()):
+                if type(i) == list:
+                    prep_values += ["".join(i)]
+                else:
+                    prep_values += [str(i)]
+            values = name + "," + ",".join(prep_values) + ",nan"
+            log_file(log_file_path, values, header)
 
     # starting index of the protein sequence
     first_ind = check_seq(raw_data, p_name, wt_seq, variants, save_fig=save_fig, plot_fig=show_fig, silent=silent)
@@ -967,8 +992,11 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
 
     # factor and interaction matrix
     _, factor, comb_bool = atom_interaction_matrix_d(pdb_file, dist_th=dist_thr, plot_matrices=show_fig)
+
+    # checks whether sequence in the pdb and the wt_seq match
     check_structure(pdb_file, comb_bool, wt_seq)
 
+    # neural network model function
     model = model_to_use(wt_seq, channel_num)
 
     # loads weight to model
@@ -1071,6 +1099,22 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
 
         end_time = timer()
 
+        # adds training time to result_files
+        log_f = open(log_file_path, "r")
+        prev_log = log_f.readlines()
+        log_f.close()
+        log_cont_len = len(prev_log)
+        w_log = open(log_file_path, "w+")
+        for ci, i in enumerate(prev_log):
+            if len(prev_log) > 1:
+                if log_cont_len - ci == 2:
+                    loi = i.strip().split(",")
+                    loi[-1] = str(np.round((end_time - starting_time) / 60, 0))
+                    w_log.write(",".join(loi) + "\n")
+                else:
+                    w_log.write(i)
+        w_log.close()
+
         # --------------------------------------------------------------------------------------------
 
         val_data = pd.read_csv("avgfp_augmentation_1/validate_avgfp.tsv", delimiter="\t")
@@ -1130,20 +1174,6 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         log_file("result_files/results.csv", result_string, "name,train_data_size,test_data_size,mae,"
                                                             "epochs_best_weight,pearson_r,pearson_p,"
                                                             "spearman_r,spearman_p")
-
-        # adds training time to result_files
-        log_f = open(log_file_path, "r")
-        prev_log = log_f.readlines()
-        log_f.close()
-        log_cont_len = len(prev_log)
-        w_log = open(log_file_path, "w+")
-        for ci, i in enumerate(prev_log):
-            if len(prev_log) > 1:
-                if log_cont_len - ci == 1:
-                    w_log.write(i.strip() + "," + str(np.round((end_time - starting_time) / 60, 0)) + "\n")
-                else:
-                    w_log.write(i)
-        w_log.close()
 
 
 aa_dict = {"ALA": "A", "ARG": "R", "ASN": "N", "ASP": "D", "CYS": "C", "GLN": "Q", "GLU": "E", "GLY": "G", "HIS": "H",
