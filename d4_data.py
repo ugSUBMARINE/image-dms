@@ -85,10 +85,10 @@ def check_seq(raw_data_cs, name_cs, wt_seq_cs, variants_cs, save_fig=None, plot_
     # list of lists with original amino acid and its residue index in the sequence
     # only unique entries = reconstructed sequence
     pro_seq_sorted = pro_seq[np.argsort(pro_seq[:, 1].astype(int))]
-
+    print(pro_seq_sorted)
     # checking the indexing of the sequence
     first_ind = int(pro_seq_sorted[0][1])
-
+    print(first_ind)
     if first_ind != 1:
         if not silent:
             print("*** {} used as start of the sequence indexing in the mutation file ***".format(str(first_ind)))
@@ -248,6 +248,109 @@ def split_data(raw_data_sd, variants_sd, score_sd, number_mutations_sd, max_trai
             print("test data size:", len(test_data))
             print("unseen data size:", len(unseen_data))
     return train_data, train_labels, train_mutations, test_data, test_labels, test_mutations, unseen_data, unseen_labels, unseen_mutations
+
+
+def split_inds(file_path, variants, score, number_mutations, split=None, remove_nonsense=True):
+    """get indices of variants that don't feature a nonsense mutation\n
+        :parameter
+            file_path: str\n
+            path to the tsv file of interest\n
+            split: None or list of int/float\n
+            specifies the split for train, tune, test indices\n
+            - float specifies fractions of the whole dataset
+              eg [0.25, 0.25, 0.5] creates a train and tune dataset with 50 entries each and a test dataset of 100
+              if the whole dataset contains 200 entries\n
+            - int specifies the different number of samples per dataset
+              eg [50,50,100] leads to a train and a tune dataset with 50 entries each and a test dataset of 100
+              if the whole dataset contains 200 entries\n
+            remove_nonsense: bool, optional\n
+            True removes indices of nonsense mutations of all possible indices to choose from
+        :returns
+            data_dict: dict\n
+            dictionary containing the arrays with indices for the three data splits\n
+            :key 'train', 'tune', 'test'
+            data: dict\n
+            dictionary containing the arrays with variants (data), scores (labels) and number of mutations (mutations)
+            for the train, tune and test splits\n
+            prefix = ['train', 'tune', 'test']\n
+            :key prefix_data, prefix_labels, prefix_mutations"""
+    raw_data = pd.read_csv(file_path, delimiter="\t")
+    # extract variants column
+    variants_raw = np.asarray(raw_data["variant"])
+    # check which variant doesn't feature a nonsense mutation
+    if remove_nonsense:
+        no_ast_bool = []
+        for i in variants_raw:
+            var = i.strip()
+            no_ast_bool += ["*" not in var]
+    else:
+        no_ast_bool = np.ones(len(variants_raw)).astype(bool)
+
+    # get all possible indices of all rows and shuffle them
+    possible_inds = np.arange(len(raw_data))[no_ast_bool]
+    np.random.shuffle(possible_inds)
+    # number of rows
+    pi_len = len(possible_inds)
+
+    # check inputs
+    if any([isinstance(split, list), split is None]):
+        if split is not None and len(split) >= 2:
+            pass
+    else:
+        raise ValueError("split needs to contain at least 2 inputs or needs to be None")
+    if split is None:
+        split = [int(np.ceil(pi_len * 0.8)), int(np.floor(pi_len * 0.15))]
+    elif isinstance(split, list):
+        if len(split) == 3:
+            if all([isinstance(split[0], float), isinstance(split[1], float), isinstance(split[2], float)]):
+                split = [int(np.ceil(pi_len * split[0])), int(np.floor(pi_len * split[1]))]
+            elif all([isinstance(split[0], int), isinstance(split[1], int), isinstance(split[2], int)]):
+                pass
+        elif len(split) == 2:
+            if all([isinstance(split[0], float), isinstance(split[1], float)]):
+                split = [int(np.ceil(pi_len * split[0])), int(np.floor(pi_len * split[1]))]
+            elif all([isinstance(split[0], int), isinstance(split[1], int)]):
+                pass
+        else:
+            raise ValueError("split as list needs to contain either 2 or 3 items")
+    else:
+        raise ValueError("Incorrect split input needs to be list containing 'float' or 'int' or needs to be None")
+
+    # split indices in separate data sets for train, tune, test
+    train = possible_inds[:split[0]]
+    tune = possible_inds[split[0]:split[0] + split[1]]
+    test = possible_inds[split[0] + split[1]:]
+
+    print("size train split: {}\nsize tune split: {}\nsize test split: {}".format(len(train), len(tune), len(test)))
+    data_dict = {"train": train, "tune": tune, "test": test}
+
+    train_dataset = raw_data.iloc[train]
+    tune_dataset = raw_data.iloc[tune]
+    test_dataset = raw_data.iloc[test]
+
+    train_data = np.asarray(train_dataset[variants])
+    train_labels = np.asarray(train_dataset[score])
+    train_mutations = np.asarray(train_dataset[number_mutations])
+
+    tune_data = np.asarray(tune_dataset[variants])
+    tune_labels = np.asarray(tune_dataset[score])
+    tune_mutations = np.asarray(tune_dataset[number_mutations])
+
+    test_data = np.asarray(test_dataset[variants])
+    test_labels = np.asarray(test_dataset[score])
+    test_mutations = np.asarray(test_dataset[number_mutations])
+
+    data = {"train_data": train_data,
+            "train_labels": train_labels,
+            "train_mutations": train_mutations,
+            "tune_data": tune_data,
+            "tune_labels": tune_labels,
+            "tune_mutations": tune_mutations,
+            "test_data": test_data,
+            "test_labels": test_labels,
+            "test_mutations": test_mutations}
+
+    return data_dict, data
 
 
 def data_coord_extraction(target_pdb_file):

@@ -13,7 +13,7 @@ from datetime import datetime
 
 from d4_utils import create_folder, log_file, hydrophobicity, h_bonding, charge, sasa, side_chain_length
 from d4_stats import validate, validation, pearson_spearman
-from d4_data import read_and_process, check_seq, split_data, check_structure, data_coord_extraction
+from d4_data import read_and_process, split_data, check_structure, data_coord_extraction, split_inds
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 np.set_printoptions(threshold=sys.maxsize)
@@ -387,7 +387,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
             deploy_early_stop=True, es_monitor="val_loss", es_min_d=0.01, es_patience=20, es_mode="auto",
             es_restore_bw=True, load_model=None, batch_size=64, save_fig=None, show_fig=False,
             write_to_log=True, silent=False, extensive_test=True, save_model=False, load_weights=None, no_nan=True,
-            settings_test=False, p_dir=""):
+            settings_test=False, p_dir="", split_def=None, validate_training=False):
     """
     - architecture_name: str\n
       name of the architecture\n
@@ -428,16 +428,16 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
       numpy random seed\n
     - deploy_early_stop: bool, optional\n
       whether early stop during training should be enabled (Ture) or not (False)
-        * es_monitor: str, optional\n
-          what to monitor to determine whether to stop the training or not\n
-        * es_min_d: float, optional,
-          min_delta min difference in es_monitor to not stop training\n
-        * es_patience: int, optional\n
-          number of epochs the model can try to get a es_monitor > es_min_d before stopping\n
-        * es_mode: str, optional\n
-          direction of quantity monitored in es_monitor\n
-        * es_restore_bw: bool, optional\n
-          True stores the best weights of the training - False stores the last\n
+            - es_monitor: str, optional\n
+              what to monitor to determine whether to stop the training or not\n
+            - es_min_d: float, optional,
+              min_delta min difference in es_monitor to not stop training\n
+            - es_patience: int, optional\n
+              number of epochs the model can try to get a es_monitor > es_min_d before stopping\n
+            - es_mode: str, optional\n
+              direction of quantity monitored in es_monitor\n
+            - es_restore_bw: bool, optional\n
+              True stores the best weights of the training - False stores the last\n
     - batch_size: int, optional\n
       after how many samples the gradient gets updated\n
     - load_model: str or None, optional\n
@@ -460,6 +460,16 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
       Ture doesn't train the model and only executes everything of the function that is before fit
     - p_dir: str, optional\n
       path to where the results, figures and log_file should be saved
+    - split_def: list of int/float or None, optional\n
+      specifies the split for train, tune, test indices
+            - float specifies fractions of the whole dataset
+              eg [0.25, 0.25, 0.5] creates a train and tune dataset with 50 entries each and a test dataset of 100
+              if the whole dataset contains 200 entries\n
+            - int specifies the different number of samples per dataset
+              eg [50,50,100] leads to a train and a tune dataset with 50 entries each and a test dataset of 100
+              if the whole dataset contains 200 entries\n
+    - validate_training: bool, optional\n
+      if True validation of the training will be performed
     """
 
     if not write_to_log:
@@ -468,12 +478,16 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
     arg_dict = locals()
 
     if r_seed is not None:
-        np.random.seed = r_seed
+        np.random.seed(r_seed)
 
     starting_time = timer()
     wt_seq = list(wt_seq)
-    # getting the raw data as well as the protein name from the tsv file
-    p_name, raw_data = read_and_process(tsv_file, variants, silent=silent)
+    # getting the proteins name
+    if "/" in tsv_file:
+        p_name = tsv_file.strip().split("/")[-1].split(".")[0]
+    else:
+        p_name = tsv_file.strip().split(".")[0]
+
     # creating a "unique" name for protein
     time_ = str(datetime.now().strftime("%d_%m_%Y_%H%M%S")).split(" ")[0]
     name = "{}_{}".format(p_name, time_)
@@ -496,16 +510,30 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
             prep_values = []
             for i in list(arg_dict.values()):
                 if type(i) == list:
-                    prep_values += ["".join(i)]
+                    try:
+                        prep_values += ["".join(i)]
+                    except TypeError:
+                        prep_values += ["".join(str(i))]
                 else:
                     prep_values += [str(i)]
             values = name + "," + ",".join(prep_values) + ",nan"
             log_file(log_file_path, values, header)
 
     # split dataset
-    train_data, train_labels, train_mutations, test_data, test_labels, test_mutations, unseen_data, unseen_labels, \
-    unseen_mutations = split_data(raw_data, variants, score, number_mutations, max_train_mutations, train_split,
-                                  r_seed, silent=silent)
+    ind_dict, data_dict = split_inds(file_path=tsv_file, variants=variants, score=score,
+                                     number_mutations=number_mutations, split=split_def)
+
+    train_data = data_dict["train_data"]
+    train_labels = data_dict["train_labels"]
+    train_mutations = data_dict["train_mutations"]
+
+    test_data = data_dict["tune_data"]
+    test_labels = data_dict["tune_labels"]
+    test_mutations = data_dict["tune_mutations"]
+
+    unseen_data = data_dict["test_data"]
+    unseen_labels = data_dict["test_labels"]
+    unseen_mutations = data_dict["test_mutations"]
 
     # possible values and encoded wt_seq (based on different properties) for the DataGenerator
     hm_pos_vals, ch_good_vals, ch_mid_vals, ch_bad_vals, hp_norm, ia_norm, hm_converted, hp_converted, \
@@ -571,7 +599,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
     training_generator = DataGenerator(train_data, train_labels, **params)
     validation_generator = DataGenerator(test_data, test_labels, **params)
 
-    if unseen_mutations is not None:
+    if len(unseen_mutations) > 0:
         if test_num > len(unseen_data):
             test_num = len(unseen_data)
         pos_test_inds = np.arange(len(unseen_data))
@@ -613,7 +641,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
                    'shuffle': False,
                    'train': False}
 
-    # test_generator = DataGenerator(t_data, np.zeros(len(t_labels)), **test_params)
+    test_generator = DataGenerator(t_data, np.zeros(len(t_labels)), **test_params)
 
     if load_model is not None:
         model = keras.models.load_model(load_model)
@@ -642,7 +670,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         w_log.close()
 
         # --------------------------------------------------------------------------------------------
-
+        """
         val_data = pd.read_csv("avgfp_augmentation_1/validate_avgfp.tsv", delimiter="\t")
         t_data = np.asarray(val_data[variants])
         t_labels = np.asarray(val_data[score])
@@ -656,13 +684,13 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         predicted_labels = model.predict(test_generator).flatten()
         error = np.abs(predicted_labels - t_labels)
 
-        """
+        
         order = np.lexsort((t_labels.astype(float), t_mutations[val_bool].astype(int)))
         plt.scatter(np.arange(len(t_labels)), predicted_labels[order],
                     color="yellowgreen", label="error", s=3)
         plt.plot(t_labels[order], color="firebrick")
         plt.show()
-        """
+        
 
         try:
             pearson_r, pearson_r_p = scipy.stats.pearsonr(t_labels.astype(float), predicted_labels.astype(float))
@@ -672,9 +700,9 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
                          str(spearman_r_p)))
         except ValueError:
             print("Invalid loss")
-
-        # --------------------------------------------------------------------------------------------
         """
+        # --------------------------------------------------------------------------------------------
+
         # saves model in result path
         if save_model:
             try:
@@ -684,15 +712,19 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
                 model.save(result_path + "/" + name)
 
         # training and validation plot of the training
-        try:
-            val_val, epochs_bw, test_loss = validate(validation_generator, model, history, name, max_train_mutations,
-                                                     save_fig_v=save_fig, plot_fig=show_fig)
-        except ValueError:
+        if validate_training:
+            try:
+                val_val, epochs_bw, test_loss = validate(validation_generator, model, history, name,
+                                                         max_train_mutations, save_fig_v=save_fig, plot_fig=show_fig)
+            except ValueError:
+                val_val = "nan"
+                epochs_bw = 0
+                test_loss = "nan"
+                log_file("result_files/log_file.csv", "nan in training history")
+        else:
             val_val = "nan"
-            epochs_bw = 0
             test_loss = "nan"
-            log_file("result_files/log_file.csv", "nan in training history")
-
+            epochs_bw = 0
         # calculating pearsons' r and spearman r for the test dataset
         try:
             pearsonr, pp, spearmanr, sp = pearson_spearman(model, test_generator, t_labels)
@@ -711,7 +743,6 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         log_file("result_files/results.csv", result_string, "name,train_data_size,test_data_size,mae,"
                                                             "epochs_best_weight,pearson_r,pearson_p,"
                                                             "spearman_r,spearman_p")
-        """
 
 
 if __name__ == "__main__":

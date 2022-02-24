@@ -10,8 +10,9 @@ def protein_settings(protein_name):
             name of the protein in the protein_settings file
         :return
             protein_settings_dict: dict\n
-            dictionary containing sequence, score, variants, number_mutations as keys\n"""
-    settings = pd.read_csv("datasets/protein_settings.txt", delimiter=",")
+            dictionary containing sequence, score, variants, number_mutations, offset column names
+            :key sequence, score, variants, number_mutations, offset\n"""
+    settings = pd.read_csv("datasets/protein_settings_ori.txt", delimiter=",")
     protein_name = protein_name.lower()
     content = np.asarray(settings[settings["name"] == protein_name][["attribute", "value"]])
     protein_settings_dict = dict(zip(content[:, 0], content[:, 1]))
