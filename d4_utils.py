@@ -5,8 +5,12 @@ import os
 
 def protein_settings(protein_name):
     """gets different setting for the protein of interest from the protein_settings file\n
-        input:
-            protein_name: name of the protein in the protein_settings file"""
+        :parameter
+            protein_name: str\n
+            name of the protein in the protein_settings file
+        :return
+            protein_settings_dict: dict\n
+            dictionary containing sequence, score, variants, number_mutations as keys\n"""
     settings = pd.read_csv("datasets/protein_settings.txt", delimiter=",")
     protein_name = protein_name.lower()
     content = np.asarray(settings[settings["name"] == protein_name][["attribute", "value"]])
@@ -16,10 +20,13 @@ def protein_settings(protein_name):
 
 def create_folder(parent_dir, dir_name, add=""):
     """creates directory for current experiment\n
-        input:
-            parent_dir: path where the new directory should be created\n
-            dir_name: name of the new directory\n
-            add: add to the name of the new directory\n"""
+        :parameter
+            parent_dir: str\n
+            path where the new directory should be created\n
+            dir_name: str\n
+            name of the new directory\n
+            add: str optional\n
+            add to the name of the new directory\n"""
     if "/" in dir_name:
         dir_name = dir_name.replace("/", "_")
     directory = dir_name + add
@@ -30,10 +37,13 @@ def create_folder(parent_dir, dir_name, add=""):
 
 def log_file(file_path, write_str, optional_header=""):
     """reads and writes log info's to log file\n
-        input:
-            file_path: path to log life\n
-            write_str: string that should be written to log file\n
-            optional_header: optional header to indicate the column names\n"""
+        :parameter
+            file_path: str\n
+            path to log life\n
+            write_str: str\n
+            string that should be written to the log file\n
+            optional_header: str, optional\n
+            optional header to indicate the column names (',' separated)\n"""
     try:
         log_file_read = open(file_path, "r")
         prev_log = log_file_read.readlines()

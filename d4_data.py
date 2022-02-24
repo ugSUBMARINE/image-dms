@@ -6,14 +6,20 @@ from d4_utils import aa_dict
 
 def read_and_process(path_to_file, variants, silent=True, remove_astrix=True):
     """reads in the deep mutational scanning file and returns its data\n
-        input:
-            path_to_file: path to the tsv file\n
-            variants: how the variants' column in the file ins named\n
-            silent: if True doesn't print any stats/ information\n
-            remove_astrix: if True excludes nonsense mutations from the file\n
+        :parameter
+            path_to_file: str\n
+            path to the tsv file\n
+            variants: str\n
+            how the variants' column in the file ins named\n
+            silent: bool, optional\n
+            if True doesn't print any stats/ information\n
+            remove_astrix: bool, optional\n
+            if True excludes nonsense mutations from the file\n
         :returns
-            p_name: name of the protein\n
-            raw_data: data as pandas df\n"""
+            p_name: str\n
+            name of the protein\n
+            raw_data: pd.Dataframe\n
+            data as pandas df\n"""
     raw_data = pd.read_csv(path_to_file, delimiter="\t")
     # getting the proteins name
     if "/" in path_to_file:
@@ -46,16 +52,24 @@ def read_and_process(path_to_file, variants, silent=True, remove_astrix=True):
 def check_seq(raw_data_cs, name_cs, wt_seq_cs, variants_cs, save_fig=None, plot_fig=False, silent=True):
     """checks whether the wild sequence and the sequence reconstructed from the raw data match and plot a histogram
         which shows how often a certain residue was part of a mutation\n
-        input:
-            raw_data_cs: dms data as pd dataframe\n
-            name_cs: protein name\n
-            wt_seq_cs: wild type sequence as list eg ['A', 'V', 'L']\n
-            variants_cs: name of the variants column in the raw data file\n
-            save_fig: None doesn't safe the histogram anything else does\n
-            plot_fig: if True shows the histogram\n
-            silent: if True doesn't show stats during execution\n
+        :parameter
+            raw_data_cs: pd dataframe\n
+            dms data\n
+            name_cs: str\n
+            protein name\n
+            wt_seq_cs: list\n
+            wild type sequence as list eg ['A', 'V', 'L']\n
+            variants_cs: str\n
+            name of the variants' column in the raw data file\n
+            save_fig: any, optional\n
+            None doesn't safe the histogram anything else does\n
+            plot_fig: bool, optional\n
+            if True shows the histogram\n
+            silent:  bool, optional\n
+            if True doesn't show stats during execution\n
         :return
-            first_ind: starting int of the sequence\n
+            first_ind: int\n
+            starting int of the sequence\n
             """
     # all variants in a list
     v = raw_data_cs[variants_cs].tolist()
@@ -146,26 +160,36 @@ def check_seq(raw_data_cs, name_cs, wt_seq_cs, variants_cs, save_fig=None, plot_
 def split_data(raw_data_sd, variants_sd, score_sd, number_mutations_sd, max_train_mutations, train_split, r_seed,
                silent=False):
     """splits data from raw_data_sd into training and test dataset\n
-        input:
-            raw_data_sd: dms data as pandas dataframe\n
-            variants_sd: name of the variants column in raw_data_sd\n
-            score_sd: name of the score column in raw_data_sd\n
-            number_mutations_sd: name of the column that stats the number of mutations per variant in raw_data_sd \n
-            max_train_mutations: maximum number of mutations per sequence to be used for training\n
-                (None to use all mutations for training) variants with mutations > max_train_mutations get stored in
-                unseen_data\n
-            train_split: how much of the dataset should be used as training data (int to specify a number of data for the
+        :parameter
+            raw_data_sd: pd dataframe\n
+            dms data\n
+            variants_sd: str\n
+            name of the variants column in raw_data_sd\n
+            score_sd: str\n
+            name of the score column in raw_data_sd\n
+            number_mutations_sd: str\n
+            name of the column that stats the number of mutations per variant in raw_data_sd \n
+            max_train_mutations: int on None
+                - maximum number of mutations per sequence to be used for training\n
+                - None: to use all mutations for training \n
+                - int: variants with mutations > max_train_mutations get stored in unseen_data\n
+            train_split: int or float
+                how much of the dataset should be used as training data (int to specify a number of data for the
                 training dataset or a float (<=1) to specify the fraction of the dataset used as training data\n
-            r_seed: random seed for pandas random_state\n
-            silent: if True doesn't show stats during execution\n
+            r_seed: int\n
+            random seed for pandas random_state\n
+            silent: bool, optional\n
+            if True doesn't show stats during execution\n
         :returns
-            all numpy arrays\n
-            data: variants\n
-            labels: score\n
-            mutations: number of mutations\n
-           train_data, train_labels, train_mutations\n
-           test_data, test_labels, test_mutations\n
-           if max_train_mutations is used (variants with more mutations than max_train_mutations):
+            data: ndarray\n
+            variants\n
+            labels: ndarray\n
+            score for each variant\n
+            mutations: ndarray\n
+            number of mutations for each variant\n
+            train_data, train_labels, train_mutations\n
+            test_data, test_labels, test_mutations\n
+            if max_train_mutations is used (variants with more mutations than max_train_mutations):
             unseen_data, unseen_labels, unseen_mutations\n """
     vas = raw_data_sd[[variants_sd, score_sd, number_mutations_sd]]
 
@@ -230,13 +254,15 @@ def data_coord_extraction(target_pdb_file):
     """calculates distance between residues and builds artificial CB for GLY based on the
         side chains of amino acids (!= GLY) before if there is an or after it if Gly is the start amino acid\n
         No duplicated side chain entries allowed
-            input:
-                target_pdb_file: pdb file with data of protein of interest\n
-            :returns:
-                new_data: 2d list [[Atom type, Residue 3letter, ChainID, ResidueID],...]\n
-                new_coords: 2d list of corresponding coordinates to the new_data entries\n
-                split_tuples: list of tuples which indicate the start and end of a residue in the new_data and
-                new_coords lists\n"""
+        :parameter
+            target_pdb_file: str\n
+            path to pdb file for protein of interest\n
+        :returns:
+            new_data: 2D ndarray\n
+            contains information about all residues [[Atom type, Residue 3letter, ChainID, ResidueID],...] \n
+            new_coords: 2d ndarray\n
+            of corresponding coordinates to the new_data entries\n
+            """
     # list of all data of the entries like [[Atom type, Residue 3letter, ChainID, ResidueID],...]
     res_data = []
     # list of all coordinates of the entries like [[x1, y1, z1],...]
@@ -258,10 +284,12 @@ def data_coord_extraction(target_pdb_file):
         """gets the CA and CB coordinates of the residue at inc_bool=True,computed the difference in the CA atom
             coordinates of this residue and the Gly and uses this difference to compute the 'artificial CB' for the Gly
             if entry for CB is duplicated for an amino acid the mean of its coordinates are used
-            input:
-                increase: residue id of the closest amino acid with a CB
+            :parameter
+                inc_bool: bool,
+                residue data of the closest amino acid with a CB
             :return
-                art_cbc: CA, CB coordinates as [[xa, ya, za]], [[xb, yb, zb]]"""
+                art_cbc: ndarray\n
+                CA, CB coordinates as [[xa, ya, za]], [[xb, yb, zb]]"""
         # data and coords of the next amino acid != GLY
         increased_data = res_data[inc_bool]
         increased_coords = res_coords[inc_bool]
@@ -276,8 +304,6 @@ def data_coord_extraction(target_pdb_file):
         # print("pseudoatom tmpPoint2, resi=40, chain=ZZ, b=40, color=red, pos=", art_cbc[0].tolist())
         return art_cbc
 
-    split_tuples = []
-    last_ind = 0
     new_coords = []
     new_data = []
     # RES, CHAIN, ResNR sorted
@@ -313,26 +339,21 @@ def data_coord_extraction(target_pdb_file):
             # new_i_data[:, 1] = "ALA"
             new_coords += new_i_coords.tolist()
             new_data += new_i_data.tolist()
-            # length of the
-            length = len(new_i_data)
-            # start and end of the residue entries
-            split_tuples += [(last_ind, last_ind + length)]
-            last_ind += length
         else:
             new_coords += i_coords.tolist()
             new_data += i_data.tolist()
-            length = len(i_data)
-            split_tuples += [(last_ind, last_ind + length)]
-            last_ind += length
-    return np.asarray(new_data), np.asarray(new_coords, dtype=float), split_tuples
+    return np.asarray(new_data), np.asarray(new_coords, dtype=float)
 
 
 def check_structure(path_to_pdb_file, comb_bool_cs, wt_seq_cs):
     """checks whether the given wild type sequence matches the sequence in the pdb file\n
-        input:
-            path_to_pdb_file: path to used pdb file\n
-            comb_bool_cs: interacting_residues of atom_interaction_matrix_d\n
-            wt_seq_cs: wild type sequence as list eg ['A', 'V', 'L']\n
+        :parameter
+            path_to_pdb_file: str\n
+            path to used pdb file\n
+            comb_bool_cs: 2D ndarray\n
+            interacting_residues of atom_interaction_matrix_d\n
+            wt_seq_cs: list\n
+            wild type sequence as list eg ['A', 'V', 'L']\n
         :return
             None
         """

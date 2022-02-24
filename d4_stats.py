@@ -33,15 +33,20 @@ def validate(generator_v, model_v, history_v, name_v, max_train_mutations_v, sav
 
 def pearson_spearman(model, generator, labels):
     """calculating the pearson r and spearman r for generator\n
-        input:
-            generator: Data generator to predict values (not shuffled)\n
-            labels: the corresponding labels for the generator\n
-        return:
-            pearson_r: Pearson’s correlation coefficient\n
-            pearson_r_p: Two-tailed p-value\n
-            spearman_r: Spearman correlation coefficient\n
-            spearman_r_p: p-value for a hypothesis test whose null hypothesis is that two sets of data are
-            uncorrelated\n
+        :parameter
+            generator: DataGenerator object\n
+            Data generator to predict values (not shuffled)\n
+            labels: ndarray\n
+            the corresponding labels for the generator\n
+        :return
+            pearson_r: float\n
+            Pearson’s correlation coefficient\n
+            pearson_r_p: float \n
+            Two-tailed p-value\n
+            spearman_r: float\n
+            Spearman correlation coefficient\n
+            spearman_r_p: float\n
+            p-value for a hypothesis test whose null hypothesis is that two sets of data are uncorrelated\n
             """
     pred = model.predict(generator).flatten()
     ground_truth = labels
@@ -50,16 +55,28 @@ def pearson_spearman(model, generator, labels):
     return pearson_r, pearson_r_p, spearman_r, spearman_r_p
 
 
-def validation(model, generator, labels, v_mutations, p_name, test_num, name,
+def validation(model, generator, labels, v_mutations, p_name, test_num,
                save_fig=None, plot_fig=False, silent=True):
     """plot validations\n
-        input:
-            generator: data generator for predicting values\n
-            labels: the corresponding real labels to the generator\n
-            v_mutations: number of mutations per data sample in the generator\n
-            p_name: protein name
-            test_num: number of samples used for the test, name,
-               save_fig=None, plot_fig=False, silent=True
+        :parameter
+            generator: DataGenerator object\n
+            data generator for predicting values\n
+            labels: ndarray\n
+            the corresponding real labels to the generator\n
+            v_mutations: ndarray\n
+            number of mutations per data sample in the generator\n
+            p_name: str\n
+            protein name\n
+            test_num: int\n
+            number of samples used for the test\n
+            save_fig: None, optional\n
+            anything beside None to save figures or None to not save figures\n
+            plot_fig: bool, optional\n
+            if True shows figures\n
+            silent: bool, optional\n
+            if True doesn't write mean error in the terminal
+        :return
+            None
             """
     # predicted values, errors between prediction and label, number of mutations per label
     pred = model.predict(generator).flatten()
@@ -133,7 +150,7 @@ def validation(model, generator, labels, v_mutations, p_name, test_num, name,
         np.around(test_pearson_r, 4)) + "\nspearman r: " + str(np.around(test_spearman_r, 4))
     plt.gcf().text(0.7, 0.8, test_text, fontsize=14)
     if save_fig is not None:
-        plt.savefig(save_fig + "/" + "test_" + name)
+        plt.savefig(save_fig + "/" + "test_" + p_name)
     if plot_fig:
         plt.show()
 
@@ -146,7 +163,7 @@ def validation(model, generator, labels, v_mutations, p_name, test_num, name,
     plt.boxplot(boxes)
     plt.xticks(range(1, np.max(mutations) + 1))
     if save_fig is not None:
-        plt.savefig(save_fig + "/" + "boxplot_" + name)
+        plt.savefig(save_fig + "/" + "boxplot_" + p_name)
     plt.ylabel("error")
     plt.xlabel("number of mutations")
     if plot_fig:
@@ -163,7 +180,7 @@ def validation(model, generator, labels, v_mutations, p_name, test_num, name,
     plt.ylabel("predicted score")
     plt.plot([tr, bl], [tr, bl], color="firebrick")
     if save_fig is not None:
-        plt.savefig(save_fig + "/" + "correlation_" + name)
+        plt.savefig(save_fig + "/" + "correlation_" + p_name)
     if plot_fig:
         plt.show()
 
