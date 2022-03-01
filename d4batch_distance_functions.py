@@ -526,7 +526,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
       if True validation of the training will be performed
     - lr: float, optional\n
       learning rate (how much the weights can change during an update)
-    - transfer_conv_weights: str on None, optional\n
+    - transfer_conv_weights: str or None, optional\n
       path to model who's weights of it's convolution layers should be used for transfer learning (needs to have the
       same architecture for the convolution part as the newly build model (model_to_use)\n
     - train_conv_layers: bool, optional\n
@@ -552,7 +552,6 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         temp_stats = open(temp_path, "w+")
     temp_stats.close()
 
-
     starting_time = timer()
     wt_seq = list(wt_seq)
     # getting the proteins name
@@ -576,24 +575,21 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         if save_fig is not None:
             save_fig = result_path
 
-    # if not settings_test:
-    # writes used arguments to log file
-    if write_to_log:
-        header = "name," + ",".join(list(arg_dict.keys())) + ",training_time_in_min"
-        prep_values = []
-        for i in list(arg_dict.values()):
-            if type(i) == list:
-                try:
-                    prep_values += ["".join(i)]
-                except TypeError:
-                    prep_values += ["".join(str(i)).replace(",", "_")]
-            else:
-                prep_values += [str(i)]
-        values = name + "," + ",".join(prep_values) + ",nan"
-        for k in values.split(","):
-            print("-",k)
-            pass
-        # log_file(log_file_path, values, header)
+    if not settings_test:
+        # writes used arguments to log file
+        if write_to_log:
+            header = "name," + ",".join(list(arg_dict.keys())) + ",training_time_in_min"
+            prep_values = []
+            for i in list(arg_dict.values()):
+                if type(i) == list:
+                    try:
+                        prep_values += ["".join(i)]
+                    except TypeError:
+                        prep_values += ["".join(str(i)).replace(",", "_")]
+                else:
+                    prep_values += [str(i)]
+            values = name + "," + ",".join(prep_values) + ",nan"
+            log_file(log_file_path, values, header)
 
     # split dataset
     ind_dict, data_dict = split_inds(file_path=tsv_file, variants=variants, score=score,
