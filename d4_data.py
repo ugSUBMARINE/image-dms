@@ -250,6 +250,7 @@ def split_data(raw_data_sd, variants_sd, score_sd, number_mutations_sd, max_trai
     return train_data, train_labels, train_mutations, test_data, test_labels, test_mutations, unseen_data, unseen_labels, unseen_mutations
 
 
+# ---------------------------------------------- NOW USED --------------------------------------------------------------
 def split_inds(file_path, variants, score, number_mutations, split=None, remove_nonsense=True):
     """get indices of variants that don't feature a nonsense mutation\n
         :parameter
@@ -355,16 +356,16 @@ def split_inds(file_path, variants, score, number_mutations, split=None, remove_
 
 def data_coord_extraction(target_pdb_file):
     """calculates distance between residues and builds artificial CB for GLY based on the
-        side chains of amino acids (!= GLY) before if there is an or after it if Gly is the start amino acid\n
-        No duplicated side chain entries allowed
-        :parameter
+       side chains of amino acids (!= GLY) before if there is an or after it if Gly is the start amino acid\n
+       No duplicated side chain entries allowed
+       :parameter
             target_pdb_file: str\n
             path to pdb file for protein of interest\n
-        :returns:
+       :returns:
             new_data: 2D ndarray\n
             contains information about all residues [[Atom type, Residue 3letter, ChainID, ResidueID],...] \n
             new_coords: 2d ndarray\n
-            of corresponding coordinates to the new_data entries\n
+            contains coordinates of corresponding residues to the new_data entries\n
             """
     # list of all data of the entries like [[Atom type, Residue 3letter, ChainID, ResidueID],...]
     res_data = []
@@ -476,3 +477,8 @@ def check_structure(path_to_pdb_file, comb_bool_cs, wt_seq_cs):
 
 if __name__ == "__main__":
     pass
+    from d4batch_distance_functions import atom_interaction_matrix_d
+    from d4_utils import protein_settings
+    _, d, _ = atom_interaction_matrix_d("datasets/bgl3.pdb", 10)
+    f = protein_settings("bgl3")["sequence"]
+    check_structure("datasets/bgl3.pdb", d, list(f))
