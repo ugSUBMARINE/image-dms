@@ -63,6 +63,24 @@ def log_file(file_path, write_str, optional_header=""):
     log_file_write.close()
 
 
+def get_settings(run_name, file_path="result_files/log_file.csv", column_to_search="name"):
+    """prints the settings/ results used in a certain run in an easy readable form
+        :parameter
+            run_name: str\n
+            name of the row of interest
+            file_path: str, optional\n
+            path to the file that should be parsed
+            file_to_search: str, optional\n
+            specifies the column in which the run_name should be searched
+        :return
+            None"""
+    data = pd.read_csv(file_path, delimiter=",")
+    data_fields = data.columns
+    roi = data[data[column_to_search] == run_name]
+    for i, j in zip(data_fields, roi.values[0]):
+        print("{:25}: {}".format(i, j))
+
+
 aa_dict = {"ALA": "A", "ARG": "R", "ASN": "N", "ASP": "D", "CYS": "C", "GLN": "Q", "GLU": "E", "GLY": "G", "HIS": "H",
            "VAL": "V", "LEU": "L", "ILE": "I", "LYS": "K", "MET": "M", "PHE": "F", "PRO": "P", "SER": "S", "TRP": "W",
            "TYR": "Y", "THR": "T"}
@@ -106,3 +124,4 @@ side_chain_length = {'A': 1.53832,
 
 if __name__ == "__main__":
     pass
+    get_settings("gb1_28_02_2022_154347")
