@@ -13,7 +13,7 @@ from datetime import datetime
 
 from d4_utils import create_folder, log_file, hydrophobicity, h_bonding, charge, sasa, side_chain_length
 from d4_stats import validate, validation, pearson_spearman
-from d4_data import read_and_process, split_data, check_structure, data_coord_extraction, split_inds
+from d4_data import check_structure, data_coord_extraction, split_inds
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 np.set_printoptions(threshold=sys.maxsize)
@@ -127,40 +127,67 @@ def atom_interaction_matrix_d(path_to_pdb_file, dist_th=10, plot_matrices=False)
 
 class DataGenerator(keras.utils.Sequence):
     """
-    Generates n_channel x n x n matrices to feed them as batches to a network\n
+    Generates n_channel x n x n matrices to feed them as batches to a network where n denotes len(wild type sequence)\n
     ...
     Attributes:\n
-    - features: features that should be encoded\n
-    - labels: the corresponding labels to the features\n
-    - interaction_matrix: boolean matrix whether residues interact or not\n
-    - wild_type_seq: wild type sequence as str\n
-    - dim: dimensions of the matrices (len(wt_seq) x len(wt_seq))\n
-    - n_channels: number of matrices used\n
-    - batch_size: Batch size (if 1 gradient gets updated after every sample in training)\n
-    - first_ind: index of the start of the sequence\n
-    - hm_converted: wt sequence h-bonding encoded\n
-    - hm_pos_vals: valid values for h-bonding residues\n
-    - factor: 1 - norm(distance) for all residues in the interaction matrix\n
-    - hp_converted: wt sequence hydrophobicity encoded\n
-    - hp_norm: max possible value for hydrophobicity change\n
-    - cm_converted: wt sequence charge encoded\n
-    - ch_good_vals: values for +-, nn interactions\n
-    - ch_mid_vals: values for n+, n- interactions\n
-    - ch_bad_vals: values for --, ++ interactions\n
-    - ia_converted: wt sequence interaction area encoded\n
-    - ia_norm: max value for interaction area change\n
-    - mat_index: index matrix for adjacency matrix\n
-    - shuffle: if True data gets shuffled after every epoch\n
-    - train: set True if used for training\n
+    - features: list of str\n
+      features that should be encoded ec ['A2S,E3R' 'T6W']\n
+    - labels: list of int / float\n
+      the corresponding labels to the features\n
+    - interaction_matrix: 2D ndarray of bool\n
+      boolean matrix whether residues interact or not\n
+    - dim: tuple\n
+      dimensions of the matrices (len(wt_seq) x len(wt_seq))\n
+    - n_channels: int\n
+      number of matrices used\n
+    - batch_size: int\n
+      Batch size (if 1 gradient gets updated after every sample in training)\n
+    - first_ind: int\n
+      index of the start of the protein sequence\n
+    - hm_converted: ndarray of floats\n
+      wt sequence h-bonding encoded\n
+    - hm_pos_vals: ndarray of ints\n
+      valid values for h-bonding residues\n
+    - factor: 2D ndarray of floats\n
+      1 - norm(distance) for all residues in the interaction matrix\n
+    - hp_converted: ndarray of floats\n
+      wt sequence hydrophobicity encoded\n
+    - hp_norm: int or float\n
+      max possible value for hydrophobicity change\n
+    - cm_converted: ndarray of floats\n
+      wt sequence charge encoded\n
+    - ch_good_vals: int\n
+      values for +-, nn interactions\n
+    - ch_mid_vals: int\n
+      values for n+, n- interactions\n
+    - ch_bad_vals: int\n
+      values for --, ++ interactions\n
+    - ia_converted: ndarray of floats\n
+      wt sequence interaction area encoded\n
+    - ia_norm: float\n
+      max value for interaction area change\n
+    - mat_index: 2D ndarray of ints\n
+      symmetrical index matrix (for adjacency matrix) that represents the position of each interaction in the matrices
+    - cl_converted: ndarray of floats\n
+      wild type sequence clash encoded
+    - cl_norm: float\n
+      normalization value for the clash matrix
+    - dist_mat 2D ndarray of floats\n
+      ture distances between all residues
+    - dist_th
+      maximum distance to be counted as interaction
+    - shuffle: bool, optional\n
+      if True data gets shuffled after every epoch\n
+    - train: bool, optional\n
+      if True Generator returns features and labels (use turing training) else only features\n
     """
 
-    def __init__(self, features, labels, interaction_matrix, wild_type_seq, dim, n_channels, batch_size, first_ind,
+    def __init__(self, features, labels, interaction_matrix, dim, n_channels, batch_size, first_ind,
                  hm_converted, hm_pos_vals, factor, hp_converted, hp_norm, cm_converted, ch_good_vals, ch_mid_vals,
                  ch_bad_vals, ia_converted, ia_norm, mat_index, cl_converted, cl_norm, dist_mat, dist_th, shuffle=True,
                  train=True):
         self.features, self.labels = features, labels
         self.interaction_matrix = interaction_matrix
-        self.wild_type_seq = wild_type_seq
         self.dim = dim
         self.n_channels = n_channels
         self.batch_size = batch_size
@@ -341,19 +368,32 @@ def data_generator_vals(wt_seq):
         :parameter
             wt_seq: wild type sequence as list eg ['A', 'V', 'L']\n
         :returns
-            - hm_pos_vals: ndarray
-            - ch_good_vals: ndarray
-            - ch_mid_vals: ndarray
-            - ch_bad_vals: ndarray
-            - hp_norm: float
-            - ia_norm: float
-            - hm_converted: ndarray
-            - hp_converted: ndarray
-            - cm_converted: ndarray
-            - ia_converted: ndarray
-            - mat_index: 2D ndarray
-            - cl_converted: ndarray
-            - cl_norm: float"""
+            - hm_pos_vals: ndarray of int\n
+              values for interactions with valid hydrogen bonding partners\n
+            - ch_good_vals: ndarray of float\n
+              values representing +/- charge pairs\n
+            - ch_mid_vals: ndarray of float\n
+              values representing +/n or -/n charge pairs\n
+            - ch_bad_vals: ndarray of float\n
+              values representing +/+ or -/- charge pairs\n
+            - hp_norm: float\n
+              max value possible for hydrophobicity interactions\n
+            - ia_norm: float\n
+              max value possible for interaction ares interactions\n
+            - hm_converted: ndarray of float\n
+              wt_seq converted into hydrogen bonding values
+            - hp_converted: ndarray of float\n
+              wt_seq converted into hydrophobicity values
+            - cm_converted: ndarray of float\n
+              wt_seq converted into charge values
+            - ia_converted: ndarray of float\n
+              wt_seq converted into SASA values
+            - mat_index: 2D ndarray of float\n
+              symmetrical index matrix\n
+            - cl_converted: ndarray of float\n
+              wt_seq converted into side chain length values
+            - cl_norm: float\n
+              max value possible for interaction ares interactions\n"""
     hm_pos_vals = np.asarray([2, 3, 6, 9])
 
     ch_good_vals = np.asarray([-1., 4.])
@@ -382,12 +422,30 @@ def data_generator_vals(wt_seq):
            cm_converted, ia_converted, mat_index, cl_converted, cl_norm
 
 
+class SaveToFile(keras.callbacks.Callback):
+    """writes training stats in a temp file
+     ...
+    Attributes:\n
+    - features: str\n
+      path where the temp.csv file should be saved
+    """
+
+    def __init__(self, filepath):
+        self.filepath = filepath
+
+    def on_epoch_end(self, epoch, logs=None):
+        log_string = "{},{:0.4f},{:0.4f},{:0.4f},{:0.4f}".format(str(epoch), logs["loss"], logs["mae"],
+                                                                 logs["val_loss"], logs["val_mae"])
+        log_file(self.filepath, write_str=log_string, optional_header="epoch,loss,mae,val_loss,val_mae")
+
+
 def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_seq, number_mutations, variants, score,
-            dist_thr, channel_num, max_train_mutations, train_split, training_epochs, test_num, first_ind, r_seed=None,
+            dist_thr, channel_num, max_train_mutations, training_epochs, test_num, first_ind, r_seed=None,
             deploy_early_stop=True, es_monitor="val_loss", es_min_d=0.01, es_patience=20, es_mode="auto",
-            es_restore_bw=True, load_model=None, batch_size=64, save_fig=None, show_fig=False,
-            write_to_log=True, silent=False, extensive_test=True, save_model=False, load_weights=None, no_nan=True,
-            settings_test=False, p_dir="", split_def=None, validate_training=False):
+            es_restore_bw=True, load_trained_model=None, batch_size=64, save_fig=None, show_fig=False,
+            write_to_log=True, silent=False, extensive_test=True, save_model=False, load_trained_weights=None,
+            no_nan=True, settings_test=False, p_dir="", split_def=None, validate_training=False, lr=0.001,
+            transfer_conv_weights=None, train_conv_layers=False, write_temp=False):
     """
     - architecture_name: str\n
       name of the architecture\n
@@ -414,10 +472,6 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
     - max_train_mutations: int or None\n
       int specifying maximum number of mutations per sequence to be used for training\n
       None to use all mutations for training\n
-    - train_split: int or float\n
-      how much of the data should be used for training\n
-      float: it's used as fraction of the data\n
-      int: it's the number of samples to use as training data)\n
     - training_epochs: int\n
       number of epochs used for training the model\n
     - test_num: int\n
@@ -440,7 +494,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
               True stores the best weights of the training - False stores the last\n
     - batch_size: int, optional\n
       after how many samples the gradient gets updated\n
-    - load_model: str or None, optional\n
+    - load_trained_model: str or None, optional\n
       path to an already trained model\n
     - save_fig: bool, optional\n
       True to save figures in result_path\n
@@ -452,7 +506,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
       True to print stats in the terminal\n
     - save_model: bool, optional\n
       Ture to saves the model\n
-    - load_weights: str or None, optional\n
+    - load_trained_weights: str or None, optional\n
       path to model of who's weights should be used None if it shouldn't be used\n
     - no_nan: bool, optional\n
       True terminates training on nan\n
@@ -470,6 +524,15 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
               if the whole dataset contains 200 entries\n
     - validate_training: bool, optional\n
       if True validation of the training will be performed
+    - lr: float, optional\n
+      learning rate (how much the weights can change during an update)
+    - transfer_conv_weights: str on None, optional\n
+      path to model who's weights of it's convolution layers should be used for transfer learning (needs to have the
+      same architecture for the convolution part as the newly build model (model_to_use)\n
+    - train_conv_layers: bool, optional\n
+      if True convolution layers are trainable - only applies whe transfer_conv_weights is not None\n
+    - write_temp bool, optional\n
+      if True writes mae and loss of each epoch to the temp.csv in result_files
     """
 
     if not write_to_log:
@@ -479,6 +542,16 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
 
     if r_seed is not None:
         np.random.seed(r_seed)
+
+    # clear temp file from previous content and create result_files folder if it doesn't exist already
+    temp_path = p_dir + "/temp.csv"
+    try:
+        temp_stats = open(temp_path, "w+")
+    except FileNotFoundError:
+        create_folder(parent_dir="/".join(p_dir.split("/")[:-1]), dir_name="result_files")
+        temp_stats = open(temp_path, "w+")
+    temp_stats.close()
+
 
     starting_time = timer()
     wt_seq = list(wt_seq)
@@ -503,21 +576,24 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         if save_fig is not None:
             save_fig = result_path
 
-    if not settings_test:
-        # writes used arguments to log file
-        if write_to_log:
-            header = "name," + ",".join(list(arg_dict.keys())) + ",training_time_in_min"
-            prep_values = []
-            for i in list(arg_dict.values()):
-                if type(i) == list:
-                    try:
-                        prep_values += ["".join(i)]
-                    except TypeError:
-                        prep_values += ["".join(str(i))]
-                else:
-                    prep_values += [str(i)]
-            values = name + "," + ",".join(prep_values) + ",nan"
-            log_file(log_file_path, values, header)
+    # if not settings_test:
+    # writes used arguments to log file
+    if write_to_log:
+        header = "name," + ",".join(list(arg_dict.keys())) + ",training_time_in_min"
+        prep_values = []
+        for i in list(arg_dict.values()):
+            if type(i) == list:
+                try:
+                    prep_values += ["".join(i)]
+                except TypeError:
+                    prep_values += ["".join(str(i)).replace(",", "_")]
+            else:
+                prep_values += [str(i)]
+        values = name + "," + ",".join(prep_values) + ",nan"
+        for k in values.split(","):
+            print("-",k)
+            pass
+        # log_file(log_file_path, values, header)
 
     # split dataset
     ind_dict, data_dict = split_inds(file_path=tsv_file, variants=variants, score=score,
@@ -548,11 +624,38 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
     # neural network model function
     model = model_to_use(wt_seq, channel_num)
 
-    # loads weight to model
-    if load_weights is not None:
-        old_model = keras.models.load_model(load_weights)
+    # load weights to model
+    if load_trained_weights is not None:
+        old_model = keras.models.load_model(load_trained_weights)
         model.set_weights(old_model.get_weights())
-    model.compile(optimizer, loss="mean_absolute_error", metrics=["mae"])
+    model.compile(optimizer(learning_rate=lr), loss="mean_absolute_error", metrics=["mae"])
+
+    # loads a model defined in load_trained_model
+    if load_trained_model is not None:
+        model = keras.models.load_model(load_trained_model)
+
+    # load weights of a models convolutional part to a model that has a convolution part with the same architecture
+    # but maybe a different/ not trained classifier
+    if transfer_conv_weights is not None:
+        # loads model and its weights
+        trained_model = keras.models.load_model(transfer_conv_weights)
+        temp_weights = [layer.get_weights() for layer in trained_model.layers]
+
+        # which layers are conv layers (or not dense or flatten since these are sensitive to different input size)
+        conv_count = 1
+        for i in range(len(trained_model.layers)):
+            l_name = trained_model.layers[i].name
+            if "dense" not in l_name and "flatten" not in l_name:  # "conv" in l_name
+                conv_count = i + 1
+
+        # Transfer weights to new model
+        for i in range(conv_count):
+            model.layers[i].set_weights(temp_weights[i])
+            if train_conv_layers is False:
+                model.layers[i].trainable = False
+
+        model.compile(optimizer(learning_rate=lr), loss="mean_absolute_error", metrics=["mae"])
+        model.summary()
 
     all_callbacks = []
     # deploying early stop parameters
@@ -569,9 +672,12 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
     if no_nan:
         all_callbacks += [tf.keras.callbacks.TerminateOnNaN()]
 
+    # save mae and loss to temp file
+    if write_temp:
+        all_callbacks += [SaveToFile(temp_path)]
+
     # parameters for the DatGenerator
-    params = {'wild_type_seq': wt_seq,
-              'interaction_matrix': comb_bool,
+    params = {'interaction_matrix': comb_bool,
               'dim': comb_bool.shape,
               'n_channels': channel_num,
               'batch_size': batch_size,
@@ -616,8 +722,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         t_labels = test_labels[test_inds]
         t_mutations = test_mutations[test_inds]
 
-    test_params = {'wild_type_seq': wt_seq,
-                   'interaction_matrix': comb_bool,
+    test_params = {'interaction_matrix': comb_bool,
                    'dim': comb_bool.shape,
                    'n_channels': channel_num,
                    'batch_size': 1,
@@ -642,9 +747,6 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
                    'train': False}
 
     test_generator = DataGenerator(t_data, np.zeros(len(t_labels)), **test_params)
-
-    if load_model is not None:
-        model = keras.models.load_model(load_model)
 
     if not settings_test:
         # training
@@ -714,22 +816,18 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         # training and validation plot of the training
         if validate_training:
             try:
-                val_val, epochs_bw, test_loss = validate(validation_generator, model, history, name,
-                                                         max_train_mutations, save_fig_v=save_fig, plot_fig=show_fig)
+                val_val, _, _ = validate(validation_generator, model, history, name,
+                                         max_train_mutations, save_fig_v=save_fig, plot_fig=show_fig)
             except ValueError:
                 val_val = "nan"
-                epochs_bw = 0
-                test_loss = "nan"
                 log_file("result_files/log_file.csv", "nan in training history")
         else:
             val_val = "nan"
-            test_loss = "nan"
-            epochs_bw = 0
         # calculating pearsons' r and spearman r for the test dataset
         try:
-            pearsonr, pp, spearmanr, sp = pearson_spearman(model, test_generator, t_labels)
+            mae, pearsonr, pp, spearmanr, sp = pearson_spearman(model, test_generator, t_labels)
         except ValueError:
-            pearsonr, pp, spearmanr, sp = "nan", "nan", "nan", "nan"
+            mae, pearsonr, pp, spearmanr, sp = "nan", "nan", "nan", "nan", "nan"
 
         # creating more detailed plots
         if extensive_test:
@@ -737,12 +835,11 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
                        save_fig=save_fig, plot_fig=show_fig, silent=silent)
 
         # writing results to the result file
-        result_string = ",".join([name, architecture_name, str(len(train_data)), str(len(test_data)), str(test_loss),
-                                  str(epochs_bw), str(pearsonr), str(pp), str(spearmanr), str(sp)])
+        result_string = ",".join([name, architecture_name, str(len(train_data)), str(len(test_data)), str(mae),
+                                  str(pearsonr), str(pp), str(spearmanr), str(sp)])
 
-        log_file("result_files/results.csv", result_string, "name,train_data_size,test_data_size,mae,"
-                                                            "epochs_best_weight,pearson_r,pearson_p,"
-                                                            "spearman_r,spearman_p")
+        log_file("result_files/results.csv", result_string, "name,architecture,train_data_size,test_data_size,mae,"
+                                                            "pearson_r,pearson_p,spearman_r,spearman_p")
 
 
 if __name__ == "__main__":
