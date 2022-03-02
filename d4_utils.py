@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 import os
+import tensorflow as tf
+from d4_models import *
 
 
 def protein_settings(protein_name):
@@ -67,11 +69,11 @@ def get_settings(run_name, file_path="result_files/log_file.csv", column_to_sear
     """prints the settings/ results used in a certain run in an easy readable form
         :parameter
             run_name: str\n
-            name of the row of interest
+            name of the row of interest\n
             file_path: str, optional\n
-            path to the file that should be parsed
-            file_to_search: str, optional\n
-            specifies the column in which the run_name should be searched
+            path to the file that should be parsed\n
+            column_to_search: str, optional\n
+            specifies the column in which the run_name should be searched\n
         :return
             None"""
     data = pd.read_csv(file_path, delimiter=",")
@@ -79,6 +81,72 @@ def get_settings(run_name, file_path="result_files/log_file.csv", column_to_sear
     roi = data[data[column_to_search] == run_name]
     for i, j in zip(data_fields, roi.values[0]):
         print("{:25}: {}".format(i, j))
+
+
+def run_dict(run_name, column_to_search="name", data_path="result_files/log_file.csv"):
+    """creates a dictionary from data_path that can be used as input for the run_all at d4batch_driver.py\n
+        :parameter
+            run_name: str\n
+            name of the run whose parameters should be used\n
+            column_to_search: str, optional\n
+            specifies the column in which the run_name should be searched\n
+            file_path: str, optional\n
+            path to the file that should be parsed\n
+        :return
+            par: dict\n
+            dictionary containing run_all parameters"""
+
+    def get_func(name):
+        """creates a function from a string\n
+            :parameter
+                name:str\n
+                name of the function of interest\n
+            :return
+                method: function object\n
+                the function object ot the function of interest"""
+        possibles = globals().copy()
+        possibles.update(locals())
+        method = possibles.get(name)
+        return method
+
+    # data for the dictionary
+    data = pd.read_csv(data_path, delimiter=",")
+    roi = data[data[column_to_search] == run_name]
+
+    # dictionary with not all strings converted
+    par = dict(zip(list(roi.columns), roi.values[0]))
+    par_k = list(par.keys())
+    par_v = list(par.values())
+
+    # convert the strings that are not the data type they should be into their respective type
+    for i in range(len(par)):
+        vi = par_v[i]
+        vi_type = type(vi)
+        if any([vi_type == int, vi_type == bool, vi_type == float]):
+            pass
+        else:
+            if vi == "None":
+                par[par_k[i]] = None
+            elif "[" in vi:
+                new_split_list = []
+                split_list = vi[1:-1].split("_")
+                for j in split_list:
+                    if j.isdecimal():
+                        new_split_list += [int(j)]
+                    else:
+                        new_split_list += [float(j)]
+                par[par_k[i]] = new_split_list
+            else:
+                vi_split = vi.split(" ")
+                if len(vi_split) > 1 and all(["<" in vi, ">" in vi, "function" in vi]):
+                    par[par_k[i]] = get_func(vi_split[1])
+                elif "optimizer" in vi:
+                    par[par_k[i]] = tf.keras.optimizers.Adam
+
+    # deletes entries that are not used in run_all
+    del par["name"]
+    del par["training_time_in_min"]
+    return par
 
 
 aa_dict = {"ALA": "A", "ARG": "R", "ASN": "N", "ASP": "D", "CYS": "C", "GLN": "Q", "GLU": "E", "GLY": "G", "HIS": "H",
@@ -124,4 +192,5 @@ side_chain_length = {'A': 1.53832,
 
 if __name__ == "__main__":
     pass
-    get_settings("gb1_28_02_2022_154347")
+    # get_settings("pab1_02_03_2022_094555")
+
