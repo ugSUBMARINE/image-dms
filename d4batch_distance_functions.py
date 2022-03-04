@@ -125,6 +125,112 @@ def atom_interaction_matrix_d(path_to_pdb_file, dist_th=10, plot_matrices=False)
     return red2, red2_norm, interacting_residues
 
 
+def hydrophobicity_matrix(res_bool_matrix, converted, norm):
+    """matrix that represents how similar its pairs are in terms of hydrophobicity
+        only for pairs that are true in res_bool_matrix\n
+        input:
+            res_bool_matrix: matrix (len(wt_seq) x len(wt_seq)) where pairs that obey distance and angle criteria
+            are True\n
+            converted: the sequence converted to the values of the corresponding dict as 1D numpy array\n
+            norm: max value possible for interactions between two residues\n
+        :return
+            hp_matrix: len(wt_seq) x len(wt_seq) matrix with the corresponding normalized similarity in terms of
+            hydrophobicity of each pair\n"""
+    interactions = np.abs(converted - converted.reshape(len(converted), -1))
+    hp_matrix = 1 - (interactions / norm)
+    hp_matrix[np.invert(res_bool_matrix)] = 0
+    return hp_matrix
+
+
+def hbond_matrix(res_bool_matrix, converted, valid_vals):
+    """matrix that represents whether pairs can form h bonds (True) or not (False)
+       only for pairs that are true in res_bool_matrix\n
+        input:
+            res_bool_matrix: matrix (len(wt_seq) x len(wt_seq)) with interacting pairs as True\n
+            valid_vals: which values of the matrix are True after multiplying the encoded sequence against itself\n
+            converted: the sequence converted to the values of the corresponding dict as 1D numpy array\n
+        :return
+            hb_mat: len(wt_seq) x len(wt_seq) matrix where pairs that can form h bonds are True\n"""
+    interactions = converted * converted.reshape(len(converted), -1)
+    hb_matrix = np.isin(interactions, valid_vals)
+    hb_mat = np.all(np.stack((hb_matrix, res_bool_matrix)), axis=0)
+    return hb_mat
+
+
+def charge_matrix(res_bool_matrix, converted, good, mid, bad):
+    """matrix that represents whether pairs of amino acids are of the same charge (0), of opposite charge /
+       both uncharged (1), or one charged one neutral (0.5) only for pairs that are true in res_bool_matrix\n
+        input:
+            res_bool_matrix: matrix (len(wt_seq) x len(wt_seq)) with interacting pairs as True\n
+            invalid_val: value that marks wrong charge pairs (1 if neg -1,neu 0,pos 1 encoding)\n
+            converted: the sequence converted to the values of the corresponding dict as 1D numpy array\n
+        :return
+            c_mat: len(wt_seq) x len(wt_seq) matrix where amino acid pairs which are of
+            the opposite charge internal\n
+            or both uncharged are True\n"""
+    interactions = converted * converted.reshape(len(converted), -1)
+    interactions[np.invert(res_bool_matrix)] = 0
+    interactions[np.isin(interactions, bad)] = 0
+    interactions[np.isin(interactions, mid)] = 0.5
+    interactions[np.isin(interactions, good)] = 1
+    return interactions
+
+
+def interaction_area(res_bool_matrix, wt_converted, mut_converted, norm):
+    """matrix that represents the change in solvent accessible surface area (SASA) due to a mutation
+       only for pairs that are true in res_bool_matrix\n
+        input:
+            res_bool_matrix: matrix (len(wt_seq) x len(wt_seq)) with interacting pairs as True\n
+            wt_converted: wild type sequence converted with the corresponding dict\n
+            mut_converted: mutated sequence converted with the corresponding dict\n
+            norm: max value possible for interactions between two residues\n
+        :return
+            ia_matrix: len(wt_seq) x len(wt_seq) matrix with values corresponding to the
+            absolute magnitude of change in the SASA of a residue pair\n"""
+    d = wt_converted - mut_converted
+    dd = np.abs(d + d.reshape(len(d), -1)) / norm
+    dd[np.invert(res_bool_matrix)] = 0
+    dd = 1 - dd
+    return dd
+
+
+def clashes(res_bool_matrix, wt_converted, mut_converted, norm, dist_mat, dist_thr):
+    """matrix that represents whether clashes ore holes are occurring due to the given mutations
+        input:
+            res_bool_matrix: matrix (len(wt_seq) x len(wt_seq)) with interacting pairs as True\n
+            wt_converted: wild type sequence converted with the corresponding dict\n
+            mut_converted: mutated sequence converted with the corresponding dict\n
+            norm:max value possible for interactions between two residues\n
+            dist_mat: matrix with distances between all residues\n
+            dist_thr: threshold for how close residues need to be to count as interacting\n
+        :return
+            sub_norm: len(wt_seq) x len(wt_seq) matrix with values corresponding to whether new mutations lead to
+            potential clashes or holes between interacting residues"""
+    diff = wt_converted - mut_converted
+    new_mat = (diff + diff.reshape(len(diff), -1)) * res_bool_matrix
+    sub = dist_mat - new_mat
+    sub_ = sub * (sub != dist_mat)
+    sub_norm = sub_ / (norm + dist_thr)
+    return sub_norm
+
+
+def mutate_sequences(wt_sequence, mutations, f_dict, first_ind):
+    """mutates the wild type sequence at positions defined in mutations and
+        returns the mutated sequences\n
+        input:
+            wt_sequence: the encoded wild type sequence as list e.g. [0.3, 0.8, 0.1, 1.]\n
+            mutations: list of strings where the mutations take place e.g. ['F1K,K2G', 'R45S']\n
+            f_dict: dictionary with values for encoding\n
+        return:
+            mutated_sequences: mutated sequences as list\n"""
+    a_to_mut = wt_sequence.copy()
+    muts = mutations.strip().split(",")
+    for j in muts:
+        j = j.strip()
+        a_to_mut[int(j[1:-1]) - first_ind] = f_dict[j[-1]]
+    return a_to_mut
+
+
 class DataGenerator(keras.utils.Sequence):
     """
     Generates n_channel x n x n matrices to feed them as batches to a network where n denotes len(wild type sequence)\n
@@ -230,106 +336,6 @@ class DataGenerator(keras.utils.Sequence):
         if self.shuffle:
             np.random.shuffle(self.idx)
 
-    def __mutate_sequences(self, wt_sequence, mutations, f_dict):
-        """mutates the wild type sequence at positions defined in mutations and
-            returns the mutated sequences\n
-            input:
-                wt_sequence: the encoded wild type sequence as list e.g. [0.3, 0.8, 0.1, 1.]\n
-                mutations: list of strings where the mutations take place e.g. ['F1K,K2G', 'R45S']\n
-                f_dict: dictionary with values for encoding\n
-            return:
-                mutated_sequences: mutated sequences as list\n"""
-        a_to_mut = wt_sequence.copy()
-        muts = mutations.strip().split(",")
-        for j in muts:
-            j = j.strip()
-            a_to_mut[int(j[1:-1]) - self.first_ind] = f_dict[j[-1]]
-        return a_to_mut
-
-    def __hydrophobicity_matrix(self, res_bool_matrix, converted, norm):
-        """matrix that represents how similar its pairs are in terms of hydrophobicity
-            only for pairs that are true in res_bool_matrix\n
-            input:
-                res_bool_matrix: matrix (len(wt_seq) x len(wt_seq)) where pairs that obey distance and angle criteria
-                are True\n
-                converted: the sequence converted to the values of the corresponding dict as 1D numpy array\n
-                norm: max value possible for interactions between two residues\n
-            :return
-                hp_matrix: len(wt_seq) x len(wt_seq) matrix with the corresponding normalized similarity in terms of
-                hydrophobicity of each pair\n"""
-        interactions = np.abs(converted - converted.reshape(len(converted), -1))
-        hp_matrix = 1 - (interactions / norm)
-        hp_matrix[np.invert(res_bool_matrix)] = 0
-        return hp_matrix
-
-    def __hbond_matrix(self, res_bool_matrix, converted, valid_vals):
-        """matrix that represents whether pairs can form h bonds (True) or not (False)
-           only for pairs that are true in res_bool_matrix\n
-            input:
-                res_bool_matrix: matrix (len(wt_seq) x len(wt_seq)) with interacting pairs as True\n
-                valid_vals: which values of the matrix are True after multiplying the encoded sequence against itself\n
-                converted: the sequence converted to the values of the corresponding dict as 1D numpy array\n
-            :return
-                hb_mat: len(wt_seq) x len(wt_seq) matrix where pairs that can form h bonds are True\n"""
-        interactions = converted * converted.reshape(len(converted), -1)
-        hb_matrix = np.isin(interactions, valid_vals)
-        hb_mat = np.all(np.stack((hb_matrix, res_bool_matrix)), axis=0)
-        return hb_mat
-
-    def __charge_matrix(self, res_bool_matrix, converted, good, mid, bad):
-        """matrix that represents whether pairs of amino acids are of the same charge (0), of opposite charge /
-           both uncharged (1), or one charged one neutral (0.5) only for pairs that are true in res_bool_matrix\n
-            input:
-                res_bool_matrix: matrix (len(wt_seq) x len(wt_seq)) with interacting pairs as True\n
-                invalid_val: value that marks wrong charge pairs (1 if neg -1,neu 0,pos 1 encoding)\n
-                converted: the sequence converted to the values of the corresponding dict as 1D numpy array\n
-            :return
-                c_mat: len(wt_seq) x len(wt_seq) matrix where amino acid pairs which are of
-                the opposite charge internal\n
-                or both uncharged are True\n"""
-        interactions = converted * converted.reshape(len(converted), -1)
-        interactions[np.invert(res_bool_matrix)] = 0
-        interactions[np.isin(interactions, bad)] = 0
-        interactions[np.isin(interactions, mid)] = 0.5
-        interactions[np.isin(interactions, good)] = 1
-        return interactions
-
-    def __interaction_area(self, res_bool_matrix, wt_converted, mut_converted, norm):
-        """matrix that represents the change in solvent accessible surface area (SASA) due to a mutation
-           only for pairs that are true in res_bool_matrix\n
-            input:
-                res_bool_matrix: matrix (len(wt_seq) x len(wt_seq)) with interacting pairs as True\n
-                wt_converted: wild type sequence converted with the corresponding dict\n
-                mut_converted: mutated sequence converted with the corresponding dict\n
-                norm: max value possible for interactions between two residues\n
-            :return
-                ia_matrix: len(wt_seq) x len(wt_seq) matrix with values corresponding to the
-                absolute magnitude of change in the SASA of a residue pair\n"""
-        d = wt_converted - mut_converted
-        dd = np.abs(d + d.reshape(len(d), -1)) / norm
-        dd[np.invert(res_bool_matrix)] = 0
-        dd = 1 - dd
-        return dd
-
-    def __clashes(self, res_bool_matrix, wt_converted, mut_converted, norm, dist_mat, dist_thr):
-        """matrix that represents whether clashes ore holes are occurring due to the given mutations
-            input:
-                res_bool_matrix: matrix (len(wt_seq) x len(wt_seq)) with interacting pairs as True\n
-                wt_converted: wild type sequence converted with the corresponding dict\n
-                mut_converted: mutated sequence converted with the corresponding dict\n
-                norm:max value possible for interactions between two residues\n
-                dist_mat: matrix with distances between all residues\n
-                dist_thr: threshold for how close residues need to be to count as interacting\n
-            :return
-                sub_norm: len(wt_seq) x len(wt_seq) matrix with values corresponding to whether new mutations lead to
-                potential clashes or holes between interacting residues"""
-        diff = wt_converted - mut_converted
-        new_mat = (diff + diff.reshape(len(diff), -1)) * res_bool_matrix
-        sub = dist_mat - new_mat
-        sub_ = sub * (sub != dist_mat)
-        sub_norm = sub_ / (norm + dist_thr)
-        return sub_norm
-
     def __batch_variants(self, features_to_encode, corresponding_labels):
         """creates encoded variants for a batch"""
         batch_features = np.empty((self.batch_size, *self.dim, self.n_channels))
@@ -337,25 +343,25 @@ class DataGenerator(keras.utils.Sequence):
 
         for ci, i in enumerate(features_to_encode):
             # hydrogen bonging
-            cur_hb = self.__mutate_sequences(self.hm_converted, i, h_bonding)
-            part_hb = self.__hbond_matrix(self.interaction_matrix, cur_hb, self.hm_pos_vals) * self.factor
+            cur_hb = mutate_sequences(self.hm_converted, i, h_bonding, self.first_ind)
+            part_hb = hbond_matrix(self.interaction_matrix, cur_hb, self.hm_pos_vals) * self.factor
 
             # hydrophobicity
-            cur_hp = self.__mutate_sequences(self.hp_converted, i, hydrophobicity)
-            part_hp = self.__hydrophobicity_matrix(self.interaction_matrix, cur_hp, self.hp_norm) * self.factor
+            cur_hp = mutate_sequences(self.hp_converted, i, hydrophobicity, self.first_ind)
+            part_hp = hydrophobicity_matrix(self.interaction_matrix, cur_hp, self.hp_norm) * self.factor
 
             # charge
-            cur_cm = self.__mutate_sequences(self.cm_converted, i, charge)
-            part_cm = self.__charge_matrix(self.interaction_matrix, cur_cm, self.ch_good_vals, self.ch_mid_vals,
-                                           self.ch_bad_vals) * self.factor
+            cur_cm = mutate_sequences(self.cm_converted, i, charge, self.first_ind)
+            part_cm = charge_matrix(self.interaction_matrix, cur_cm, self.ch_good_vals, self.ch_mid_vals,
+                                    self.ch_bad_vals) * self.factor
             # interaction area
-            cur_ia = self.__mutate_sequences(self.ia_converted, i, sasa)
-            part_ia = self.__interaction_area(self.interaction_matrix, self.ia_converted, cur_ia,
-                                              self.ia_norm) * self.factor
+            cur_ia = mutate_sequences(self.ia_converted, i, sasa, self.first_ind)
+            part_ia = interaction_area(self.interaction_matrix, self.ia_converted, cur_ia,
+                                       self.ia_norm) * self.factor
             # clashes
-            cur_cl = self.__mutate_sequences(self.cl_converted, i, side_chain_length)
-            part_cl = self.__clashes(self.interaction_matrix, self.cl_converted, cur_cl, self.cl_norm, self.dist_mat,
-                                     dist_thr=self.dist_th)
+            cur_cl = mutate_sequences(self.cl_converted, i, side_chain_length, self.first_ind)
+            part_cl = clashes(self.interaction_matrix, self.cl_converted, cur_cl, self.cl_norm, self.dist_mat,
+                              dist_thr=self.dist_th) 
 
             batch_features[ci] = np.stack((part_hb, part_hp, part_cm, part_ia, part_cl, self.mat_index * self.factor),
                                           axis=2)
@@ -534,7 +540,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
     - write_temp bool, optional\n
       if True writes mae and loss of each epoch to the temp.csv in result_files
     """
-
+    tf.keras.backend.clear_session()
     if not write_to_log:
         warnings.warn("Write to log file disabled - not recommend behavior", UserWarning)
     # dictionary with argument names as keys and the input as values
@@ -585,7 +591,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
                     try:
                         prep_values += ["".join(i)]
                     except TypeError:
-                        prep_values += ["".join(str(i)).replace(",", "_")]
+                        prep_values += ["".join(str(i)).replace(",", "_").replace(" ", "")]
                 else:
                     prep_values += [str(i)]
             values = name + "," + ",".join(prep_values) + ",nan"
@@ -624,7 +630,6 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
     if load_trained_weights is not None:
         old_model = keras.models.load_model(load_trained_weights)
         model.set_weights(old_model.get_weights())
-    model.compile(optimizer(learning_rate=lr), loss="mean_absolute_error", metrics=["mae"])
 
     # loads a model defined in load_trained_model
     if load_trained_model is not None:
@@ -638,20 +643,24 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         temp_weights = [layer.get_weights() for layer in trained_model.layers]
 
         # which layers are conv layers (or not dense or flatten since these are sensitive to different input size)
-        conv_count = 1
+        transfer_layers = []
         for i in range(len(trained_model.layers)):
-            l_name = trained_model.layers[i].name
-            if "dense" not in l_name and "flatten" not in l_name:  # "conv" in l_name
-                conv_count = i + 1
+            if i > 0:
+                l_name = trained_model.layers[i].name
+                if any(["dense" in l_name, "flatten" in l_name]):
+                    pass
+                else:
+                    transfer_layers += [i]
 
         # Transfer weights to new model
-        for i in range(conv_count):
+        for i in transfer_layers:
             model.layers[i].set_weights(temp_weights[i])
             if train_conv_layers is False:
                 model.layers[i].trainable = False
 
-        model.compile(optimizer(learning_rate=lr), loss="mean_absolute_error", metrics=["mae"])
         model.summary()
+
+    model.compile(optimizer(learning_rate=lr), loss="mean_absolute_error", metrics=["mae"])
 
     all_callbacks = []
     # deploying early stop parameters
@@ -816,7 +825,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
                                          max_train_mutations, save_fig_v=save_fig, plot_fig=show_fig)
             except ValueError:
                 val_val = "nan"
-                log_file("result_files/log_file.csv", "nan in training history")
+                log_file(p_dir + "/log_file.csv", "nan in training history")
         else:
             val_val = "nan"
         # calculating pearsons' r and spearman r for the test dataset
@@ -834,8 +843,8 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         result_string = ",".join([name, architecture_name, str(len(train_data)), str(len(test_data)), str(mae),
                                   str(pearsonr), str(pp), str(spearmanr), str(sp)])
 
-        log_file("result_files/results.csv", result_string, "name,architecture,train_data_size,test_data_size,mae,"
-                                                            "pearson_r,pearson_p,spearman_r,spearman_p")
+        log_file(p_dir + "/results.csv", result_string,
+                 "name,architecture,train_data_size,test_data_size,mae,pearson_r,pearson_p,spearman_r,spearman_p")
 
 
 if __name__ == "__main__":
