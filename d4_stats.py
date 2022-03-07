@@ -1,6 +1,7 @@
 import scipy.stats
 import numpy as np
 from matplotlib import pyplot as plt
+import os
 
 
 def validate(generator_v, model_v, history_v, name_v, max_train_mutations_v, save_fig_v=None, plot_fig=False):
@@ -25,7 +26,7 @@ def validate(generator_v, model_v, history_v, name_v, max_train_mutations_v, sav
     plt.gcf().text(0.5, 0.9, val_text, fontsize=14)
     plt.subplots_adjust(left=0.5)
     if save_fig_v is not None:
-        plt.savefig(save_fig_v + "/" + "history_" + name_v)
+        plt.savefig(os.path.join(save_fig_v, "history_" + name_v))
     if plot_fig:
         plt.show()
     return val_val, epochs_bw, test_loss
@@ -39,6 +40,8 @@ def pearson_spearman(model, generator, labels):
             labels: ndarray\n
             the corresponding labels for the generator\n
         :return
+            mae: float\n
+            mean absolute error
             pearson_r: float\n
             Pearson’s correlation coefficient\n
             pearson_r_p: float \n
@@ -51,8 +54,9 @@ def pearson_spearman(model, generator, labels):
     pred = model.predict(generator).flatten()
     ground_truth = labels
     pearson_r, pearson_r_p = scipy.stats.pearsonr(ground_truth.astype(float), pred.astype(float))
-    spearman_r, spearman_r_p = scipy.stats.spearmanr(ground_truth.astype(float), pred.astype(float))
-    return pearson_r, pearson_r_p, spearman_r, spearman_r_p
+    spearman_r, spearman_r_p = scipy.stats.spearmanr(ground_truth.astype(float), pred.astype(float), nan_policy="raise")
+    mae = np.mean(np.abs(pred - ground_truth))
+    return mae, pearson_r, pearson_r_p, spearman_r, spearman_r_p
 
 
 def validation(model, generator, labels, v_mutations, p_name, test_num,
@@ -150,7 +154,7 @@ def validation(model, generator, labels, v_mutations, p_name, test_num,
         np.around(test_pearson_r, 4)) + "\nspearman r: " + str(np.around(test_spearman_r, 4))
     plt.gcf().text(0.7, 0.8, test_text, fontsize=14)
     if save_fig is not None:
-        plt.savefig(save_fig + "/" + "test_" + p_name)
+        plt.savefig(os.path.join(save_fig, "test_" + p_name))
     if plot_fig:
         plt.show()
 
@@ -163,7 +167,7 @@ def validation(model, generator, labels, v_mutations, p_name, test_num,
     plt.boxplot(boxes)
     plt.xticks(range(1, np.max(mutations) + 1))
     if save_fig is not None:
-        plt.savefig(save_fig + "/" + "boxplot_" + p_name)
+        plt.savefig(os.path.join(save_fig, "boxplot_" + p_name))
     plt.ylabel("error")
     plt.xlabel("number of mutations")
     if plot_fig:
@@ -180,7 +184,7 @@ def validation(model, generator, labels, v_mutations, p_name, test_num,
     plt.ylabel("predicted score")
     plt.plot([tr, bl], [tr, bl], color="firebrick")
     if save_fig is not None:
-        plt.savefig(save_fig + "/" + "correlation_" + p_name)
+        plt.savefig(os.path.join(save_fig, "correlation_" + p_name))
     if plot_fig:
         plt.show()
 
