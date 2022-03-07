@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
+import os
 from matplotlib import pyplot as plt
-from d4_utils import aa_dict
 
 
 def read_and_process(path_to_file, variants, silent=True, remove_astrix=True):
@@ -251,21 +251,27 @@ def split_data(raw_data_sd, variants_sd, score_sd, number_mutations_sd, max_trai
 
 
 # ---------------------------------------------- NOW USED --------------------------------------------------------------
-def split_inds(file_path, variants, score, number_mutations, split=None, remove_nonsense=True):
+def split_inds(file_path, variants, score, number_mutations, split=None, remove_nonsense=True, silent=False,
+               split_file_path=None):
     """get indices of variants that don't feature a nonsense mutation\n
         :parameter
             file_path: str\n
             path to the tsv file of interest\n
             split: None or list of int/float\n
             specifies the split for train, tune, test indices\n
-            - float specifies fractions of the whole dataset
+            - float specifies fractions of the whole dataset\n
               eg [0.25, 0.25, 0.5] creates a train and tune dataset with 50 entries each and a test dataset of 100
               if the whole dataset contains 200 entries\n
-            - int specifies the different number of samples per dataset
+            - int specifies the different number of samples per dataset\n
               eg [50,50,100] leads to a train and a tune dataset with 50 entries each and a test dataset of 100
               if the whole dataset contains 200 entries\n
             remove_nonsense: bool, optional\n
-            True removes indices of nonsense mutations of all possible indices to choose from
+            True removes indices of nonsense mutations of all possible indices to choose from\n
+            silent: bool, optional\n
+            if True doesn't print split sizes\n
+            split_dict: None or str\n
+            if None the splits get created according to split otherwise according to the splits specified in directory
+            split_file_path - this directory needs to contain files named 'train.txt', 'tune.txt' and 'test.txt'\n
         :returns
             data_dict: dict\n
             dictionary containing the arrays with indices for the three data splits\n
@@ -275,6 +281,7 @@ def split_inds(file_path, variants, score, number_mutations, split=None, remove_
             for the train, tune and test splits\n
             prefix = ['train', 'tune', 'test']\n
             :key prefix_data, prefix_labels, prefix_mutations"""
+
     raw_data = pd.read_csv(file_path, delimiter="\t")
     # extract variants column
     variants_raw = np.asarray(raw_data["variant"])
@@ -287,42 +294,69 @@ def split_inds(file_path, variants, score, number_mutations, split=None, remove_
     else:
         no_ast_bool = np.ones(len(variants_raw)).astype(bool)
 
-    # get all possible indices of all rows and shuffle them
-    possible_inds = np.arange(len(raw_data))[no_ast_bool]
-    np.random.shuffle(possible_inds)
-    # number of rows
-    pi_len = len(possible_inds)
+    if split_file_path is None:
+        # get all possible indices of all rows and shuffle them
+        possible_inds = np.arange(len(raw_data))[no_ast_bool]
+        np.random.shuffle(possible_inds)
+        # number of rows
+        pi_len = len(possible_inds)
 
-    # check inputs
-    if any([isinstance(split, list), split is None]):
-        if split is not None and len(split) >= 2:
-            pass
-    else:
-        raise ValueError("split needs to contain at least 2 inputs or needs to be None")
-    if split is None:
-        split = [int(np.ceil(pi_len * 0.8)), int(np.floor(pi_len * 0.15))]
-    elif isinstance(split, list):
-        if len(split) == 3:
-            if all([isinstance(split[0], float), isinstance(split[1], float), isinstance(split[2], float)]):
-                split = [int(np.ceil(pi_len * split[0])), int(np.floor(pi_len * split[1]))]
-            elif all([isinstance(split[0], int), isinstance(split[1], int), isinstance(split[2], int)]):
-                pass
-        elif len(split) == 2:
-            if all([isinstance(split[0], float), isinstance(split[1], float)]):
-                split = [int(np.ceil(pi_len * split[0])), int(np.floor(pi_len * split[1]))]
-            elif all([isinstance(split[0], int), isinstance(split[1], int)]):
+        # check inputs
+        if any([isinstance(split, list), split is None]):
+            if split is not None and len(split) >= 2:
                 pass
         else:
-            raise ValueError("split as list needs to contain either 2 or 3 items")
+            raise ValueError("split needs to contain at least 2 inputs or needs to be None")
+        if split is None:
+            split = [int(np.ceil(pi_len * 0.8)), int(np.floor(pi_len * 0.15))]
+        elif isinstance(split, list):
+            if len(split) == 3:
+                if np.sum([split[0] > 0., split[1] > 0.]) < 2:
+                    raise ValueError("train and tune split need to be > 0.")
+                if all([split[0] <= 1., split[1] <= 1., split[2] <= 1.]):
+                    if np.sum(split) > 1.:
+                        raise ValueError("sum of split fractions can't be > 1.")
+                    split = [int(np.ceil(pi_len * split[0])), int(np.floor(pi_len * split[1]))]
+                elif all([split[0] >= 1., split[1] >= 1., split[2] >= 1.]):
+                    split[0] = int(split[0])
+                    split[1] = int(split[1])
+                    split[2] = int(split[2])
+                else:
+                    raise ValueError("split needs to be either all > 1 to be used as split size"
+                                     " or all < 1 to be used as fraction")
+            elif len(split) == 2:
+                if np.sum([split[0] > 0., split[1] > 0.]) < 2:
+                    raise ValueError("both splits need to be > 0.")
+                if all([split[0] <= 1., split[1] <= 1.]):
+                    if np.sum(split) > 1.:
+                        raise ValueError("sum of split fractions can't be > 1.")
+                    split = [int(np.ceil(pi_len * split[0])), int(np.floor(pi_len * split[1]))]
+                elif all([split[0] >= 1., split[1] >= 1.]):
+                    split[0] = int(split[0])
+                    split[1] = int(split[1])
+                else:
+                    raise ValueError("split needs to be either all > 1 to be used as split size"
+                                     " or all < 1 to be used as fraction")
+            else:
+                raise ValueError("split as list needs to contain either 2 or 3 items")
+        else:
+            raise ValueError("Incorrect split input needs to be list containing 'float' or 'int' or needs to be None")
+
+        # split indices in separate data sets for train, tune, test
+        train = possible_inds[:split[0]]
+        tune = possible_inds[split[0]:split[0] + split[1]]
+        try:
+            test = possible_inds[split[0] + split[1]: split[0] + split[1] + split[2]]
+        except IndexError:
+            test = possible_inds[split[0] + split[1]:]
     else:
-        raise ValueError("Incorrect split input needs to be list containing 'float' or 'int' or needs to be None")
+        split_dict = read_split_dir(split_file_path)
+        train = np.asarray(split_dict["train"])
+        tune = np.asarray(split_dict["tune"])
+        test = np.asarray(split_dict["test"])
 
-    # split indices in separate data sets for train, tune, test
-    train = possible_inds[:split[0]]
-    tune = possible_inds[split[0]:split[0] + split[1]]
-    test = possible_inds[split[0] + split[1]:]
-
-    print("size train split: {}\nsize tune split: {}\nsize test split: {}".format(len(train), len(tune), len(test)))
+    if not silent:
+        print("size train split: {}\nsize tune split: {}\nsize test split: {}".format(len(train), len(tune), len(test)))
     data_dict = {"train": train, "tune": tune, "test": test}
 
     train_dataset = raw_data.iloc[train]
@@ -354,131 +388,88 @@ def split_inds(file_path, variants, score, number_mutations, split=None, remove_
     return data_dict, data
 
 
-def data_coord_extraction(target_pdb_file):
-    """calculates distance between residues and builds artificial CB for GLY based on the
-       side chains of amino acids (!= GLY) before if there is an or after it if Gly is the start amino acid\n
-       No duplicated side chain entries allowed
-       :parameter
-            target_pdb_file: str\n
-            path to pdb file for protein of interest\n
-       :returns:
-            new_data: 2D ndarray\n
-            contains information about all residues [[Atom type, Residue 3letter, ChainID, ResidueID],...] \n
-            new_coords: 2d ndarray\n
-            contains coordinates of corresponding residues to the new_data entries\n
-            """
-    # list of all data of the entries like [[Atom type, Residue 3letter, ChainID, ResidueID],...]
-    res_data = []
-    # list of all coordinates of the entries like [[x1, y1, z1],...]
-    res_coords = []
-    # reading the pdb file
-    file = open(target_pdb_file, "r")
-    for line in file:
-        if "ATOM  " in line[:6]:
-            line = line.strip()
-            res_data += [[line[12:16].replace(" ", "").strip(), line[17:20].replace(" ", "").strip(),
-                          line[21].replace(" ", "").strip(), line[22:26].replace(" ", "").strip()]]
-            res_coords += [[line[30:38].strip(), line[38:46].strip(), line[46:54].strip()]]
-    file.close()
-
-    res_data = np.asarray(res_data)
-    res_coords = np.asarray(res_coords, dtype=float)
-
-    def art_cb(inc_bool):
-        """gets the CA and CB coordinates of the residue at inc_bool=True,computed the difference in the CA atom
-            coordinates of this residue and the Gly and uses this difference to compute the 'artificial CB' for the Gly
-            if entry for CB is duplicated for an amino acid the mean of its coordinates are used
-            :parameter
-                inc_bool: bool,
-                residue data of the closest amino acid with a CB
-            :return
-                art_cbc: ndarray\n
-                CA, CB coordinates as [[xa, ya, za]], [[xb, yb, zb]]"""
-        # data and coords of the next amino acid != GLY
-        increased_data = res_data[inc_bool]
-        increased_coords = res_coords[inc_bool]
-        # CB and CA coordinates of the next amino acid != GLY
-        next_cb = increased_coords[increased_data[:, 0] == "CB"]
-        next_ca = increased_coords[increased_data[:, 0] == "CA"]
-        # CA coords of the GLY
-        true_cac = i_coords[i_data[:, 0] == "CA"]
-        # difference in CA coordinates to compute the artificial CB for the GLY
-        delta = next_ca - true_cac
-        art_cbc = next_cb - delta
-        # print("pseudoatom tmpPoint2, resi=40, chain=ZZ, b=40, color=red, pos=", art_cbc[0].tolist())
-        return art_cbc
-
-    new_coords = []
-    new_data = []
-    # RES, CHAIN, ResNR sorted
-    residues = np.unique(res_data[:, 1:], axis=0)
-    residues = residues[np.lexsort((residues[:, 2].astype(int), residues[:, 1]))]
-    for ci, i in enumerate(residues):
-        i_bool = np.all(res_data[:, 1:] == i, axis=1)
-        i_data = res_data[i_bool]
-        i_coords = res_coords[i_bool]
-        if i_data[0][1] == "GLY":
-            # if GLY is the first amino acid or all residues so far were GLY
-            if len(new_data) == 0 or (np.all(residues[:ci, 0] == "GLY") and len(residues[:ci]) > 0):
-                # to look at next amino acid(s)
-                i_increase = 1
-                sign = 1
-            else:
-                # to look at previous amino acid(s)
-                i_increase = -1
-                sign = -1
-            # get the index of the next amino acid that is no Gly
-            while residues[ci + i_increase][0] == "GLY":
-                i_increase += 1 * sign
-            # where this data is located as boolean list
-            increase_bool = np.all(res_data[:, 1:] == residues[ci + i_increase], axis=1)
-            # artificial CB coordinates of Gly
-            cb_coords = art_cb(increase_bool)
-            new_i_coords = np.append(i_coords, cb_coords, axis=0)
-
-            data_inter = i_data[0].copy()
-            # artificial CB entry
-            data_inter[0] = "CB"
-            new_i_data = np.append(i_data, np.asarray([data_inter]), axis=0)
-            # new_i_data[:, 1] = "ALA"
-            new_coords += new_i_coords.tolist()
-            new_data += new_i_data.tolist()
-        else:
-            new_coords += i_coords.tolist()
-            new_data += i_data.tolist()
-    return np.asarray(new_data), np.asarray(new_coords, dtype=float)
-
-
-def check_structure(path_to_pdb_file, comb_bool_cs, wt_seq_cs):
-    """checks whether the given wild type sequence matches the sequence in the pdb file\n
+def read_split_file(file_path):
+    """parses txt file that contains the indices for a split (one index per row) and returns the indices as ndarray\n
         :parameter
-            path_to_pdb_file: str\n
-            path to used pdb file\n
-            comb_bool_cs: 2D ndarray\n
-            interacting_residues of atom_interaction_matrix_d\n
-            wt_seq_cs: list\n
-            wild type sequence as list eg ['A', 'V', 'L']\n
+            file_path: str\n
+            path where the file is stored\n
         :return
-            None
-        """
-    if len(comb_bool_cs) != len(wt_seq_cs):
-        raise ValueError("Wild type sequence doesn't match the sequence in the pdb file (check for multimers)\n")
-    else:
-        # could be read only one time (additional input for atom_interaction_matrix(_d))
-        pdb_seq = np.unique(data_coord_extraction(path_to_pdb_file)[0][:, 1:], axis=0)
-        pdb_seq_sorted = pdb_seq[np.lexsort((pdb_seq[:, 2].astype(int), pdb_seq[:, 1]))]
-        # sequence derived from pdb file
-        pdb_seq_ol_list = np.asarray(list(map(aa_dict.get, pdb_seq_sorted[:, 0])))
-        if not np.all(np.asarray(wt_seq_cs) == pdb_seq_ol_list):
-            raise ValueError("Wild type sequence doesn't match the sequence derived from the pdb file\n")
+            split_ind: list\n
+            contains the split indices of the parsed txt file\n"""
+    split_file = open(file_path, "r")
+    content = split_file.readlines()
+    split_ind = []
+    for i in content:
+        split_ind += [int(i.strip())]
+    split_file.close()
+    return np.asarray(split_ind)
+
+
+def create_split_file(p_dir, name, train_split, tune_split, test_split):
+    """creates train tune and test split txt files in a directory called 'splits'
+        :parameter
+            p_dir: str\n
+            where the splits' directory should be created\n
+            name: str\n:
+            name of the protein\n
+            train_split, tune_split, test_split: lists or list like\n
+            lists that contain the indices of the splits that should be written to the corresponding files"""
+    def open_and_write(file_path, name, data):
+        """writes splits to file\n
+            :parameter
+                file_path: str\n
+                where the file should be created
+                name: str\n
+                name of the file\n
+                data: list or list like\n
+                data that should be writen to file"""
+        file = open(file_path + "/" + name + ".txt", "w+")
+        for i in data:
+            file.write(str(i) + "\n")
+        file.close()
+
+    # create new split directory
+    check = os.path.join(p_dir.strip(), name + "_splits")
+    last_add = 0
+    while os.path.isdir(check + str(last_add)):
+        last_add += 1
+    new_path = check + str(last_add)
+    os.mkdir(new_path)
+
+    # write splits to file
+    open_and_write(new_path, "train", train_split)
+    open_and_write(new_path, "tune", tune_split)
+    open_and_write(new_path, "test", test_split)
+
+
+def read_split_dir(file_path):
+    """reads train.txt, tune.txt, test.txt files from a directory and returns their index content as list of lists\n
+        :parameter
+            file_path: str\n
+            path to directory where the three files are stored\n
+        :return
+            splits_dict: dict\n
+            dictionary containing the content of the files in file_path with their file names as keys and their content
+            as values\n"""
+    if os.path.isdir(file_path):
+        s_dir, _, files = list(os.walk(file_path))[0]
+        splits = []
+        names = []
+        if len(files) == 3:
+            for i in files:
+                names += [str(i).split(".")[0]]
+                splits += [read_split_file(os.path.join(s_dir, i))]
+            splits_dict = dict(zip(names, splits))
+            return splits_dict
         else:
-            print("*** structure check passed ***")
+            raise FileNotFoundError("Not enough files to create train, tune, test index list")
+    else:
+        raise FileNotFoundError("Directory containing the split files doesn't exist")
 
 
 if __name__ == "__main__":
     pass
-    from d4batch_distance_functions import atom_interaction_matrix_d
-    from d4_utils import protein_settings
-    _, d, _ = atom_interaction_matrix_d("datasets/bgl3.pdb", 10)
-    f = protein_settings("bgl3")["sequence"]
-    check_structure("datasets/bgl3.pdb", d, list(f))
+    split_inds("datasets/avgfp.tsv", variants="variant", score="score_wt_norm", number_mutations="num_mutations",
+               split_file_path="./result_files/avgfp_07_03_2022_083734_splits0")
+
+
