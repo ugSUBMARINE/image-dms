@@ -3,18 +3,21 @@ import pandas as pd
 import os
 import tensorflow as tf
 from d4_models import *
+import warnings
 
 
-def protein_settings(protein_name):
+def protein_settings(protein_name, data_path="./datasets/protein_settings_ori.txt"):
     """gets different setting for the protein of interest from the protein_settings file\n
         :parameter
             protein_name: str\n
             name of the protein in the protein_settings file
+            data_path: str\n
+            path to the protein_settings.txt file
         :return
             protein_settings_dict: dict\n
             dictionary containing sequence, score, variants, number_mutations, offset column names
             :key sequence, score, variants, number_mutations, offset\n"""
-    settings = pd.read_csv("datasets/protein_settings_ori.txt", delimiter=",")
+    settings = pd.read_csv(data_path, delimiter=",")
     protein_name = protein_name.lower()
     content = np.asarray(settings[settings["name"] == protein_name][["attribute", "value"]])
     protein_settings_dict = dict(zip(content[:, 0], content[:, 1]))
@@ -65,26 +68,59 @@ def log_file(file_path, write_str, optional_header=""):
     log_file_write.close()
 
 
-def get_settings(run_name, file_path="result_files/log_file.csv", column_to_search="name"):
-    """prints the settings/ results used in a certain run in an easy readable form
+def compare_get_settings(run_name1, run_name2=None,
+                         file_path1="./result_files/log_file.csv",
+                         file_path2="./result_files/log_file.csv",
+                         column_to_search1="name",
+                         column_to_search2="name"):
+    """prints the settings/ results used in a certain run in an easy readable form or compares to different runs and
+        prints the differences\n
+        can also be used to display the differences in the results from results.csv\n
         :parameter
-            run_name: str\n
+            run_name1: str\n
             name of the row of interest\n
-            file_path: str, optional\n
+            run_name2: str, optional\n
+            name of the row to compare with\n
+            file_path1: str, optional\n
             path to the file that should be parsed\n
-            column_to_search: str, optional\n
-            specifies the column in which the run_name should be searched\n
+            file_path2: str, optional\n
+            path to the file that should be parsed for comparison\n
+            column_to_search1: str, optional\n
+            specifies the column in which the run_name1 should be searched\n
+            column_to_search2: str, optional\n
+            specifies the column in which the run_name2 should be searched\n
         :return
             None"""
-    data = pd.read_csv(file_path, delimiter=",")
-    data_fields = data.columns
-    roi = data[data[column_to_search] == run_name]
-    for i, j in zip(data_fields, roi.values[0]):
-        print("{:25}: {}".format(i, j))
+    data1 = pd.read_csv(file_path1, delimiter=",")
+    data_fields1 = data1.columns
+    roi1 = data1[data1[column_to_search1] == run_name1]
+    roi1 = roi1.values[0]
+
+    if run_name2 is None:
+        for i, j in zip(data_fields1, roi1):
+            print("{:25}: {}".format(i, j))
+    else:
+        data2 = pd.read_csv(file_path2, delimiter=",")
+        data_fields2 = data2.columns
+        roi2 = data2[data2[column_to_search2] == run_name2]
+        roi2 = roi2.values[0]
+
+        non_matching_field = data_fields1[np.invert(data_fields1 == data_fields2)]
+        if len(non_matching_field) > 0:
+            nm_str = ",".join(non_matching_field)
+            warnings.warn("data fields do not match at: " + nm_str)
+
+        diff = roi1 != roi2
+        diff_ind = np.where(diff)[0]
+        for i in diff_ind:
+            print(data_fields1[i])
+            print(roi1[i], "---", roi2[i])
+            print()
 
 
-def run_dict(run_name, column_to_search="name", data_path="result_files/log_file.csv"):
+def run_dict(run_name, column_to_search="name", data_path="./result_files/log_file.csv"):
     """creates a dictionary from data_path that can be used as input for the run_all at d4batch_driver.py\n
+       uses adam optimizer if not specified\n
         :parameter
             run_name: str\n
             name of the run whose parameters should be used\n
@@ -92,8 +128,10 @@ def run_dict(run_name, column_to_search="name", data_path="result_files/log_file
             specifies the column in which the run_name should be searched\n
             file_path: str, optional\n
             path to the file that should be parsed\n
+            opt: class object\n
+            optimizer to use\n
         :return
-            par: dict\n
+            pre_dict: dict\n
             dictionary containing run_all parameters"""
 
     def get_func(name):
@@ -111,42 +149,61 @@ def run_dict(run_name, column_to_search="name", data_path="result_files/log_file
 
     # data for the dictionary
     data = pd.read_csv(data_path, delimiter=",")
+    # row of interest
     roi = data[data[column_to_search] == run_name]
 
     # dictionary with not all strings converted
-    par = dict(zip(list(roi.columns), roi.values[0]))
-    par_k = list(par.keys())
-    par_v = list(par.values())
+    pre_dict = dict(zip(list(roi.columns), roi.values[0]))
+    pre_keys = list(pre_dict.keys())
+    pre_values = list(pre_dict.values())
 
     # convert the strings that are not the data type they should be into their respective type
-    for i in range(len(par)):
-        vi = par_v[i]
-        vi_type = type(vi)
-        if any([vi_type == int, vi_type == bool, vi_type == float]):
+    for i in range(len(pre_dict)):
+        value_i = pre_values[i]
+        value_i_type = type(value_i)
+        if any([value_i_type == int, value_i_type == bool, value_i_type == float]):
             pass
         else:
-            if vi == "None":
-                par[par_k[i]] = None
-            elif "[" in vi:
+            if value_i.isdecimal():
+                pre_dict[pre_keys[i]] = int(value_i)
+            elif value_i == "None":
+                pre_dict[pre_keys[i]] = None
+            # to extract the correct split
+            elif "[" in value_i:
                 new_split_list = []
-                split_list = vi[1:-1].split("_")
+                split_list = value_i[1:-1].split("_")
                 for j in split_list:
                     if j.isdecimal():
                         new_split_list += [int(j)]
                     else:
                         new_split_list += [float(j)]
-                par[par_k[i]] = new_split_list
+                pre_dict[pre_keys[i]] = new_split_list
             else:
-                vi_split = vi.split(" ")
-                if len(vi_split) > 1 and all(["<" in vi, ">" in vi, "function" in vi]):
-                    par[par_k[i]] = get_func(vi_split[1])
-                elif "optimizer" in vi:
-                    par[par_k[i]] = tf.keras.optimizers.Adam
+                vi_split = value_i.split(" ")
+                if len(vi_split) > 1 and all(["<" in value_i, ">" in value_i, "function" in value_i]):
+                    pre_dict[pre_keys[i]] = get_func(vi_split[1])
+                elif "optimizer" in value_i:
+                    opt_name = value_i.replace(">", "").replace("<", "").replace("'", "").split(".")[-1]
+                    pre_dict[pre_keys[i]] = getattr(tf.keras.optimizers, opt_name)
 
     # deletes entries that are not used in run_all
-    del par["name"]
-    del par["training_time_in_min"]
-    return par
+    del pre_dict["name"]
+    del pre_dict["training_time_in_min"]
+    return pre_dict
+
+
+def clear_log(file_path):
+    """clears log file
+        :parameter
+        file_path: str\n
+        path ot log file"""
+    if os.path.isfile(file_path):
+        a = open(file_path, "r")
+        b = a.readlines()
+        a.close()
+        if len(b) > 1:
+            c = open(file_path, "w+")
+            c.close()
 
 
 aa_dict = {"ALA": "A", "ARG": "R", "ASN": "N", "ASP": "D", "CYS": "C", "GLN": "Q", "GLU": "E", "GLY": "G", "HIS": "H",
@@ -192,5 +249,8 @@ side_chain_length = {'A': 1.53832,
 
 if __name__ == "__main__":
     pass
-    # get_settings("pab1_02_03_2022_094555")
+
+    # compare_get_settings("pab1_03_03_2022_103219", "bgl3_03_03_2022_104056")
+    run_dict("bgl3_06_03_2022_215803")
+
 
