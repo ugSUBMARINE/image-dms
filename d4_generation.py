@@ -21,7 +21,7 @@ np.set_printoptions(threshold=sys.maxsize)
 
 
 def data_generator_vals(wt_seq):
-    """returns values/ numpy arrays based on the wt_seq for the DataGenerator
+    """returns values/ numpy arrays based on the wt_seq for the DataGenerator\n
         :parameter
             wt_seq: wild type sequence as list eg ['A', 'V', 'L']\n
         :returns
@@ -51,6 +51,7 @@ def data_generator_vals(wt_seq):
               wt_seq converted into side chain length values
             - cl_norm: float\n
               max value possible for interaction ares interactions\n"""
+
     hm_pos_vals = np.asarray([2, 3, 6, 9])
 
     ch_good_vals = np.asarray([-1., 4.])
@@ -82,7 +83,8 @@ def data_generator_vals(wt_seq):
 class DataGenerator(keras.utils.Sequence):
     """
     Generates n_channel x n x n matrices to feed them as batches to a network where n denotes len(wild type sequence)\n
-    ...
+    modified after 'https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly'\n
+    ...\n
     Attributes:\n
     - features: list of str\n
       features that should be encoded ec ['A2S,E3R' 'T6W']\n
@@ -158,17 +160,19 @@ class DataGenerator(keras.utils.Sequence):
         self.ia_converted = ia_converted
         self.ia_norm = ia_norm
         self.mat_index = mat_index
-        self.shuffle = shuffle
-        self.train = train
         self.cl_converted = cl_converted
         self.cl_norm = cl_norm
         self.dist_mat = dist_mat
         self.dist_th = dist_th
+        self.shuffle = shuffle
+        self.train = train
 
     def __len__(self):
+        """number of batches per epoch"""
         return int(np.floor(len(self.features) / self.batch_size))  # ceil before
 
     def __getitem__(self, idx):
+        """Generate one batch of data"""
         features_batch = self.features[idx * self.batch_size:(idx + 1) * self.batch_size]
         label_batch = self.labels[idx * self.batch_size:(idx + 1) * self.batch_size]
 
@@ -206,20 +210,23 @@ class DataGenerator(keras.utils.Sequence):
             cur_ia = mutate_sequences(self.ia_converted, i, sasa, self.first_ind)
             part_ia = interaction_area(self.interaction_matrix, self.ia_converted, cur_ia,
                                        self.ia_norm) * self.factor
+
             # clashes
             cur_cl = mutate_sequences(self.cl_converted, i, side_chain_length, self.first_ind)
             part_cl = clashes(self.interaction_matrix, self.cl_converted, cur_cl, self.cl_norm, self.dist_mat,
                               dist_thr=self.dist_th) * self.factor
 
-            batch_features[ci] = np.stack((part_hb, part_hp, part_cm, part_ia, part_cl, self.mat_index * self.factor),
-                                          axis=2)
+            # interaction position
+            position = self.mat_index * self.factor
+
+            batch_features[ci] = np.stack((part_hb, part_hp, part_cm, part_ia, part_cl, position), axis=2)
             batch_labels[ci] = corresponding_labels[ci]
         return batch_features, batch_labels
 
 
 class SaveToFile(keras.callbacks.Callback):
     """writes training stats in a temp file
-     ...
+     ...\n
     Attributes:\n
     - features: str\n
       path where the temp.csv file should be saved
@@ -236,7 +243,7 @@ class SaveToFile(keras.callbacks.Callback):
 
 class ClearMemory(keras.callbacks.Callback):
     """clears garbage collection and clears session after each epoch\n
-        ...
+        ...\n
         Attributes:\n
         None\n
         """
@@ -253,7 +260,8 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
             no_nan=True, settings_test=False, p_dir="", split_def=None, validate_training=False, lr=0.001,
             transfer_conv_weights=None, train_conv_layers=False, write_temp=False, split_file_creation=False,
             use_split_file=None):
-    """
+    """ runs all functions to train a neural network\n
+    :parameter\n
     - architecture_name: str\n
       name of the architecture\n
     - model_to_use: function object\n
@@ -288,10 +296,10 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
     - r_seed: None, int, (optional - default None)\n
       numpy random seed\n
     - deploy_early_stop: bool, (optional - default True)\n
-      whether early stop during training should be enabled (Ture) or not (False)
+      whether early stop during training should be enabled (Ture) or not (False)\n
             - es_monitor: str, (optional - default 'val_loss')\n
               what to monitor to determine whether to stop the training or not\n
-            - es_min_d: float, (optional - default 0.01)\n,
+            - es_min_d: float, (optional - default 0.01)\n
               min_delta - min difference in es_monitor to not stop training\n
             - es_patience: int, (optional - default 20)\n
               number of epochs the model can try to get a es_monitor > es_min_d before stopping\n
@@ -324,7 +332,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
     - p_dir: str, (optional - default '')\n
       path to where the results, figures and log_file should be saved
     - split_def: list of int/float or None, (optional - default None)\n
-      specifies the split for train, tune, test indices
+      specifies the split for train, tune, test indices\n
             - float specifies fractions of the whole dataset
               eg [0.25, 0.25, 0.5] creates a train and tune dataset with 50 entries each and a test dataset of 100
               if the whole dataset contains 200 entries\n
@@ -343,23 +351,29 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
     - write_temp: bool, (optional - default False)\n
       if True writes mae and loss of each epoch to the temp.csv in result_files
     - split_file_creation: bool, (optional - default False)\n
-      if True creates a folder with containing train.txt, tune.txt and test.txt files that contain the indices of the
+      if True creates a directory containing train.txt, tune.txt and test.txt files that store the indices of the
       rows used from the tsv file\n
     - use_split_file: None or str, (optional - default None)\n
-      if not None this needs the file_path containing splits specifying the 'train', 'tune', 'test' indices - these
-      files need to be named 'train.txt', 'tune.txt' and 'test.txt' otherwise splits according to split_def will be
-      used\n
+      if not None this needs the file_path to a directory containing splits specifying
+      the 'train', 'tune', 'test' indices - these files need to be named 'train.txt', 'tune.txt' and 'test.txt'
+      otherwise splits according to split_def will be used\n
+    :return\n
+        None\n
     """
     try:
-        clear_log(os.path.join(p_dir, "error.log"))
-        tf.keras.backend.clear_session()
-        if not write_to_log:
-            warnings.warn("Write to log file disabled - not recommend behavior", UserWarning)
         # dictionary with argument names as keys and the input as values
         arg_dict = locals()
 
-        if r_seed is not None:
-            np.random.seed(r_seed)
+        # path of the directory where results are stored
+        result_dir = os.path.join(p_dir, "result_files")
+        # path where the temp_file is located
+        temp_path = os.path.join(result_dir, "temp.csv")
+        # path where the log_file is located
+        log_file_path = os.path.join(result_dir, "log_file.csv")
+
+        # create result dir if it doesn't exist
+        if not os.path.isdir(result_dir):
+            os.mkdir(result_dir)
 
         # getting the proteins name
         if "/" in tsv_file:
@@ -370,30 +384,27 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         # creating a "unique" name for protein
         time_ = str(datetime.now().strftime("%d_%m_%Y_%H%M%S")).split(" ")[0]
         name = "{}_{}".format(p_name, time_)
-
         print(name)
 
-        # clear temp file from previous content and create result_files folder if it doesn't exist already
-        temp_path = os.path.join(p_dir, "temp.csv")
+        # clear temp file from previous content or creates it if it doesn't exist
+        clear_log(temp_path, name + "\n")
 
-        try:
-            temp_stats = open(temp_path, "w+")
-        except FileNotFoundError:
-            create_folder(parent_dir="/".join(p_dir.split("/")[:-1]), dir_name="result_files")
-            temp_stats = open(temp_path, "w+")
-        temp_stats.write(name + "\n")
-        temp_stats.close()
+        # clear error.log from previous run
+        clear_log(os.path.join(result_dir, "error.log"))
 
-        starting_time = timer()
-        wt_seq = list(wt_seq)
+        # resets all state generated by keras
+        tf.keras.backend.clear_session()
+        if not write_to_log:
+            warnings.warn("Write to log file disabled - not recommend behavior", UserWarning)
+
+        # set random seed
+        if r_seed is not None:
+            np.random.seed(r_seed)
+            tf.random.set_seed(r_seed)
 
         # creates a directory where plots will be saved
-        log_file_path = os.path.join(p_dir, "log_file.csv")
         if save_fig is not None:
-            try:
-                result_path = create_folder(p_dir, name)
-            except FileExistsError:
-                result_path = create_folder(p_dir, name, "_1")
+            result_path = create_folder(result_dir, name)
             if save_fig is not None:
                 save_fig = result_path
 
@@ -413,6 +424,9 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
                 values = name + "," + ",".join(prep_values) + ",nan"
                 log_file(log_file_path, values, header)
 
+        starting_time = timer()
+        wt_seq = list(wt_seq)
+
         # split dataset
         ind_dict, data_dict = split_inds(file_path=tsv_file, variants=variants, score=score,
                                          number_mutations=number_mutations, split=split_def,
@@ -420,17 +434,20 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
 
         # Create files with the corresponding indices of the train, tune and test splits
         if split_file_creation:
-            create_split_file(p_dir=p_dir, name=name, train_split=ind_dict["train"], tune_split=ind_dict["tune"],
+            create_split_file(p_dir=result_dir, name=name, train_split=ind_dict["train"], tune_split=ind_dict["tune"],
                               test_split=ind_dict["test"])
 
+        # data to train on
         train_data = data_dict["train_data"]
         train_labels = data_dict["train_labels"]
         train_mutations = data_dict["train_mutations"]
 
+        # data to validate during training
         test_data = data_dict["tune_data"]
         test_labels = data_dict["tune_labels"]
         test_mutations = data_dict["tune_mutations"]
 
+        # data the model has never seen
         unseen_data = data_dict["test_data"]
         unseen_labels = data_dict["test_labels"]
         unseen_mutations = data_dict["test_mutations"]
@@ -480,6 +497,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
                 if train_conv_layers is False:
                     model.layers[i].trainable = False
 
+            # summary of the new model
             model.summary()
 
         model.compile(optimizer(learning_rate=lr), loss="mean_absolute_error", metrics=["mae"], run_eagerly=True)
@@ -531,10 +549,11 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
                   'shuffle': True,
                   'train': True}
 
-        # DatGenerator for training and the validation during training
+        # DataGenerator for training and the validation during training
         training_generator = DataGenerator(train_data, train_labels, **params)
         validation_generator = DataGenerator(test_data, test_labels, **params)
 
+        # create test data for the test_generator
         if len(unseen_mutations) > 0:
             if test_num > len(unseen_data):
                 test_num = len(unseen_data)
@@ -581,11 +600,11 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         if not settings_test:
             # training
             history = model.fit(training_generator, validation_data=validation_generator, epochs=training_epochs,
-                                use_multiprocessing=True, workers=12, callbacks=[all_callbacks])
+                                use_multiprocessing=True, workers=12, callbacks=[all_callbacks], verbose=2)
 
             end_time = timer()
 
-            # adds training time to result_files
+            # adds training time to result_files and replaces the nan time
             log_f = open(log_file_path, "r")
             prev_log = log_f.readlines()
             log_f.close()
@@ -601,47 +620,9 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
                         w_log.write(i)
             w_log.close()
 
-            # --------------------------------------------------------------------------------------------
-            """
-            val_data = pd.read_csv("avgfp_augmentation_1/validate_avgfp.tsv", delimiter="\t")
-            t_data = np.asarray(val_data[variants])
-            t_labels = np.asarray(val_data[score])
-            t_mutations = np.asarray(val_data[number_mutations])
-            val_bool = []
-            for i in t_data:
-                val_bool += ["*" not in i]
-            t_data = t_data[val_bool]
-            t_labels = t_labels[val_bool]
-            test_generator = DataGenerator(t_data, np.zeros(len(t_labels)), **test_params)
-            predicted_labels = model.predict(test_generator).flatten()
-            error = np.abs(predicted_labels - t_labels)
-    
-            
-            order = np.lexsort((t_labels.astype(float), t_mutations[val_bool].astype(int)))
-            plt.scatter(np.arange(len(t_labels)), predicted_labels[order],
-                        color="yellowgreen", label="error", s=3)
-            plt.plot(t_labels[order], color="firebrick")
-            plt.show()
-            
-    
-            try:
-                pearson_r, pearson_r_p = scipy.stats.pearsonr(t_labels.astype(float), predicted_labels.astype(float))
-                spearman_r, spearman_r_p = scipy.stats.spearmanr(t_labels.astype(float), predicted_labels.astype(float))
-                print("MAE: {}\nSTD: {}\nPearson's r: {}\nPearson's r p-value:{}\nSpearman r: {}\nSpearman r p-value: {}\n".
-                      format(str(np.mean(error)), str(error.std()), str(pearson_r), str(pearson_r_p), str(spearman_r),
-                             str(spearman_r_p)))
-            except ValueError:
-                print("Invalid loss")
-            """
-            # --------------------------------------------------------------------------------------------
-
             # saves model in result path
             if save_model:
-                try:
-                    result_path = create_folder(p_dir, name)
-                    model.save(result_path + "/" + name)
-                except FileExistsError:
-                    model.save(result_path + "/" + name)
+                model.save(create_folder(result_dir, name), name)
 
             # training and validation plot of the training
             if validate_training:
@@ -650,9 +631,10 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
                                              max_train_mutations, save_fig_v=save_fig, plot_fig=show_fig)
                 except ValueError:
                     val_val = "nan"
-                    log_file(file_path=os.path.join(p_dir, "log_file.csv"), write_str="nan in training history")
+                    log_file(file_path=os.path.join(result_dir, "log_file.csv"), write_str="nan in training history")
             else:
                 val_val = "nan"
+
             # calculating pearsons' r and spearman r for the test dataset
             try:
                 mae, pearsonr, pp, spearmanr, sp = pearson_spearman(model, test_generator, t_labels)
@@ -661,24 +643,26 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
 
             # creating more detailed plots
             if extensive_test:
-                validation(model, test_generator, t_labels, t_mutations, val_val, p_name, max_train_mutations, test_num,
-                           save_fig=save_fig, plot_fig=show_fig, silent=silent)
+                validation(model=model, generator=test_generator, labels=t_labels, v_mutations=t_mutations,
+                           p_name=p_name, test_num=test_num, save_fig=save_fig, plot_fig=show_fig, silent=silent)
 
-            # writing results to the result file
+            # data for the result file
             result_string = ",".join([name, architecture_name, str(len(train_data)), str(len(test_data)), str(mae),
                                       str(pearsonr), str(pp), str(spearmanr), str(sp)])
-
-            log_file(os.path.join(p_dir, "results.csv"), result_string,
+            # writing results to the result file
+            log_file(os.path.join(result_dir, "results.csv"), result_string,
                      "name,architecture,train_data_size,test_data_size,mae,pearson_r,pearson_p,spearman_r,spearman_p")
         
         gc.collect()
         del model
 
     except Exception as e:
-        if not os.path.exists(p_dir):
-            os.mkdir(p_dir)
-        logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s", datefmt='%m/%d/%Y %I:%M:%S %p',
-                            handlers=[logging.FileHandler(os.path.join(p_dir, "error.log")),
+        # writing exception to error.log
+        result_dir = os.path.join(p_dir, "result_files")
+        if not os.path.exists(result_dir):
+            os.mkdir(result_dir)
+        logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s", datefmt='%d/%m/%Y %I:%M:%S %p',
+                            handlers=[logging.FileHandler(os.path.join(result_dir, "error.log")),
                                       logging.StreamHandler(sys.stdout)])
         logging.exception(e)
 
