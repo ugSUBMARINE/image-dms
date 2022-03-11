@@ -73,11 +73,11 @@ def validation(model, generator, labels, v_mutations, p_name, test_num,
             protein name\n
             test_num: int\n
             number of samples used for the test\n
-            save_fig: None, optional\n
+            save_fig: None, (optional - default None)\n
             anything beside None to save figures or None to not save figures\n
-            plot_fig: bool, optional\n
+            plot_fig: bool, (optional - default False)\n
             if True shows figures\n
-            silent: bool, optional\n
+            silent: bool, (optional - default True)\n
             if True doesn't write mean error in the terminal
         :return
             None
