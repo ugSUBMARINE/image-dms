@@ -115,14 +115,14 @@ def dist_calc(arr1, arr2):
     return dist
 
 
-def atom_interaction_matrix_d(path_to_pdb_file, dist_th=10, plot_matrices=False):
+def atom_interaction_matrix_d(path_to_pdb_file, dist_th=10., plot_matrices=False):
     """computes the adjacency matrix for a given pdb file based on the closest side chain atoms\n
             :parameter
                 path_to_pdb_file: str\n
                 path to pdb file of the protein of interest\n
-                dist_th: int or float, optional\n
+                dist_th: int or float, (optional - default 10.)\n
                 maximum distance in \u212B of atoms of two residues to be seen as interacting\n
-                plot_matrices: bool,optional\n
+                plot_matrices: bool,(optional - default False)\n
                 if True plots matrices for (from left to right)
                     - distance to the closest side chain atom per residue\n
                     - distance between all side chain atoms\n
@@ -208,7 +208,7 @@ def hydrophobicity_matrix(res_bool_matrix, converted, norm):
     """matrix that represents how similar its pairs are in terms of hydrophobicity only for pairs that are true in
         res_bool_matrix\n
         :parameter
-            res_bool_matrix: 2D ndarray of float or int\n
+            res_bool_matrix: boolean 2D ndarray\n
             matrix (len(wt_seq) x len(wt_seq)) where pairs that obey distance and angle criteria are True\n
             converted: ndarray of int or floats\n
             the sequence converted to the values of the corresponding dict\n
@@ -228,7 +228,7 @@ def hbond_matrix(res_bool_matrix, converted, valid_vals):
     """matrix that represents whether pairs can form h bonds (True) or not (False) only for pairs that are true in
        res_bool_matrix\n
         :parameter
-            res_bool_matrix: 2D ndarray of float or int\n
+            res_bool_matrix: boolean 2D ndarray\n
             matrix (len(wt_seq) x len(wt_seq)) with interacting pairs as True\n
             valid_vals: ndarray of int or float\n
             which values of the matrix are True after multiplying the encoded sequence against itself\n
@@ -247,7 +247,7 @@ def charge_matrix(res_bool_matrix, converted, good, mid, bad):
     """matrix that represents whether pairs of amino acids are of the same charge (0), of opposite charge /
        both uncharged (1), or one charged one neutral (0.5) only for pairs that are true in res_bool_matrix\n
         :parameter
-            res_bool_matrix: 2D ndarray of float\n
+            res_bool_matrix: boolean 2D ndarray\n
             matrix (len(wt_seq) x len(wt_seq)) with interacting pairs as True\n
             good, mid, bad: ndarrays of int or float\n
             each holds the possible values for the different 'quality' of interaction\n
@@ -269,7 +269,7 @@ def interaction_area(res_bool_matrix, wt_converted, mut_converted, norm):
     """matrix that represents the change in solvent accessible surface area (SASA) due to a mutation
        only for pairs that are true in res_bool_matrix\n
         :parameter
-            res_bool_matrix: 2D ndarray of float\n
+            res_bool_matrix: boolean 2D ndarray\n
             matrix (len(wt_seq) x len(wt_seq)) with interacting pairs as True\n
             wt_converted: ndarray of float or int\n
             wild type sequence converted with the corresponding dict\n
@@ -290,7 +290,7 @@ def interaction_area(res_bool_matrix, wt_converted, mut_converted, norm):
 def clashes(res_bool_matrix, wt_converted, mut_converted, norm, dist_mat, dist_thr):
     """matrix that represents whether clashes ore holes are occurring due to the given mutations
         :parameter
-            res_bool_matrix: 2D ndarray of float\n
+            res_bool_matrix: boolean 2D ndarray\n
             matrix (len(wt_seq) x len(wt_seq)) with interacting pairs as True\n
             wt_converted: ndarray of float or int\n
             wild type sequence converted with the corresponding dict\n
@@ -307,11 +307,16 @@ def clashes(res_bool_matrix, wt_converted, mut_converted, norm, dist_mat, dist_t
             len(wt_seq) x len(wt_seq) matrix with values corresponding to whether new mutations lead to potential
             clashes or holes between interacting residues"""
     diff = wt_converted - mut_converted
-    new_mat = (diff + diff.reshape(len(diff), -1)) * res_bool_matrix
-    sub = dist_mat - new_mat
-    sub_ = sub * (sub != dist_mat)
-    sub_norm = sub_ / (norm + dist_thr)
-    return sub_norm
+    inter = diff +  diff.reshape(len(diff), -1)
+    dist_impact = (dist_mat + inter) / (norm + dist_thr)
+    cl_mat = dist_impact * res_bool_matrix
+    return cl_mat
+
+    # new_mat = (diff + diff.reshape(len(diff), -1)) * res_bool_matrix
+    # sub = dist_mat - new_mat
+    # sub_ = sub * (sub != dist_mat)
+    # sub_norm = sub_ / (norm + dist_thr)
+    # return sub_norm
 
 
 def mutate_sequences(wt_sequence, mutations, f_dict, first_ind):
