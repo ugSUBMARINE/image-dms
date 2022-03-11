@@ -2,8 +2,10 @@ import numpy as np
 import pandas as pd
 import os
 import tensorflow as tf
-from d4_models import *
 import warnings
+
+from d4_models import simple_model, simple_model_norm, simple_model_imp, create_simple_model, simple_model_gap, \
+    simple_stride_model_test, shrinking_res, inception_res, deeper_res, res_net, vgg, simple_longer, simple_stride_model
 
 
 def protein_settings(protein_name, data_path="./datasets/protein_settings_ori.txt"):
@@ -31,10 +33,10 @@ def create_folder(parent_dir, dir_name, add=""):
             path where the new directory should be created\n
             dir_name: str\n
             name of the new directory\n
-            add: str optional\n
+            add: str, (optional - default "")\n
             add to the name of the new directory\n"""
     if "/" in dir_name:
-        dir_name = dir_name.replace("/", "_")
+        dir_name = dir_name.replace("/", "_").replace("\\", "_")
     directory = dir_name + add
     path = os.path.join(parent_dir, directory)
     os.mkdir(path)
@@ -48,7 +50,7 @@ def log_file(file_path, write_str, optional_header=""):
             path to log life\n
             write_str: str\n
             string that should be written to the log file\n
-            optional_header: str, optional\n
+            optional_header: str, (optional - default "")\n
             optional header to indicate the column names (',' separated)\n"""
     try:
         log_file_read = open(file_path, "r")
@@ -79,15 +81,15 @@ def compare_get_settings(run_name1, run_name2=None,
         :parameter
             run_name1: str\n
             name of the row of interest\n
-            run_name2: str, optional\n
+            run_name2: str or None, (optional - None)\n
             name of the row to compare with\n
             file_path1: str, optional\n
             path to the file that should be parsed\n
             file_path2: str, optional\n
             path to the file that should be parsed for comparison\n
-            column_to_search1: str, optional\n
+            column_to_search1: str, (optional - default 'name')\n
             specifies the column in which the run_name1 should be searched\n
-            column_to_search2: str, optional\n
+            column_to_search2: str, (optional - default 'name')\n
             specifies the column in which the run_name2 should be searched\n
         :return
             None"""
@@ -124,7 +126,7 @@ def run_dict(run_name, column_to_search="name", data_path="./result_files/log_fi
         :parameter
             run_name: str\n
             name of the run whose parameters should be used\n
-            column_to_search: str, optional\n
+            column_to_search: str, (optional - "name")\n
             specifies the column in which the run_name should be searched\n
             file_path: str, optional\n
             path to the file that should be parsed\n
@@ -168,7 +170,7 @@ def run_dict(run_name, column_to_search="name", data_path="./result_files/log_fi
                 pre_dict[pre_keys[i]] = int(value_i)
             elif value_i == "None":
                 pre_dict[pre_keys[i]] = None
-            # to extract the correct split
+            # to extract the correct split list
             elif "[" in value_i:
                 new_split_list = []
                 split_list = value_i[1:-1].split("_")
@@ -192,18 +194,17 @@ def run_dict(run_name, column_to_search="name", data_path="./result_files/log_fi
     return pre_dict
 
 
-def clear_log(file_path):
-    """clears log file
+def clear_log(file_path, text=None):
+    """clears or creates log file\n
         :parameter
-        file_path: str\n
-        path ot log file"""
-    if os.path.isfile(file_path):
-        a = open(file_path, "r")
-        b = a.readlines()
-        a.close()
-        if len(b) > 1:
-            c = open(file_path, "w+")
-            c.close()
+            file_path: str\n
+            path ot log file\n
+            text: str or None, (optional - default None)\n
+            text that should be written to the file\n"""
+    a = open(file_path, "w+")
+    if text is not None:
+        a.write(text)
+    a.close()
 
 
 aa_dict = {"ALA": "A", "ARG": "R", "ASN": "N", "ASP": "D", "CYS": "C", "GLN": "Q", "GLU": "E", "GLY": "G", "HIS": "H",
@@ -250,7 +251,9 @@ side_chain_length = {'A': 1.53832,
 if __name__ == "__main__":
     pass
 
-    # compare_get_settings("pab1_03_03_2022_103219", "bgl3_03_03_2022_104056")
-    run_dict("bgl3_06_03_2022_215803")
+    # compare_get_settings("avgfp_09_03_2022_134211", "avgfp_09_03_2022_132158")
+    # run_dict("bgl3_06_03_2022_215803")
+    # compare_get_settings("nononsense_avgfp_10_03_2022_105638", "avgfp_10_03_2022_105835")
+    compare_get_settings("nononsense_avgfp_11_03_2022_101036", "nononsense_avgfp_10_03_2022_111835")
 
 
