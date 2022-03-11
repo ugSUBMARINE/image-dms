@@ -132,9 +132,9 @@ class DataGenerator(keras.utils.Sequence):
       ture distances between all residues
     - dist_th
       maximum distance to be counted as interaction
-    - shuffle: bool, optional\n
+    - shuffle: bool, (optional - default True)\n
       if True data gets shuffled after every epoch\n
-    - train: bool, optional\n
+    - train: bool, (optional - default True\n
       if True Generator returns features and labels (use turing training) else only features\n
     """
 
@@ -236,9 +236,63 @@ class SaveToFile(keras.callbacks.Callback):
         self.filepath = filepath
 
     def on_epoch_end(self, epoch, logs=None):
-        log_string = "{},{:0.4f},{:0.4f},{:0.4f},{:0.4f}".format(str(epoch), logs["loss"], logs["mae"],
-                                                                 logs["val_loss"], logs["val_mae"])
+        log_string = "{},{:0.4f},{:0.4f}".format(str(epoch), logs["loss"], logs["val_loss"])
         log_file(self.filepath, write_str=log_string, optional_header="epoch,loss,mae,val_loss,val_mae")
+
+
+class CustomPrint(keras.callbacks.Callback):
+    """prints custom stats during training\n
+    ...\n
+    Attributes:\n
+    - epoch_print: int, (optional - default 1)\n
+      interval at which loss and the change in loss should be printed\n
+    - epoch_stat_print: int, (optional - default 10)\n
+      interval at which best train epoch, the best validation epoch and the difference in the loss between them
+      should be printed\n
+    """
+
+    def __init__(self, epoch_print=1, epoch_stat_print=10):
+        self.epoch_print = epoch_print
+        self.best_loss = np.Inf
+        self.bl_epoch = 0
+        self.best_val_loss = np.Inf
+        self.bvl_epoch = 0
+        self.latest_loss = 0.
+        self.latest_val_loss = 0.
+        self.epoch_stat_print = epoch_stat_print
+
+    def on_epoch_end(self, epoch, logs=None):
+        cur_loss = logs["loss"]
+        cur_val_loss = logs["val_loss"]
+
+        if epoch % self.epoch_print == 0:
+            print("Epoch {} -- loss: {:0.4f}   val loss: {:0.4f}  --  loss change: {:0.4f}   val loss change: {:0.4f}\n"
+                  .format(str(epoch), cur_loss, cur_val_loss, cur_loss - self.latest_loss,
+                          cur_val_loss - self.latest_val_loss))
+
+        self.latest_loss = cur_loss
+        self.latest_val_loss = cur_val_loss
+
+        if cur_loss < self.best_loss:
+            self.best_loss = cur_loss
+            self.bl_epoch = epoch
+        if cur_val_loss < self.best_val_loss:
+            self.best_val_loss = cur_val_loss
+            self.bvl_epoch = epoch
+
+        if epoch % self.epoch_stat_print == 0 and epoch > 0:
+            d = np.abs(self.best_loss - self.best_val_loss)
+            if d != 0. and self.best_val_loss != 0.:
+                dp = (d / self.best_val_loss) * 100
+            else:
+                dp = np.nan
+            print("Best train epoch: {}\nBest validation epoch: {}\ndelta: {:0.4f} (equals {:0.2f}% of val loss)\n"
+                  .format(str(self.bl_epoch), str(self.bvl_epoch), d, dp))
+
+    def on_train_end(self, logs=None):
+        print("overall best epochs")
+        print("best training epoch: {} with a loss of {:0.4f}".format(str(self.bl_epoch), self.best_loss))
+        print("best validation epoch: {} with a loss of {:0.4f}\n".format(str(self.bvl_epoch), self.best_val_loss))
 
 
 class ClearMemory(keras.callbacks.Callback):
@@ -247,6 +301,7 @@ class ClearMemory(keras.callbacks.Callback):
         Attributes:\n
         None\n
         """
+
     def on_epoch_end(self, epoch, logs=None):
         gc.collect()
         tf.keras.backend.clear_session()
@@ -376,10 +431,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
             os.mkdir(result_dir)
 
         # getting the proteins name
-        if "/" in tsv_file:
-            p_name = tsv_file.strip().split("/")[-1].split(".")[0]
-        else:
-            p_name = tsv_file.strip().split(".")[0]
+        p_name = os.path.split(tsv_file)[1].split(".")[0]
 
         # creating a "unique" name for protein
         time_ = str(datetime.now().strftime("%d_%m_%Y_%H%M%S")).split(" ")[0]
@@ -425,12 +477,13 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
                 log_file(log_file_path, values, header)
 
         starting_time = timer()
+        # creating a list of the wt sequence string e.g. 'AVL...'  -> ['A', 'V', 'L',...]
         wt_seq = list(wt_seq)
 
         # split dataset
         ind_dict, data_dict = split_inds(file_path=tsv_file, variants=variants, score=score,
                                          number_mutations=number_mutations, split=split_def,
-                                         split_file_path=use_split_file)
+                                         split_file_path=use_split_file, test_name="stest")
 
         # Create files with the corresponding indices of the train, tune and test splits
         if split_file_creation:
@@ -522,7 +575,10 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
             all_callbacks += [SaveToFile(temp_path)]
 
         # clear Session after each epoch
-        all_callbacks += [ClearMemory()]
+        # all_callbacks += [ClearMemory()]
+
+        # custom stats print
+        all_callbacks += [CustomPrint(epoch_print=1, epoch_stat_print=10)]
 
         # parameters for the DatGenerator
         params = {'interaction_matrix': comb_bool,
@@ -600,7 +656,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         if not settings_test:
             # training
             history = model.fit(training_generator, validation_data=validation_generator, epochs=training_epochs,
-                                use_multiprocessing=True, workers=12, callbacks=[all_callbacks], verbose=2)
+                                use_multiprocessing=True, workers=12, callbacks=[all_callbacks], verbose=0)
 
             end_time = timer()
 
@@ -641,14 +697,18 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
             except ValueError:
                 mae, pearsonr, pp, spearmanr, sp = "nan", "nan", "nan", "nan", "nan"
 
+            print("{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n"
+                  .format("MAE", mae, "PearsonR", pearsonr, "PearsonP", pp, "SpearmanR", spearmanr, "SpearmanP", sp))
+
             # creating more detailed plots
             if extensive_test:
                 validation(model=model, generator=test_generator, labels=t_labels, v_mutations=t_mutations,
                            p_name=p_name, test_num=test_num, save_fig=save_fig, plot_fig=show_fig, silent=silent)
 
             # data for the result file
-            result_string = ",".join([name, architecture_name, str(len(train_data)), str(len(test_data)), str(mae),
-                                      str(pearsonr), str(pp), str(spearmanr), str(sp)])
+            result_string = ",".join([name, architecture_name, str(len(train_data)), str(len(test_data)),
+                                      str(np.round(mae, 4)), str(np.round(pearsonr, 4)), str(np.round(pp, 4)),
+                                      str(np.round(spearmanr, 4)), str(np.round(sp, 4))])
             # writing results to the result file
             log_file(os.path.join(result_dir, "results.csv"), result_string,
                      "name,architecture,train_data_size,test_data_size,mae,pearson_r,pearson_p,spearman_r,spearman_p")
