@@ -1,16 +1,24 @@
 import argparse
+import os
 import tensorflow as tf
-from d4_models import simple_model, simple_model_norm, simple_model_imp, simple_stride_model_wide, \
-    create_simple_model, simple_model_gap, simple_stride_model_test, shrinking_res, inception_res, \
-    deeper_res, res_net, vgg, simple_longer, simple_stride_model
+
+from d4_models import simple_model, simple_model_norm, simple_model_imp, create_simple_model, simple_model_gap, \
+    simple_stride_model_test, shrinking_res, inception_res, deeper_res, res_net, vgg, simple_longer, simple_stride_model
 from d4_utils import protein_settings
 
 
-def arg_dict():
-    """creates a parameter dict for run_all with the use of argparse"""
-    pos_models = [simple_model, simple_model_norm, simple_model_imp, simple_stride_model_wide, create_simple_model,
-                  simple_model_gap, simple_stride_model_test, shrinking_res, inception_res, deeper_res, res_net, vgg,
-                  simple_longer, simple_stride_model]
+def arg_dict(p_dir=""):
+    """creates a parameter dict for run_all with the use of argparse
+        :parameter
+            p_dir: str, (optional - default "")\n
+            directory where the datasets are stored\n
+        :return
+            d: dict\n
+            dictionary specifying all parameters for run_all in d4batch_driver.py\n
+        """
+    pos_models = [simple_model, simple_model_norm, simple_model_imp, create_simple_model, simple_model_gap,
+                  simple_stride_model_test, shrinking_res, inception_res, deeper_res, res_net, vgg, simple_longer,
+                  simple_stride_model]
 
     pos_optimizer = [tf.keras.optimizers.Adam, tf.keras.optimizers.SGD]
 
@@ -23,10 +31,16 @@ def arg_dict():
         opt_str += [str(ci) + " " + str(i).split(" ")[1] + "\n"]
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--protein_name", type=str, required=True, help="protein_name")
-    parser.add_argument("--transfer_conv_weights", type=str, required=False, default=None, help="transfer_conv_weights")
-    parser.add_argument("--train_conv_layers", type=bool, required=False, default=False, help="train_conv_layers")
-    parser.add_argument("--training_epochs", type=int, required=False, default=100, help="training_epochs")
+    parser.add_argument("--protein_name", type=str, required=False, default=None,
+                        help="str: name of the protein in the protein settings file")
+    parser.add_argument("--transfer_conv_weights", type=str, required=False, default=None,
+                        help="str: file path to a suitable trained network to transfer its convolution layer weights "
+                             "to the new model")
+    parser.add_argument("--train_conv_layers", type=bool, required=False, default=False,
+                        help="bool: If True also the convolution layer get trained else they are set to"
+                             " trainable=False")
+    parser.add_argument("--training_epochs", type=int, required=False, default=100,
+                        help="int: number of training epochs")
     parser.add_argument("--es_patience", type=int, required=False, default=20, help="es_patience")
     parser.add_argument("--batch_size", type=int, required=False, default=64, help="batch_size")
     parser.add_argument("--learning_rate", type=float, required=False, default=0.001, help="learning_rate")
@@ -53,10 +67,18 @@ def arg_dict():
     parser.add_argument("--no_nan", type=bool, required=False, default=True, help="no_nan")
     parser.add_argument("--write_temp", type=bool, required=False, default=False, help="write_temp")
     parser.add_argument("--optimizer", type=int, required=False, default=0, help="\n".join(opt_str))
-    parser.add_argument("--p_dir", type=str, required=False, default="./result_files",
-                        help="p_dir")
+    parser.add_argument("--p_dir", type=str, required=False, default=p_dir, help="p_dir")
     parser.add_argument("--split_file_creation", type=bool, required=False, default=False, help="split_file_creation")
     parser.add_argument("--use_split_file", type=str, required=False, default=None, help="use_split_file")
+
+    parser.add_argument("--number_mutations", type=str, required=False, default=None,
+                        help="number_mutations column name")
+    parser.add_argument("--variants", type=str, required=False, default=None, help="variants column name")
+    parser.add_argument("--score", type=str, required=False, default=None, help="score column name")
+    parser.add_argument("--wt_seq", type=str, required=False, default=None, help="wt_seq")
+    parser.add_argument("--first_ind", type=str, required=False, default=None, help="first residue index")
+    parser.add_argument("--tsv_filepath", type=str, required=False, default=None, help="tsv_filepath")
+    parser.add_argument("--pdb_filepath", type=str, required=False, default=None, help="pdb_filepath")
 
     args = parser.parse_args()
     protein_name = args.protein_name
@@ -90,15 +112,52 @@ def arg_dict():
     deploy_early_stop_ex = args.deploy_early_stop
     no_nan_ex = args.no_nan
     write_temp_ex = args.write_temp
-    protein_attributes = protein_settings(protein_name)
     architecture_name = architecture.__code__.co_name
-    number_mutations_ex = protein_attributes["number_mutations"]
-    variants_ex = protein_attributes["variants"]
-    score_ex = protein_attributes["score"]
-    wt_seq_ex = list(protein_attributes["sequence"])
-    first_ind_ex = int(protein_attributes["offset"])
-    tsv_ex = "./datasets/{}.tsv".format(protein_name.lower())
-    pdb_ex = "./datasets/{}.pdb".format(protein_name.lower())
+
+    # check when protein name is None
+    nm = args.number_mutations
+    v = args.variants
+    s = args.score
+    wt = args.wt_seq
+    fi = args.first_ind
+
+    if protein_name is None:
+        if not all([nm is not None, v is not None, s is not None, wt is not None, fi is not None]):
+            raise ValueError("If protein_name is not given 'number_mutations', 'variants', 'score', 'wt_seq' and "
+                             "'first_ind' must be given as input")
+        wt_seq_ex = list(wt)
+        number_mutations_ex = args.number_mutations
+        variants_ex = args.variants
+        score_ex = args.score
+        first_ind_ex = args.first_ind
+    else:
+        protein_attributes = protein_settings(protein_name)
+        number_mutations_ex = protein_attributes["number_mutations"]
+        variants_ex = protein_attributes["variants"]
+        score_ex = protein_attributes["score"]
+        wt_seq_ex = list(protein_attributes["sequence"])
+        first_ind_ex = int(protein_attributes["offset"])
+
+    if args.tsv_filepath is None and protein_name is not None:
+        tsv_ex = os.path.join(p_dir, "datasets", "{}.tsv".format(protein_name.lower()))
+    elif args.tsv_filepath is not None:
+        tsv_ex = args.tsv_filepath
+    else:
+        raise ValueError("Either protein_name or tsv_filepath must be given as input")
+
+    if args.pdb_filepath is None and protein_name is not None:
+        pdb_ex = os.path.join(p_dir, "datasets", "{}.pdb".format(protein_name.lower()))
+    elif args.pdb_filepath is not None:
+        pdb_ex = args.pdb_filepath
+    else:
+        raise ValueError("Either protein_name or pdb_filepath must be given as input")
+
+    # checking whether the files exist
+    if not os.path.isfile(tsv_ex):
+        raise FileNotFoundError("tsv file path is incorrect - file '{}' doesn't exist".format(str(tsv_ex)))
+    if not os.path.isfile(pdb_ex):
+        raise FileNotFoundError("pdb file path is incorrect - file '{}' doesn't exist".format(str(pdb_ex)))
+
     opt = pos_optimizer[args.optimizer]
     split_file_creation_ex = args.split_file_creation
     use_split_file_ex = args.use_split_file
