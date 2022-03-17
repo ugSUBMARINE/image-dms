@@ -33,15 +33,17 @@ def validate(generator_v, model_v, history_v, name_v, max_train_mutations_v, sav
 
 
 def pearson_spearman(model, generator, labels):
-    """calculating the pearson r and spearman r for generator\n
+    """calculating the pearson r and spearman r for predicted values\n
         :parameter
             generator: DataGenerator object\n
-            Data generator to predict values (not shuffled)\n
+            Data generator to create data used to predict values (not shuffled)\n
             labels: ndarray\n
             the corresponding labels for the generator\n
         :return
             mae: float\n
             mean absolute error
+            mse: float\n
+            mean squared error
             pearson_r: float\n
             Pearson’s correlation coefficient\n
             pearson_r_p: float \n
@@ -51,12 +53,18 @@ def pearson_spearman(model, generator, labels):
             spearman_r_p: float\n
             p-value for a hypothesis test whose null hypothesis is that two sets of data are uncorrelated\n
             """
+    # predicted values
     pred = model.predict(generator).flatten()
+    # real values
     ground_truth = labels
     pearson_r, pearson_r_p = scipy.stats.pearsonr(ground_truth.astype(float), pred.astype(float))
     spearman_r, spearman_r_p = scipy.stats.spearmanr(ground_truth.astype(float), pred.astype(float), nan_policy="raise")
-    mae = np.mean(np.abs(pred - ground_truth))
-    return mae, pearson_r, pearson_r_p, spearman_r, spearman_r_p
+    diff = pred - ground_truth
+    # mean absolute error
+    mae = np.mean(np.abs(diff))
+    # mean squared error
+    mse = np.mean(diff**2)
+    return mae, mse, pearson_r, pearson_r_p, spearman_r, spearman_r_p
 
 
 def validation(model, generator, labels, v_mutations, p_name, test_num,
@@ -73,8 +81,9 @@ def validation(model, generator, labels, v_mutations, p_name, test_num,
             protein name\n
             test_num: int\n
             number of samples used for the test\n
-            save_fig: None, (optional - default None)\n
-            anything beside None to save figures or None to not save figures\n
+            save_fig: str or None, (optional - default None)\n
+            - None to not save figures\n
+            - str specifying the file path where the figures should be stored\n
             plot_fig: bool, (optional - default False)\n
             if True shows figures\n
             silent: bool, (optional - default True)\n
@@ -87,7 +96,7 @@ def validation(model, generator, labels, v_mutations, p_name, test_num,
     all_errors = np.abs(pred - labels)
     mutations = v_mutations
 
-    # sort the errors acording to the number of mutations
+    # sort the errors according to the number of mutations
     mut_sort = np.argsort(mutations)
     mutations = np.asarray(mutations)[mut_sort]
     all_errors = all_errors[mut_sort]
@@ -97,7 +106,7 @@ def validation(model, generator, labels, v_mutations, p_name, test_num,
     ax2 = plt.subplot2grid((3, 3), (1, 0), colspan=2, rowspan=2)
     ax3 = plt.subplot2grid((3, 3), (1, 2), rowspan=2)
 
-    # histogram of number of each mutations present in the features used in the test
+    # histogram of number of mutations present in the features used in the test
     ax1.hist(x=mutations, bins=np.arange(1, np.max(mutations) + 1, 1), color="forestgreen")
     ax1.set_ylabel("occurrence")
     ax1.set_xlabel("mutations")
