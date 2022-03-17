@@ -271,14 +271,17 @@ def split_inds(file_path, variants, score, number_mutations, split=None, remove_
             - int specifies the different number of samples per dataset\n
               eg [50,50,100] leads to a train and a tune dataset with 50 entries each and a test dataset of 100
               if the whole dataset contains 200 entries\n
+            - None uses [0.8, 0.15, 0.05] as split\n
             remove_nonsense: bool, (optional - default True)\n
             True removes indices of nonsense mutations of all possible indices to choose from\n
             silent: bool, (optional - default False)\n
             if True doesn't print split sizes\n
             split_file_path: None, str or dict, (optional - default None)\n
-            if None the splits get created according to split, if str according to the splits specified in directory and
-            if dict according to the specification in the dict - if dict train_name, tune_name and test_name specify
-            the keys for the dictionary how the train tune and test keys are named\n
+            - None the splits get created according to split\n
+            - str splits get created according to the splits specified in the file in the directory - filenames without
+              their file extensions need to be specified in train_name, tune_name and test_name\n
+            - dict splits get created according to the specification in the dict -  train_name, tune_name and test_name
+              specify the keys for the dictionary how the train tune and test keys are named\n
             train_name, tune_name, test_name, str (optional - default 'train', 'tune', 'test')\n
             names of the train, tune and test data files - without their file extension e.g. 'train.txt' needs 'train'\n
         :returns
@@ -312,7 +315,7 @@ def split_inds(file_path, variants, score, number_mutations, split=None, remove_
 
         # check inputs
         if any([isinstance(split, list), split is None]):
-            if split is not None and len(split) <= 2:
+            if split is not None and len(split) < 2:
                 raise ValueError("split needs to contain at least 2 inputs or needs to be None")
         if split is None:
             split = [int(np.ceil(pi_len * 0.8)), int(np.floor(pi_len * 0.15))]
@@ -371,12 +374,15 @@ def split_inds(file_path, variants, score, number_mutations, split=None, remove_
 
     if not silent:
         print("size train split: {}\nsize tune split: {}\nsize test split: {}".format(len(train), len(tune), len(test)))
+    # dict containing the used indices to create the splits of the tsv file
     data_dict = {"train": train, "tune": tune, "test": test}
 
+    # locating the data specified with the indices
     train_dataset = raw_data.iloc[train]
     tune_dataset = raw_data.iloc[tune]
     test_dataset = raw_data.iloc[test]
 
+    # storing the data that was specified in ndarrays to return them as a dict
     train_data = np.asarray(train_dataset[variants])
     train_labels = np.asarray(train_dataset[score])
     train_mutations = np.asarray(train_dataset[number_mutations])
@@ -389,6 +395,7 @@ def split_inds(file_path, variants, score, number_mutations, split=None, remove_
     test_labels = np.asarray(test_dataset[score])
     test_mutations = np.asarray(test_dataset[number_mutations])
 
+    # dict containing the data, labels and number of mutations of the different splits
     data = {"train_data": train_data,
             "train_labels": train_labels,
             "train_mutations": train_mutations,
@@ -480,15 +487,62 @@ def read_split_dir(file_path):
             raise FileNotFoundError("Wrong number of files to create train, tune, test index list - 3 needed but {} "
                                     "are given".format(str(len(files))))
     else:
-        raise FileNotFoundError("Directory containing the split files doesn't exist")
+        raise FileNotFoundError("Directory '{}' containing the split files doesn't exist".format(str(file_path)))
+
+
+def create_inds(data_path, train_size, tune_size=5000, test_size=5000):
+    """creates split indices that can be used to split a tsv files rows into train tune and test datasets\n
+        :parameter
+        data_path: str\n
+        location of the tsv file for which the splits should be produced\n
+        train_size: int\n
+        size of the train split\n
+        tune_size, test_size: int, (optional, default 5000)\n
+        sizes of the tune and test split\n
+        :returns
+        train, tune, test: ndarray\n
+        arrays containing the split indices for each split\n"""
+    data_file = pd.read_csv(data_path, delimiter="\t")
+    # all possible indices
+    pos_inds = np.arange(len(data_file))
+    np.random.shuffle(pos_inds)
+    # split indices into the respective splits
+    train = pos_inds[: train_size]
+    tune = pos_inds[train_size:train_size+tune_size]
+    test = pos_inds[train_size+tune_size:train_size+tune_size+test_size]
+    return train, tune, test
+
+
+def create_txt(file_path, data, name):
+    """writes data (indices) to .txt file with one index per row\n
+        :parameter
+            file_path: str\n
+            where the file should be stored\n
+            data: list or list like\n
+            data that should be written per line to the .txt file\n
+            name: str\n
+            name of the file that should be created\n"""
+    # creates dir if it doesn't already exist
+    if not os.path.isdir(file_path):
+        os.mkdir(file_path)
+    a = open(os.path.join(file_path, name), "w+")
+    for i in data:
+        a.write(str(i).strip()+"\n")
+    a.close()
 
 
 if __name__ == "__main__":
     pass
     """
-    print(split_inds("nononsense/nononsense_avgfp.tsv", variants="variant", score="score_wt_norm",
-                     number_mutations="num_mutations",
-                     split_file_path={"train": [5, 2], "tune": [5, 2], "test": [5, 2]}, test_name="test"))
+    for protein_name in ["avgfp", "pab1", "gb1"]:
+        base_dir = "nononsense"
+        data_dir = os.path.join(base_dir, "nononsense_{}.tsv".format(protein_name))
+        split_dir = os.path.join(base_dir, "{}_even_splits".format(protein_name))
+        os.mkdir(split_dir)
+        for i in [50, 100, 250, 500, 1000, 2000, 6000]:
+            tr, tu, te = create_inds(data_dir, i)
+            target_path = os.path.join(split_dir, "split_" + str(i))
+            create_txt(target_path, tr, "train.txt")
+            create_txt(target_path, tu, "tune.txt")
+            create_txt(target_path, te, "stest.txt")
     """
-    # a = read_split_dir("nononsense/avgfp_splits/splits_218")
-    # print(len(a["train"]), len(a["stest"]), len(a["tune"]))

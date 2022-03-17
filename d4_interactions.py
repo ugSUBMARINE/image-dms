@@ -5,14 +5,14 @@ from d4_utils import aa_dict
 
 def data_coord_extraction(target_pdb_file):
     """calculates distance between residues and builds artificial CB for GLY based on the
-       side chains of amino acids (!= GLY) before if there is an or after it if Gly is the start amino acid\n
-       No duplicated side chain entries allowed
+       side chains of amino acids (!= GLY) before if there is one or after it if Gly is the start amino acid\n
+       No duplicated side chain entries allowed\n
        :parameter
             target_pdb_file: str\n
             path to pdb file for protein of interest\n
        :returns:
             new_data: 2D ndarray\n
-            contains information about all residues [[Atom type, Residue 3letter, ChainID, ResidueID],...] \n
+            contains information about all residues like [[Atom type, Residue 3letter, ChainID, ResidueID],...] \n
             new_coords: 2d ndarray\n
             contains coordinates of corresponding residues to the new_data entries\n
             """
@@ -117,25 +117,26 @@ def dist_calc(arr1, arr2):
 
 def atom_interaction_matrix_d(path_to_pdb_file, dist_th=10., plot_matrices=False):
     """computes the adjacency matrix for a given pdb file based on the closest side chain atoms\n
-            :parameter
-                path_to_pdb_file: str\n
-                path to pdb file of the protein of interest\n
-                dist_th: int or float, (optional - default 10.)\n
-                maximum distance in \u212B of atoms of two residues to be seen as interacting\n
-                plot_matrices: bool,(optional - default False)\n
-                if True plots matrices for (from left to right)
-                    - distance to the closest side chain atom per residue\n
-                    - distance between all side chain atoms\n
-                    - inverse normalized 1st plot\n
-                    - distance between CA atoms\n
-                    - all interacting residues\n
-            :returns
-                adjacency is given per residue (the closest atom to any side chain atom of any other residue)\n
-                red2: adjacency matrix of the given protein as 2d numpy array\n
-                red2_nome: inverse of the normalized red2: (1 - (red2 / np.max(red2))\n
-                interacting_residues: boolean matrix - which residues interact\n"""
+        :parameter
+            path_to_pdb_file: str\n
+            path to pdb file of the protein of interest\n
+            dist_th: int or float, (optional - default 10.)\n
+            maximum distance in \u212B of atoms of two residues to be seen as interacting\n
+            plot_matrices: bool, (optional - default False)\n
+            if True plots matrices for (from left to right)
+                - distance to the closest side chain atom per residue\n
+                - distance between all side chain atoms\n
+                - inverse normalized 1st plot\n
+                - distance between CA atoms\n
+                - all interacting residues\n
+        :returns
+            adjacency is given per residue (the closest atom to any side chain atom of any other residue)\n
+            red2: adjacency matrix of the given protein as 2d numpy array\n
+            red2_nome: inverse of the normalized red2: (1 - (red2 / np.max(red2))\n
+            interacting_residues: boolean matrix - which residues interact\n"""
     # data [[ATOM, RES, CHAIN, ResNR],..]
     data, coords = data_coord_extraction(path_to_pdb_file)
+    # ca alpha distances
     if plot_matrices:
         cab = data[:, 0] == "CA"
         dca = dist_calc(coords[cab], coords[cab])
@@ -209,15 +210,14 @@ def hydrophobicity_matrix(res_bool_matrix, converted, norm):
         res_bool_matrix\n
         :parameter
             res_bool_matrix: boolean 2D ndarray\n
-            matrix (len(wt_seq) x len(wt_seq)) where pairs that obey distance and angle criteria are True\n
+            matrix (len(wt_seq) x len(wt_seq)) with interacting residue pairs as True\n
             converted: ndarray of int or floats\n
             the sequence converted to the values of the corresponding dict\n
             norm: float or int\n
             max value possible for interactions between two residues\n
         :return
             hp_matrix: 2d ndarray of floats\n
-            len(wt_seq) x len(wt_seq) matrix with the corresponding normalized similarity in terms of hydrophobicity
-            of each pair\n"""
+            len(wt_seq) x len(wt_seq) matrix with the similarity in terms of hydrophobicity of each pair\n"""
     interactions = np.abs(converted - converted.reshape(len(converted), -1))
     hp_matrix = 1 - (interactions / norm)
     hp_matrix[np.invert(res_bool_matrix)] = 0
@@ -229,7 +229,7 @@ def hbond_matrix(res_bool_matrix, converted, valid_vals):
        res_bool_matrix\n
         :parameter
             res_bool_matrix: boolean 2D ndarray\n
-            matrix (len(wt_seq) x len(wt_seq)) with interacting pairs as True\n
+            matrix (len(wt_seq) x len(wt_seq)) with interacting residue pairs as True\n
             valid_vals: ndarray of int or float\n
             which values of the matrix are True after multiplying the encoded sequence against itself\n
             converted: ndarray of int or floats\n
@@ -248,14 +248,15 @@ def charge_matrix(res_bool_matrix, converted, good, mid, bad):
        both uncharged (1), or one charged one neutral (0.5) only for pairs that are true in res_bool_matrix\n
         :parameter
             res_bool_matrix: boolean 2D ndarray\n
-            matrix (len(wt_seq) x len(wt_seq)) with interacting pairs as True\n
+            matrix (len(wt_seq) x len(wt_seq)) with interacting residue pairs as True\n
             good, mid, bad: ndarrays of int or float\n
             each holds the possible values for the different 'quality' of interaction\n
             converted: ndarray of int or floats\n
             the sequence converted to the values of the corresponding dict\n
         :return
             c_mat: 2d ndarray of floats\n
-            len(wt_seq) x len(wt_seq) matrix containing the 'interaction quality value' for all interacting residues\n
+            len(wt_seq) x len(wt_seq) matrix containing the 'charge interaction quality value'
+            for all interacting residues\n
             """
     interactions = converted * converted.reshape(len(converted), -1)
     interactions[np.invert(res_bool_matrix)] = 0
@@ -270,7 +271,7 @@ def interaction_area(res_bool_matrix, wt_converted, mut_converted, norm):
        only for pairs that are true in res_bool_matrix\n
         :parameter
             res_bool_matrix: boolean 2D ndarray\n
-            matrix (len(wt_seq) x len(wt_seq)) with interacting pairs as True\n
+            matrix (len(wt_seq) x len(wt_seq)) with interacting residue pairs as True\n
             wt_converted: ndarray of float or int\n
             wild type sequence converted with the corresponding dict\n
             mut_converted: ndarray of float or int\n
@@ -291,7 +292,7 @@ def clashes(res_bool_matrix, wt_converted, mut_converted, norm, dist_mat, dist_t
     """matrix that represents whether clashes ore holes are occurring due to the given mutations
         :parameter
             res_bool_matrix: boolean 2D ndarray\n
-            matrix (len(wt_seq) x len(wt_seq)) with interacting pairs as True\n
+            matrix (len(wt_seq) x len(wt_seq)) with interacting residue pairs as True\n
             wt_converted: ndarray of float or int\n
             wild type sequence converted with the corresponding dict\n
             mut_converted: ndarray of float or int\n
@@ -307,7 +308,7 @@ def clashes(res_bool_matrix, wt_converted, mut_converted, norm, dist_mat, dist_t
             len(wt_seq) x len(wt_seq) matrix with values corresponding to whether new mutations lead to potential
             clashes or holes between interacting residues"""
     diff = wt_converted - mut_converted
-    inter = diff +  diff.reshape(len(diff), -1)
+    inter = diff + diff.reshape(len(diff), -1)
     dist_impact = (dist_mat + inter) / (norm + dist_thr)
     cl_mat = dist_impact * res_bool_matrix
     return cl_mat
