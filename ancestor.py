@@ -322,9 +322,9 @@ def chain_aligned_rmsf(pdb_paths, chain_selections, dat_paths, alignment_path, d
             res_sele_end = res_sele_end + np.sum(insertion_in_selection)
             insertion_before_selection = seqi[: res_sele_start] == "-"
             num_ibs = np.sum(insertion_before_selection)
-            print("Sequence of interest for {} starts at {} and end at {}".format(np.asarray(chain_names)[selection][i],
-                                                                                  str(res_sele_start - num_ibs),
-                                                                                  str(res_sele_end - num_ibs)))
+            print("Sequence of interest for {} starts at {} and ends at {}"
+                  .format(np.asarray(chain_names)[selection][i], str(res_sele_start - num_ibs),
+                          str(res_sele_end - num_ibs)))
 
     if baseline_ind is None:
         baseline = np.mean(chain_means, axis=0)
@@ -403,6 +403,49 @@ def plot_rmsd(rmsd_dat_paths, names, data_sel, indices=None):
     plot_scores(np.asarray(rmsd_values, dtype=float), names=names, y_axis="Protein RMSD (\u212B)", x_axis="time (nsec)")
 
 
+def map_bfactor(poi, chain_oi):
+    """maps rmsf * 30 to bfactor column
+        :parameter
+            poi: str\n
+            name of the protein of interest
+            chain_oi: list\n
+            list of chains of interest e.g. ["A", "B"]
+        :return
+            None
+        """
+    b_factor = \
+        read_dat("/media/~//D/programs/schrodinger/SID_reports/{}_report/raw-data/P_RMSF.dat".format(poi))["CA"]
+
+    a = open("~//Documents/ancestors/{}.pdb".format(poi), "r")
+    data = a.readlines()
+    a.close()
+
+    c = -1
+    prev_res = None
+    n = open("~//Documents/ancestors/{}_bfactor.pdb".format(poi), "w+")
+    for line in data:
+        if "ATOM  " in line[:6]:
+            name = line[17:20].replace(" ", "").strip()
+            chain = line[21].replace(" ", "").strip()
+            num = line[22:26].replace(" ", "").strip()
+            if chain in chain_oi:
+                cur_res = "".join([name, chain, num])
+                if prev_res != cur_res:
+                    c += 1
+                    prev_res = cur_res
+                b_write = "{:0.2f}".format(np.round(float(b_factor[c]), 2) * 30)
+                line_list = list(line)
+                for i in range(1, 7):
+                    try:
+                        line_list[65 - (i - 1)] = b_write[-i]
+                    except IndexError:
+                        line_list[65 - (i - 1)] = " "
+                n.write("".join(line_list))
+        else:
+            n.write(line)
+    n.close()
+
+
 if __name__ == "__main__":
     # IMPORTANT !!! order needs to be the same everywhere !!!
     data_sel_ex = "CA"
@@ -436,9 +479,12 @@ if __name__ == "__main__":
     #                  names_ex, selection=None)
 
     # plot aligned RMSF scores per chain
-    chain_aligned_rmsf(pdb_paths_ex, chain_selections_ex, rmsf_dat_paths_ex, alignment_path_chain_ex, data_sel_ex,
-                       names_ex, selection=None, cut=0, plots="diff", baseline_ind=0, res_sele_start=79,
-                       res_sele_end=89)
+    # chain_aligned_rmsf(pdb_paths_ex, chain_selections_ex, rmsf_dat_paths_ex, alignment_path_chain_ex, data_sel_ex,
+    #                    names_ex, selection=None, cut=10, plots="diff", baseline_ind=0, res_sele_start=79,
+    #                    res_sele_end=89)
 
     # plot RMSD of different chains
     # plot_rmsd(rmsd_dat_paths_ex, names_ex, data_sel_ex, [0, 1])
+
+    # map b-factor to pdb_file
+    # map_bfactor("N55_refine_40", ["A", "D"])
