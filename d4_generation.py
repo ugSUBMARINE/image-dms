@@ -15,8 +15,7 @@ from tensorflow import keras
 from d4_utils import create_folder, log_file, hydrophobicity, h_bonding, charge, sasa, side_chain_length, clear_log
 from d4_stats import validate, validation, pearson_spearman
 from d4_split import split_inds, create_split_file
-from d4_interactions import atom_interaction_matrix_d, hydrophobicity_matrix, hbond_matrix, charge_matrix, \
-    interaction_area, clashes, mutate_sequences, check_structure
+from d4_interactions import atom_interaction_matrix_d, check_structure, model_interactions
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['PYTHONHASHSEES'] = str(0)
@@ -41,17 +40,17 @@ def data_generator_vals(wt_seq):
             - ia_norm: float\n
               max value possible for interaction ares interactions\n
             - hm_converted: ndarray of float\n
-              wt_seq converted into hydrogen bonding values
+              wt_seq converted into hydrogen bonding values\n
             - hp_converted: ndarray of float\n
-              wt_seq converted into hydrophobicity values
+              wt_seq converted into hydrophobicity values\n
             - cm_converted: ndarray of float\n
-              wt_seq converted into charge values
+              wt_seq converted into charge values\n
             - ia_converted: ndarray of float\n
-              wt_seq converted into SASA values
+              wt_seq converted into SASA values\n
             - mat_index: 2D ndarray of float\n
               symmetrical index matrix\n
             - cl_converted: ndarray of float\n
-              wt_seq converted into side chain length values
+              wt_seq converted into side chain length values\n
             - cl_norm: float\n
               max value possible for interaction ares interactions\n"""
 
@@ -81,6 +80,45 @@ def data_generator_vals(wt_seq):
 
     return hm_pos_vals, ch_good_vals, ch_mid_vals, ch_bad_vals, hp_norm, ia_norm, hm_converted, hp_converted, \
            cm_converted, ia_converted, mat_index, cl_converted, cl_norm
+
+
+def progress_bar(num_batches, bar_len, batch):
+    """prints progress bar with percentage that can be overwritten with a following print statement
+        - should be implemented with on_train_batch_end\n
+        :parameter
+            num_batches: int\n
+            number of batches per epoch
+            bar_len: int\n
+            length of the progress bar\b
+            batch: int\n
+            number of the current batch
+        :return
+            None\n"""
+    # number of '=' per batch in the progress bar
+    split_size = bar_len // num_batches
+    o_nb = num_batches
+    o_ba = batch
+
+    # if num_batches is bigger than bar_len - bar gets updated update_freq times with the same values for compensation
+    if split_size == 0:
+        update_freq = num_batches / bar_len
+        num_batches = np.floor(num_batches / update_freq).astype(int)
+        batch = np.floor(batch / update_freq).astype(int)
+        split_size = 1
+
+    # list with number of '=' to print
+    splits = np.arange(split_size, bar_len)[::split_size]
+    splits = np.append(splits, bar_len)
+
+    # progress bar with percentage
+    bar_string = "\r[{}>{}] {:0.0f}%".format("=" * splits[batch], " " * (bar_len - splits[batch]),
+                                             (batch + 1) / num_batches * 100)
+    print(bar_string, end="")
+
+    # set cursor to start of the line to overwrite progress bar when epoch is done
+    if o_nb - o_ba == 1:
+        print("\r[{}>] 100%".format("=" * bar_len), end="")
+        print("\r\r", end="")
 
 
 class DataGenerator(keras.utils.Sequence):
@@ -197,32 +235,16 @@ class DataGenerator(keras.utils.Sequence):
         batch_labels = np.empty(self.batch_size, dtype=float)
 
         for ci, i in enumerate(features_to_encode):
-            # hydrogen bonging
-            cur_hb = mutate_sequences(self.hm_converted, i, h_bonding, self.first_ind)
-            part_hb = hbond_matrix(self.interaction_matrix, cur_hb, self.hm_pos_vals) * self.factor
-
-            # hydrophobicity
-            cur_hp = mutate_sequences(self.hp_converted, i, hydrophobicity, self.first_ind)
-            part_hp = hydrophobicity_matrix(self.interaction_matrix, cur_hp, self.hp_norm) * self.factor
-
-            # charge
-            cur_cm = mutate_sequences(self.cm_converted, i, charge, self.first_ind)
-            part_cm = charge_matrix(self.interaction_matrix, cur_cm, self.ch_good_vals, self.ch_mid_vals,
-                                    self.ch_bad_vals) * self.factor
-            # interaction area
-            cur_ia = mutate_sequences(self.ia_converted, i, sasa, self.first_ind)
-            part_ia = interaction_area(self.interaction_matrix, self.ia_converted, cur_ia,
-                                       self.ia_norm) * self.factor
-
-            # clashes
-            cur_cl = mutate_sequences(self.cl_converted, i, side_chain_length, self.first_ind)
-            part_cl = clashes(self.interaction_matrix, self.cl_converted, cur_cl, self.cl_norm, self.dist_mat,
-                              dist_thr=self.dist_th) * self.factor
-
-            # interaction position
-            position = self.mat_index * self.factor
-
-            batch_features[ci] = np.stack((part_hb, part_hp, part_cm, part_ia, part_cl, position), axis=2)
+            final_matrix = model_interactions(feature_to_encode=i, interaction_matrix=self.interaction_matrix,
+                                              index_matrix=self.mat_index, factor_matrix=self.factor,
+                                              distance_matrix=self.dist_mat, dist_thrh=self.dist_th,
+                                              first_ind=self.first_ind, hmc=self.hm_converted, hb=h_bonding,
+                                              hm_pv=self.hm_pos_vals, hpc=self.hp_converted, hp=hydrophobicity,
+                                              hpn=self.hp_norm, cmc=self.cm_converted, c=charge, cgv=self.ch_good_vals,
+                                              cmv=self.ch_mid_vals, cbv=self.ch_bad_vals, iac=self.ia_converted,
+                                              sa=sasa, ian=self.ia_norm, clc=self.cl_converted, scl=side_chain_length,
+                                              cln=self.cl_norm)
+            batch_features[ci] = final_matrix
             batch_labels[ci] = corresponding_labels[ci]
         return batch_features, batch_labels
 
@@ -237,15 +259,18 @@ class SaveToFile(keras.callbacks.Callback):
 
     def __init__(self, filepath):
         self.filepath = filepath
-        self.start_time_epoch = 0.
+        self.start_time_epoch = time.time()
 
     def on_epoch_begin(self, epoch, logs=None):
         self.start_time_epoch = time.time()
 
     def on_epoch_end(self, epoch, logs=None):
-        log_string = "{},{:0.4f},{:0.4f},{:0.4f}".format(str(epoch), logs["loss"], logs["val_loss"],
-                                                         time.time() - self.start_time_epoch)
-        log_file(self.filepath, write_str=log_string, optional_header="epoch,loss,mae,val_loss,val_mae,sec_per_epoch")
+        log_string = "{},{:0.4f},{:0.4f},{:0.4f},{}".format(str(epoch), logs["loss"], logs["val_loss"],
+                                                            time.time() - self.start_time_epoch,
+                                                            time.strftime("%H:%M:%S",
+                                                                          time.localtime(self.start_time_epoch)))
+        log_file(self.filepath, write_str=log_string,
+                 optional_header="epoch,loss,mae,val_loss,val_mae,sec_per_epoch,epoch_start_time")
 
     def on_train_end(self, logs=None):
         log_file(self.filepath, write_str="Finished training")
@@ -262,7 +287,8 @@ class CustomPrint(keras.callbacks.Callback):
       should be printed\n
     """
 
-    def __init__(self, epoch_print=1, epoch_stat_print=10):
+    def __init__(self, num_batches, epoch_print=1, epoch_stat_print=10, pb_len=60, model_d="", model_save_interval=5,
+                 save=False):
         self.epoch_print = epoch_print
         self.best_loss = np.Inf
         self.bl_epoch = 0
@@ -273,12 +299,23 @@ class CustomPrint(keras.callbacks.Callback):
         self.epoch_stat_print = epoch_stat_print
         self.start_time_epoch = 0.
         self.start_time_training = 0.
+        self.num_batches = num_batches
+        self.pb_len = pb_len
+        self.model_d = model_d
+        self.epoch_since_model_save = 0
+        self.model_save_interval = model_save_interval
+        self.save = save
 
     def on_train_begin(self, logs=None):
         self.start_time_training = time.time()
 
     def on_epoch_begin(self, epoch, logs=None):
         self.start_time_epoch = time.time()
+        if epoch == 0:
+            print("*** training started ***")
+
+    def on_train_batch_end(self, batch, logs=None):
+        progress_bar(num_batches=self.num_batches, bar_len=self.pb_len, batch=batch)
 
     def on_epoch_end(self, epoch, logs=None):
         cur_loss = logs["loss"]
@@ -299,6 +336,10 @@ class CustomPrint(keras.callbacks.Callback):
         if cur_val_loss < self.best_val_loss:
             self.best_val_loss = cur_val_loss
             self.bvl_epoch = epoch
+            if self.save:
+                if epoch - self.epoch_since_model_save >= self.model_save_interval:
+                    self.model.save(self.model_d, overwrite=True)
+                    self.epoch_since_model_save = epoch
 
         if epoch % self.epoch_stat_print == 0 and epoch > 0:
             d = np.abs(self.best_loss - self.best_val_loss)
@@ -313,6 +354,8 @@ class CustomPrint(keras.callbacks.Callback):
                   .format(str(self.bl_epoch), str(self.bvl_epoch), d, dp, d_cl, d_cvl))
 
     def on_train_end(self, logs=None):
+        if self.save:
+            self.model.save(self.model_d+"_end")
         print("Overall best epoch stats")
         print("Best training epoch: {} with a loss of {:0.4f}".format(str(self.bl_epoch), self.best_loss))
         print("Best validation epoch: {} with a loss of {:0.4f}".format(str(self.bvl_epoch), self.best_val_loss))
@@ -397,7 +440,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
     - show_fig: bool, (optional - default False)\n
       True to show figures\n
     - write_to_log: bool, (optional - default True)\n
-      if True writes all parameters used in the log file - !should be always enabled!\n
+      if True writes all parameters used in the log file - **should be always enabled**\n
     - silent: bool, (optional - default False)\n
       True to print stats in the terminal\n
     - extensive_test: bool, (optional - default False)\n
@@ -447,17 +490,6 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         # dictionary with argument names as keys and the input as values
         arg_dict = locals()
 
-        # path of the directory where results are stored
-        result_dir = os.path.join(p_dir, "result_files")
-        # path where the temp_file is located
-        temp_path = os.path.join(result_dir, "temp.csv")
-        # path where the log_file is located
-        log_file_path = os.path.join(result_dir, "log_file.csv")
-
-        # create result dir if it doesn't exist
-        if not os.path.isdir(result_dir):
-            os.mkdir(result_dir)
-
         # getting the proteins name
         p_name = os.path.split(tsv_file)[1].split(".")[0]
 
@@ -466,8 +498,27 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         name = "{}_{}".format(p_name, time_)
         print(name)
 
+        # path of the directory where results are stored
+        result_dir = os.path.join(p_dir, "result_files")
+        # path where the temp_file is located
+        temp_path = os.path.join(result_dir, "temp.csv")
+        # path where the log_file is located
+        log_file_path = os.path.join(result_dir, "log_file.csv")
+        # dir where models are stored
+        model_base_dir = os.path.join(result_dir, "saved_models")
+        recent_model_dir = os.path.join(result_dir, "saved_models", name)
+
+        # create result dir, base model dir and recent model dir if they don't exist
+        if not os.path.isdir(result_dir):
+            os.mkdir(result_dir)
+        if save_model:
+            if not os.path.isdir(model_base_dir):
+                os.mkdir(model_base_dir)
+            if not os.path.isdir(recent_model_dir):
+                os.mkdir(recent_model_dir)
+
         # clear temp file from previous content or create it if it doesn't exist
-        clear_log(temp_path, name + "\n")
+        clear_log(temp_path, name + "\n" + "epoch,loss,val_loss,time_in_sec,epoch_start_time\n")
 
         # clear error.log from previous run
         clear_log(os.path.join(result_dir, "error.log"))
@@ -530,11 +581,15 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         # -------------------------------------------------------------------
         """
         from test import augment
-        d, l, m = augment(train_data, train_labels, train_mutations, runs=4)
-        
-        train_data = np.concatenate((train_data, d))
-        train_labels = np.concatenate((train_labels, l))
-        train_mutations = np.concatenate((train_mutations, m))
+        decay = 0.2
+        for i in range(3):  
+            # data augmentation
+            aug_data, aug_labels, aug_mutations = augment(train_data, train_labels, train_mutations, runs=4)
+            # concatenation of original and augmented train data
+            train_data = np.concatenate((train_data, aug_data))
+            train_labels = np.concatenate((train_labels, aug_labels * (1 - i * decay)))
+            train_mutations = np.concatenate((train_mutations, aug_mutations))
+
         print("new train split size:", len(train_data))
         """
         # -------------------------------------------------------------------
@@ -585,7 +640,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
             old_model = keras.models.load_model(load_trained_weights)
             model.set_weights(old_model.get_weights())
 
-        # loads a model defined in load_trained_model
+        # loads a model defined in load_trained_model and ignores the model built above
         if load_trained_model is not None:
             model = keras.models.load_model(load_trained_model)
 
@@ -601,13 +656,13 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
             for i in range(len(trained_model.layers)):
                 if i > 0:
                     l_name = trained_model.layers[i].name
-                    if any(["dense" in l_name, "flatten" in l_name]):
-                        pass
-                    else:
+                    if not any(["dense" in l_name, "flatten" in l_name]):
                         transfer_layers += [i]
 
             # Transfer weights to new model
-            for i in transfer_layers:
+            # fraction of layers that should be transferred (1. all conv layer weighs get transferred)
+            fraction_to_train = 1.  # 0.6
+            for i in transfer_layers[:int(len(transfer_layers) * fraction_to_train)]:
                 model.layers[i].set_weights(temp_weights[i])
                 if train_conv_layers is False:
                     model.layers[i].trainable = False
@@ -640,7 +695,10 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         # all_callbacks += [ClearMemory()]
 
         # custom stats print
-        all_callbacks += [CustomPrint(epoch_print=1, epoch_stat_print=10)]
+        # number of batches needed for status bar increments
+        n_batches = int(np.floor(len(train_data) / batch_size))
+        all_callbacks += [CustomPrint(num_batches=n_batches, epoch_print=1, epoch_stat_print=10,
+                                      model_d=recent_model_dir, save=save_model)]
 
         # parameters for the DataGenerator
         params = {'interaction_matrix': comb_bool,
@@ -720,19 +778,15 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
             w_log.close()
 
             # saves model in result path
-            if save_model:
-                model.save(create_folder(result_dir, name), name)
+            # if save_model:
+                # model.save(create_folder(result_dir, name), name)
 
             # training and validation plot of the training
             if validate_training:
                 try:
-                    val_val, _, _ = validate(validation_generator, model, history, name,
-                                             max_train_mutations, save_fig_v=save_fig, plot_fig=show_fig)
+                    validate(validation_generator, model, history, name, save_fig_v=save_fig, plot_fig=show_fig)
                 except ValueError:
-                    val_val = "nan"
-                    log_file(file_path=os.path.join(result_dir, "log_file.csv"), write_str="nan in training history")
-            else:
-                val_val = "nan"
+                    print("Plotting validation failed due to nan in training")
 
             # calculating pearsons' r and spearman r for the test dataset
             try:
