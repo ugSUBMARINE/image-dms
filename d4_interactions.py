@@ -42,7 +42,7 @@ def data_coord_extraction(target_pdb_file):
                 residue data of the closest amino acid with a CB
             :return
                 art_cbc: ndarray\n
-                CA, CB coordinates as [[xa, ya, za]], [[xb, yb, zb]]"""
+                CB coordinates as [[xb, yb, zb]]"""
         # data and coords of the next amino acid != GLY
         increased_data = res_data[inc_bool]
         increased_coords = res_coords[inc_bool]
@@ -218,27 +218,34 @@ def hydrophobicity_matrix(res_bool_matrix, converted, norm):
         :return
             hp_matrix: 2d ndarray of floats\n
             len(wt_seq) x len(wt_seq) matrix with the similarity in terms of hydrophobicity of each pair\n"""
+    # creating the specific interaction matrix
     interactions = np.abs(converted - converted.reshape(len(converted), -1))
+    # calculating the interaction values and resizing them to be in range [0,1]
     hp_matrix = 1 - (interactions / norm)
+    # masking for residues that do not interact
     hp_matrix[np.invert(res_bool_matrix)] = 0
     return hp_matrix
 
 
 def hbond_matrix(res_bool_matrix, converted, valid_vals):
-    """matrix that represents whether pairs can form h bonds (True) or not (False) only for pairs that are true in
+    """matrix that represents whether pairs can form H bonds (True) or not (False) only for pairs that are true in
        res_bool_matrix\n
         :parameter
             res_bool_matrix: boolean 2D ndarray\n
             matrix (len(wt_seq) x len(wt_seq)) with interacting residue pairs as True\n
             valid_vals: ndarray of int or float\n
-            which values of the matrix are True after multiplying the encoded sequence against itself\n
+            which values of the matrix are True (can form H bonds) after multiplying the encoded sequence against
+            itself\n
             converted: ndarray of int or floats\n
             the sequence converted to the values of the corresponding dict\n
         :return
             hb_mat: 2d ndarray of floats\n
             len(wt_seq) x len(wt_seq) matrix where pairs that can form h bonds are True\n"""
+    # creating the specific interaction matrix
     interactions = converted * converted.reshape(len(converted), -1)
+    # checking which interactions are can form H bonds
     hb_matrix = np.isin(interactions, valid_vals)
+    # masking for residues that do not interact
     hb_mat = np.all(np.stack((hb_matrix, res_bool_matrix)), axis=0)
     return hb_mat
 
@@ -258,8 +265,11 @@ def charge_matrix(res_bool_matrix, converted, good, mid, bad):
             len(wt_seq) x len(wt_seq) matrix containing the 'charge interaction quality value'
             for all interacting residues\n
             """
+    # creating the specific interaction matrix
     interactions = converted * converted.reshape(len(converted), -1)
+    # masking for residues that do not interact
     interactions[np.invert(res_bool_matrix)] = 0
+    # changing the interactions to their respective 'quality' values
     interactions[np.isin(interactions, bad)] = 0
     interactions[np.isin(interactions, mid)] = 0.5
     interactions[np.isin(interactions, good)] = 1
@@ -281,8 +291,11 @@ def interaction_area(res_bool_matrix, wt_converted, mut_converted, norm):
         :return
             ia_matrix: len(wt_seq) x len(wt_seq) matrix with values corresponding to the
             absolute magnitude of change in the SASA of a residue pair\n"""
+    # creating the specific interaction matrix
     d = wt_converted - mut_converted
+    # creating the specific interaction matrix and resizing it to be in range [0, 1]
     dd = np.abs(d + d.reshape(len(d), -1)) / norm
+    # masking for residues that do not interact
     dd[np.invert(res_bool_matrix)] = 0
     dd = 1 - dd
     return dd
@@ -307,9 +320,12 @@ def clashes(res_bool_matrix, wt_converted, mut_converted, norm, dist_mat, dist_t
             sub_norm: 2D ndarray of float\n
             len(wt_seq) x len(wt_seq) matrix with values corresponding to whether new mutations lead to potential
             clashes or holes between interacting residues"""
+    # difference in side chain length between the wild type and the variant
     diff = wt_converted - mut_converted
+    # creating the specific interaction matrix
     inter = diff + diff.reshape(len(diff), -1)
     dist_impact = (dist_mat + inter) / (norm + dist_thr)
+    # masking for residues that do not interact
     cl_mat = dist_impact * res_bool_matrix
     return cl_mat
 
@@ -335,7 +351,9 @@ def mutate_sequences(wt_sequence, mutations, f_dict, first_ind):
             mutated_sequences: list of float or int\n
             mutated sequences as list\n"""
     a_to_mut = wt_sequence.copy()
+    # get each mutation
     muts = mutations.strip().split(",")
+    # change the wt sequence according to all the mutations
     for j in muts:
         j = j.strip()
         a_to_mut[int(j[1:-1]) - first_ind] = f_dict[j[-1]]
@@ -357,7 +375,7 @@ def check_structure(path_to_pdb_file, comb_bool_cs, wt_seq_cs):
     if len(comb_bool_cs) != len(wt_seq_cs):
         raise ValueError("Wild type sequence doesn't match the sequence in the pdb file (check for multimers)\n")
     else:
-        # could be read only one time (additional input for atom_interaction_matrix(_d))
+        # extract the residues from the pdb file and sort them again after their true appearance
         pdb_seq = np.unique(data_coord_extraction(path_to_pdb_file)[0][:, 1:], axis=0)
         pdb_seq_sorted = pdb_seq[np.lexsort((pdb_seq[:, 2].astype(int), pdb_seq[:, 1]))]
         # sequence derived from pdb file
@@ -368,5 +386,87 @@ def check_structure(path_to_pdb_file, comb_bool_cs, wt_seq_cs):
             print("*** structure check passed ***")
 
 
+def model_interactions(feature_to_encode, interaction_matrix, index_matrix, factor_matrix, distance_matrix, dist_thrh,
+                       first_ind, hmc, hb, hm_pv, hpc, hp, hpn, cmc, c, cgv, cmv, cbv, iac, sa, ian, clc, scl, cln):
+    """creates the matrix that describes the changes of interactions between residues due to muatation\n
+        :parameter
+        feature_to_encode: str\n
+        the mutation that should be modeled e.g. 'S3A,K56L'\n
+        interaction_matrix: 2D boolean ndarray\n
+        matrix where interacting residues are True\n
+        index_matrix: 2D ndarray of ints\n
+        matrix that is symmetrical along the diagonal and describes the indices of the interactions\n
+        factor_matrix: 2D ndarray of floats\n
+        describes the strength of the interaction based on the distance of interacting residues\n
+        distance_matrix: 2D ndarray of floats\n
+        2D matrix with distances between all residues\n
+        dist_thrh: int or float\n
+        maximum distance of residues to count as interacting\n
+        first_ind: int\n
+        offset of the start of the sequence (when sequence doesn't start with residue 0)\n
+        hb: dict\n
+        describing the hydrogen bonding capability of a residue\n
+        hp: dict\n
+        describing the hydrophobicity of a residue\n
+        c: dict\n
+        describing the charge of a residue\n
+        sa: dict\n
+        describing the SASA of a residue\n
+        scl: dict\n
+        describing the side chain length of a residue\n
+        for a detailed description please refer to the docstring of data_generator_vals in d4_generation.py\n
+        hmc: hm_converted\n
+        hm_pv: hm_pos_vals\n
+        hpc: hp_converted\n
+        hpn: hp_norm\n
+        cmc: cm_converted\n
+        cgv: ch_good_vals\n
+        cmv: ch_mid_vals\n
+        cbv: ch_bad_vals\n
+        iac: ia_converted\n
+        ian: ia_norm\n
+        clc: cl_converted\n
+        cln: cl_norm\n
+        """
+    # hydrogen bonging
+    cur_hb = mutate_sequences(hmc, feature_to_encode, hb, first_ind)
+    part_hb = hbond_matrix(interaction_matrix, cur_hb, hm_pv) * factor_matrix
+
+    # hydrophobicity
+    cur_hp = mutate_sequences(hpc, feature_to_encode, hp, first_ind)
+    part_hp = hydrophobicity_matrix(interaction_matrix, cur_hp, hpn) * factor_matrix
+
+    # charge
+    cur_cm = mutate_sequences(cmc, feature_to_encode, c, first_ind)
+    part_cm = charge_matrix(interaction_matrix, cur_cm, cgv, cmv, cbv) * factor_matrix
+
+    # interaction area
+    cur_ia = mutate_sequences(iac, feature_to_encode, sa, first_ind)
+    part_ia = interaction_area(interaction_matrix, iac, cur_ia, ian) * factor_matrix
+
+    # clashes
+    cur_cl = mutate_sequences(clc, feature_to_encode, scl, first_ind)
+    part_cl = clashes(interaction_matrix, clc, cur_cl, cln, distance_matrix,
+                      dist_thr=dist_thrh) * factor_matrix
+
+    # interaction position
+    position = index_matrix * factor_matrix
+
+    return np.stack((part_hb, part_hp, part_cm, part_ia, part_cl, position), axis=2)
+
+
 if __name__ == "__main__":
+    from d4_generation import data_generator_vals
+    from d4_utils import protein_settings
+    from d4_utils import hydrophobicity, h_bonding, sasa, charge, side_chain_length
+    hm_pos_vals, ch_good_vals, ch_mid_vals, ch_bad_vals, hp_norm, ia_norm, hm_converted, hp_converted, \
+    cm_converted, ia_converted, mat_index, cl_converted, cl_norm = data_generator_vals(protein_settings("pab1")["sequence"])
+    dist_m, factor, comb_bool = atom_interaction_matrix_d("datasets/pab1.pdb", 20)
+
+    model_interactions(feature_to_encode="N127R,A178H,G177S,A178G,G188H,E195K,L133M,P135S",
+                       interaction_matrix=comb_bool, index_matrix=mat_index, factor_matrix=factor,
+                       distance_matrix=dist_m, dist_thrh=20, first_ind=126, hmc=hm_converted, hb=h_bonding,
+                       hm_pv=hm_pos_vals, hpc=hp_converted, hp=hydrophobicity, hpn=hp_norm, cmc=cm_converted,
+                       c=charge, cgv=ch_good_vals, cmv=ch_mid_vals, cbv=ch_bad_vals, iac=ia_converted, sa=sasa,
+                       ian=ia_norm, clc=cl_converted, scl=side_chain_length, cln=cl_norm)
     pass
