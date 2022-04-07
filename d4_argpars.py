@@ -3,7 +3,8 @@ import os
 import tensorflow as tf
 
 from d4_models import simple_model, simple_model_norm, simple_model_imp, create_simple_model, simple_model_gap, \
-    simple_stride_model_test, shrinking_res, inception_res, deeper_res, res_net, vgg, simple_longer, simple_stride_model
+    simple_stride_model_test, shrinking_res, inception_res, deeper_res, res_net, vgg, simple_longer, \
+    simple_stride_model, get_conv_mixer_256_8, depth_conv
 from d4_utils import protein_settings
 
 
@@ -18,17 +19,11 @@ def arg_dict(p_dir=""):
         """
     pos_models = [simple_model, simple_model_norm, simple_model_imp, create_simple_model, simple_model_gap,
                   simple_stride_model_test, shrinking_res, inception_res, deeper_res, res_net, vgg, simple_longer,
-                  simple_stride_model]
-
-    pos_optimizer = [tf.keras.optimizers.Adam, tf.keras.optimizers.SGD]
+                  simple_stride_model, get_conv_mixer_256_8, depth_conv]
 
     model_str = []
     for ci, i in enumerate(pos_models):
         model_str += [str(ci) + " " + str(i).split(" ")[1] + "\n"]
-
-    opt_str = []
-    for ci, i in enumerate(pos_optimizer):
-        opt_str += [str(ci) + " " + str(i).split(" ")[1] + "\n"]
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-pn", "--protein_name", type=str, required=False, default=None,
@@ -54,7 +49,7 @@ def arg_dict(p_dir=""):
     parser.add_argument("-s2", "--split2", type=float, required=False, default=0.0,
                         help="size of the test data set - can be either a fraction or a number of samples")
     parser.add_argument("-a", "--architecture", type=int, required=False, default=0,
-                        help="input number of model that should be used"+" ".join(model_str))
+                        help="input number of model that should be used " + " ".join(model_str))
     parser.add_argument("-sm", "--save_model", action="store_true",
                         help="set flag to save the model after training")
     parser.add_argument("-st", "--settings_test", action="store_true",
@@ -91,8 +86,8 @@ def arg_dict(p_dir=""):
     parser.add_argument("-wf", "--write_temp", action="store_true",
                         help="set flag to write mae, loss and time per epoch of each epoch to the temp.csv in "
                              "result_files")
-    parser.add_argument("-o", "--optimizer", type=int, required=False, default=0,
-                        help="input int of which optimizer to use"+"\n".join(opt_str))
+    parser.add_argument("-o", "--optimizer", type=str, required=False, default="Adam",
+                        help="input an optimizer name from tf.keras.optimizers e.g 'Adam'")
     parser.add_argument("-pd", "--p_dir", type=str, required=False, default=p_dir,
                         help="path to the projects content root - default=''")
     parser.add_argument("-fc", "--split_file_creation", action="store_true",
@@ -105,26 +100,33 @@ def arg_dict(p_dir=""):
                              " 'train.txt', 'tune.txt' and 'test.txt' otherwise splits of the tsv file according to "
                              "split_def will be used")
     parser.add_argument("-nm", "--number_mutations", type=str, required=False, default=None,
-                        help="how the number of mutations column is named - needed when protein_name is not defined")
+                        help="how the number of mutations column is named - required when protein_name is not defined")
     parser.add_argument("-v", "--variants", type=str, required=False, default=None,
-                        help="name of the variant column - needed when protein_name is not defined")
+                        help="name of the variant column - required when protein_name is not defined")
     parser.add_argument("-s", "--score", type=str, required=False, default=None,
-                        help="name of the score column - needed when protein_name is not defined")
+                        help="name of the score column - required when protein_name is not defined")
     parser.add_argument("-wt", "--wt_seq", type=str, required=False, default=None,
                         help="wt sequence of the protein of interest eg. 'AVL...' - "
-                             "needed when protein_name is not defined - needed when protein_name is not defined")
+                             "required when protein_name is not defined - required when protein_name is not defined")
     parser.add_argument("-fi", "--first_ind", type=str, required=False, default=None,
                         help="offset of the start of the sequence (when sequence doesn't start with residue 0) "
-                             "- needed when protein_name is not defined")
+                             "- required when protein_name is not defined")
     parser.add_argument("-tp", "--tsv_filepath", type=str, required=False, default=None,
-                        help="path to tsv file containing dms data of the protein of interest - needed when tsv file is"
-                             "not stored in /datasets or protein_name is not given or the file is not named "
-                             "protein_name.tsv")
+                        help="path to tsv file containing dms data of the protein of interest - "
+                             "required when tsv file is not stored in /datasets or protein_name is not given or "
+                             "the file is not named protein_name.tsv")
     parser.add_argument("-pp", "--pdb_filepath", type=str, required=False, default=None,
                         help="path to pdb file containing the structure data of the protein of interest - "
-                             "needed when pdb file is not stored in /datasets or protein_name is not given or"
+                             "required when pdb file is not stored in /datasets or protein_name is not given or"
                              " the file is not named protein_name.pdb")
-    # parser.add_argument("-pf", "--pdb_filepath", action="store_false")  # or store_true to have false as default
+    parser.add_argument("-vt", "--validate_training", action="store_true",
+                        help="validates training and either shows the validation plot if show_figures flag is set or"
+                             "saves them if save_figures flag is set")
+    parser.add_argument("-rb", "--restore_bw", action="store_false",
+                        help="set flag to not store the best weights but the weights of the last training epoch")
+    parser.add_argument("-wl", "--write_to_log", action="store_false",
+                        help="set flag to not write settings usd for training to the log file - NOT recommended")
+
     args = parser.parse_args()
     protein_name = args.protein_name
 
@@ -179,7 +181,6 @@ def arg_dict(p_dir=""):
     if not os.path.isfile(pdb_ex):
         raise FileNotFoundError("pdb file path is incorrect - file '{}' doesn't exist".format(str(pdb_ex)))
 
-    opt = pos_optimizer[args.optimizer]
     split_file_creation_ex = args.split_file_creation
     use_split_file_ex = args.use_split_file
 
@@ -215,10 +216,13 @@ def arg_dict(p_dir=""):
          "tsv_file": tsv_ex,
          "pdb_file": pdb_ex,
          "architecture_name": architecture.__code__.co_name,
-         "optimizer": opt,
+         "optimizer": getattr(tf.keras.optimizers, args.optimizer),
          "model_to_use": architecture,
          "split_file_creation": split_file_creation_ex,
-         "use_split_file": use_split_file_ex}
+         "use_split_file": use_split_file_ex,
+         "validate_training": args.validate_training,
+         "es_restore_bw": args.restore_bw,
+         "write_to_log": args.write_to_log}
     return d
 
 
