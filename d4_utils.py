@@ -5,7 +5,8 @@ import tensorflow as tf
 import warnings
 
 from d4_models import simple_model, simple_model_norm, simple_model_imp, create_simple_model, simple_model_gap, \
-    simple_stride_model_test, shrinking_res, inception_res, deeper_res, res_net, vgg, simple_longer, simple_stride_model
+    simple_stride_model_test, shrinking_res, inception_res, deeper_res, res_net, vgg, simple_longer, \
+    simple_stride_model, get_conv_mixer_256_8
 
 
 def protein_settings(protein_name, data_path="./datasets/protein_settings_ori.txt"):
@@ -54,7 +55,7 @@ def create_folder(parent_dir, dir_name, add=""):
 
 
 def log_file(file_path, write_str, optional_header=""):
-    """reads previous contend and writes it and additional log info's specified in write_str to log file\n
+    """reads previous contend and writes it and additional logs info's specified in write_str to log file\n
         :parameter
             file_path: str\n
             path to log file\n
@@ -229,6 +230,24 @@ def clear_log(file_path, text=None):
     a.close()
 
 
+def remove_csv_column(file_path, col_name=None):
+    """removes one or more columns of a csv file\n
+        :parameter
+            file_path: str\n
+            path to csv file where columns should be removed\n
+            col_name: tuple of one or multiple strings\n
+            column header(s) that should be removed\n
+        :return
+            None
+        """
+    # file content
+    content = pd.read_csv(file_path, delimiter=",")
+    # file content without the columns that should be removed
+    new_content = content.drop(columns=[*col_name], axis=1)
+    # write to file
+    new_content.to_csv(file_path, index=False)
+
+
 aa_dict = {"ALA": "A", "ARG": "R", "ASN": "N", "ASP": "D", "CYS": "C", "GLN": "Q", "GLU": "E", "GLY": "G", "HIS": "H",
            "VAL": "V", "LEU": "L", "ILE": "I", "LYS": "K", "MET": "M", "PHE": "F", "PRO": "P", "SER": "S", "TRP": "W",
            "TYR": "Y", "THR": "T"}
@@ -275,8 +294,7 @@ if __name__ == "__main__":
 
     # compare_get_settings("avgfp_09_03_2022_134211", "avgfp_09_03_2022_132158")
     # run_dict("bgl3_06_03_2022_215803")
-    # compare_get_settings("nononsense_avgfp_10_03_2022_105638", "avgfp_10_03_2022_105835")
-    compare_get_settings("nononsense_pab1_16_03_2022_083402", "nononsense_pab1_16_03_2022_095407")
+    # compare_get_settings("nononsense_pab1_22_03_2022_093849", "nononsense_pab1_22_03_2022_094448")
+    # compare_get_settings("nononsense_pab1_21_03_2022_195748", "nononsense_pab1_17_03_2022_073620", file_path1="nononsense/second_split_run/log_results/pab1_log_file.csv",file_path2="nononsense/first_split_run/logs_results_cnn/pab1_log_file.csv")
     # compare_get_settings("nononsense_avgfp_12_03_2022_080540")
-
 
