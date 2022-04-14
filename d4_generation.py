@@ -22,6 +22,71 @@ os.environ['PYTHONHASHSEES'] = str(0)
 np.set_printoptions(threshold=sys.maxsize)
 
 
+def augment(data, labels, mutations, runs=3, un=False):
+    """creates pseudo data from original data by adding it randomly\n
+        :parameter
+            data: ndarray of strings\n
+            array of variants like ['S1A', 'D35T,V20R', ...]\n
+            labels: ndarray of floats or ints\n
+            array with the corresponding scores of the provided dataa\n
+            mutations: ndarray of ints\n
+            array with number of mutations of each variant\n
+            runs: int (optional - default 3)\n
+            how often the augmentation should be performed\n
+            un: bool (optional - default False)\n
+            whether duplicated "new" mutations should be removed\n
+        :return
+            nd: ndarray of strings\n
+            augmented version of data\n
+            nl: ndarray of floats or ints\n
+            augmented version of labels\n
+            nm: ndarray of ints\n
+            augmented version of mutations\n
+            """
+
+    # all possible indices of the data
+    pos_inds = np.arange(len(labels))
+
+    nd = []
+    nl = []
+    nm = []
+    # do augmentation for #runs
+    for i in range(runs):
+        # random shuffle the inds that should be added
+        np.random.shuffle(pos_inds)
+        # add original labels and mutations with the original shuffled
+        new_labels = labels + labels[pos_inds]
+        new_mutations = mutations + mutations[pos_inds]
+
+        new_data = []
+        to_del = []
+        # extract the mutations that are added and check if one contains the same mutation and add this index to to_del
+        # to later remove this augmentations
+        for cj, (j, k) in enumerate(zip(data, data[pos_inds])):
+            pos_new_data = np.sort(j.split(",") + k.split(","))
+            # check the new data if it has the same mutation more than once - if so add its index to the to del(ete) ids
+            if len(np.unique(pos_new_data)) != new_mutations[cj]:
+                to_del += [cj]
+            new_data += [",".join(pos_new_data)]
+        # remove the "wrong" augmentations
+        new_labels = np.delete(new_labels, to_del)
+        new_mutations = np.delete(new_mutations, to_del)
+        new_data = np.asarray(new_data)
+        new_data = np.delete(new_data, to_del)
+        nd += new_data.tolist()
+        nl += new_labels.tolist()
+        nm += new_mutations.tolist()
+
+    # remove duplicated entries
+    if un:
+        _, uni = np.unique(nd, return_index=True)
+        nd = np.asarray(nd)[uni]
+        nl = np.asarray(nl)[uni]
+        nm = np.asarray(nm)[uni]
+
+    return np.asarray(nd), np.asarray(nl), np.asarray(nm)
+
+
 def data_generator_vals(wt_seq):
     """returns values/ numpy arrays based on the wt_seq for the DataGenerator\n
         :parameter
@@ -83,7 +148,7 @@ def data_generator_vals(wt_seq):
 
 
 def progress_bar(num_batches, bar_len, batch):
-    """prints progress bar with percentage that can be overwritten with a following print statement
+    """prints progress bar with percentage that can be overwritten with a subsequent print statement
         - should be implemented with on_train_batch_end\n
         :parameter
             num_batches: int\n
@@ -355,7 +420,7 @@ class CustomPrint(keras.callbacks.Callback):
 
     def on_train_end(self, logs=None):
         if self.save:
-            self.model.save(self.model_d+"_end")
+            self.model.save(self.model_d + "_end")
         print("Overall best epoch stats")
         print("Best training epoch: {} with a loss of {:0.4f}".format(str(self.bl_epoch), self.best_loss))
         print("Best validation epoch: {} with a loss of {:0.4f}".format(str(self.bvl_epoch), self.best_val_loss))
@@ -381,7 +446,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
             write_to_log=True, silent=False, extensive_test=False, save_model=False, load_trained_weights=None,
             no_nan=True, settings_test=False, p_dir="", split_def=None, validate_training=False, lr=0.001,
             transfer_conv_weights=None, train_conv_layers=False, write_temp=False, split_file_creation=False,
-            use_split_file=None):
+            use_split_file=None, daug=False):
     """ runs all functions to train a neural network\n
     :parameter\n
     - architecture_name: str\n
@@ -483,6 +548,8 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
       if not None this needs the file_path to a directory containing splits specifying
       the 'train', 'tune', 'test' indices - these files need to be named 'train.txt', 'tune.txt' and 'test.txt'
       otherwise splits of the tsv file according to split_def will be used\n
+    - daug: bool (optional - default True)\n
+      True to use data augmentation\n
     :return\n
         None\n
     """
@@ -578,21 +645,54 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         # number of mutations per variant
         train_mutations = data_dict["train_mutations"]
 
-        # -------------------------------------------------------------------
-        """
-        from test import augment
-        decay = 0.2
-        for i in range(3):  
-            # data augmentation
-            aug_data, aug_labels, aug_mutations = augment(train_data, train_labels, train_mutations, runs=4)
-            # concatenation of original and augmented train data
-            train_data = np.concatenate((train_data, aug_data))
-            train_labels = np.concatenate((train_labels, aug_labels * (1 - i * decay)))
-            train_mutations = np.concatenate((train_mutations, aug_mutations))
+        if daug:
+            # original data
+            otd = data_dict["train_data"]
+            otl = data_dict["train_labels"]
+            otm = data_dict["train_mutations"]
+            ot_len = len(otl)
 
-        print("new train split size:", len(train_data))
-        """
-        # -------------------------------------------------------------------
+            # data augmentation
+            decay = 0.2
+            cap = 20000
+            for i in range(3):
+                aug_data, aug_labels, aug_mutations = augment(train_data, train_labels, train_mutations, runs=4)
+                # concatenation of original and augmented train data
+                train_data = np.concatenate((train_data, aug_data))
+                train_labels = np.concatenate((train_labels, aug_labels * (1 - i * decay)))
+                train_mutations = np.concatenate((train_mutations, aug_mutations))
+            nt_len = len(train_labels)
+
+            # shuffle augmented data
+            s_inds = np.arange(nt_len)
+            np.random.shuffle(s_inds)
+            train_data = train_data[s_inds]
+            train_labels = train_labels[s_inds]
+            train_mutations = train_mutations[s_inds]
+            # only use as much fake data as needed to get cap# of training data or all if not enough could be created
+            if nt_len + ot_len > cap:
+                # number of augmented data needed to get cap# of training data points
+                need = cap - ot_len
+                print("{} augmented data points created".format(str(len(train_data))))
+                if need < 0:
+                    need = 0
+                print("{} of them and {} original data points used in training".format(str(need), str(ot_len)))
+                if need > 0:
+                    train_data = np.concatenate((train_data[:need], otd))
+                    train_labels = np.concatenate((train_labels[:need], otl))
+                    train_mutations = np.concatenate((train_mutations[:need], otm))
+                # if enough original data is available
+                else:
+                    train_data = otd
+                    train_labels = otl
+                    train_mutations = otm
+            # use all the augmented data if it + original data is less than cap#
+            else:
+                train_data = np.concatenate((train_data, otd))
+                train_labels = np.concatenate((train_labels, otl))
+                train_mutations = np.concatenate((train_mutations, otm))
+
+            print("new train split size:", len(train_data))
 
         # data to validate during training
         test_data = data_dict["tune_data"]
@@ -779,7 +879,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
 
             # saves model in result path
             # if save_model:
-                # model.save(create_folder(result_dir, name), name)
+            # model.save(create_folder(result_dir, name), name)
 
             # training and validation plot of the training
             if validate_training:
