@@ -11,11 +11,11 @@ from d4_utils import protein_settings
 def arg_dict(p_dir=""):
     """creates a parameter dict for run_all with the use of argparse
         :parameter
-            p_dir: str, (optional - default "")\n
-            directory where the datasets are stored\n
+            - p_dir: str, (optional - default "")\n
+              directory where the datasets are stored\n
         :return
-            d: dict\n
-            dictionary specifying all parameters for run_all in d4batch_driver.py\n
+            - d: dict\n
+              dictionary specifying all parameters for run_all in d4batch_driver.py\n
         """
     pos_models = [simple_model, simple_model_norm, simple_model_imp, create_simple_model, simple_model_gap,
                   simple_stride_model_test, shrinking_res, inception_res, deeper_res, res_net, vgg, simple_longer,
@@ -126,6 +126,8 @@ def arg_dict(p_dir=""):
                         help="set flag to not store the best weights but the weights of the last training epoch")
     parser.add_argument("-wl", "--write_to_log", action="store_false",
                         help="set flag to not write settings usd for training to the log file - NOT recommended")
+    parser.add_argument("-da", "--data_aug", action="store_true",
+                        help="set flag to use data augmentation")
 
     args = parser.parse_args()
     protein_name = args.protein_name
@@ -222,9 +224,78 @@ def arg_dict(p_dir=""):
          "use_split_file": use_split_file_ex,
          "validate_training": args.validate_training,
          "es_restore_bw": args.restore_bw,
-         "write_to_log": args.write_to_log}
+         "write_to_log": args.write_to_log,
+         "daug": args.data_aug}
+    return d
+
+
+def optimize_dict(p_dir=""):
+    """creates a parameter dict for run_all with the use of argparse
+            :parameter
+                - p_dir: str, (optional - default "")\n
+                  directory where the datasets are stored\n
+            :return
+                - d: dict\n
+                  dictionary specifying all parameters for optimize_protein in d4_prediction.py\n
+            """
+
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("-pf", "--protein_pdb", type=str, required=True,
+                        help="str: filepath to the pdb file of the protein of interest")
+    parser.add_argument("-mf", "--model_filepath", type=str, required=True,
+                        help="str: filepath to the model that was trained on data of the protein of interest")
+    parser.add_argument("-s", "--sequence", type=str, required=True,
+                        help="str: amino acid sequence of the protein of interest e.g. 'AVLI...'")
+    parser.add_argument("-ohg", "--opt_hill_gen", type=str, required=False, default="hill",
+                        help="str: 'hill' for hill climb, 'blosum' for blosum search, 'genetic' "
+                             "for genetic knapsack search")
+    parser.add_argument("-b", "--budget", type=int, required=False, default=200,
+                        help="int: number of iterations the algorithm should run its search")
+    parser.add_argument("-tm", "--target_mutations", type=int, required=False, default=None,
+                        help="int: maximum number of mutations to introduce - no limit if set to None")
+    parser.add_argument("-d", "--dist_th", type=int, required=False, default=20,
+                        help="int: distance threshold used when training the model")
+    parser.add_argument("-mp", "--mutation_probability", type=float, required=False, default=0.2,
+                        help="float: probability that a point mutation happens")
+    parser.add_argument("-cp", "--crossover_probability", type=float, required=False, default=0.5,
+                        help="float: probability that a crossover between tournament winners happens")
+    parser.add_argument("-cn", "--crossover_num", type=int, required=False, default=5,
+                        help="int: how many crossovers are attempted")
+    parser.add_argument("-np", "--num_parents", type=int, required=False, default=200,
+                        help="int: population size")
+    parser.add_argument("-im", "--init_mut", type=int, required=False, default=2,
+                        help="int: number of mutations in the first parent generation")
+    parser.add_argument("-ts", "--tournament_size", type=int, required=False, default=8,
+                        help="int: number of contenders in a tournament")
+    parser.add_argument("-tn", "--tournament_num", type=int, required=False, default=10,
+                        help="int: number of tournaments per round")
+    parser.add_argument("-p", "--course_plot", action="store_true",
+                        help="set flag to show a plot how the score evolved over time")
+    parser.add_argument("-sp", "--save_plot", type=str, required=False, default=None,
+                        help="str: filepath where the plot should be saved to save the plot")
+
+    args = parser.parse_args()
+
+    d = {"pdb_filepath": os.path.join(p_dir, args.protein_pdb),
+         "model_filepath": os.path.join(p_dir, args.model_filepath),
+         "seq": args.sequence,
+         "alg": args.opt_hill_gen,
+         "budget": args.budget,
+         "target_mutations": args.target_mutations,
+         "mutation_probability": args.mutation_probability,
+         "crossover_probability": args.crossover_probability,
+         "crossover_num": args.crossover_num,
+         "num_parents": args.num_parents,
+         "init_mut": args.init_mut,
+         "tournament_size": args.tournament_size,
+         "tournament_num": args.tournament_num,
+         "show_score_course": args.course_plot,
+         "save_plot": args.save_plot,
+         "dist_th": args.dist_th}
+
     return d
 
 
 if __name__ == "__main__":
-    pass
+    # arg_dict()
+    optimize_dict()
