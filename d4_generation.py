@@ -25,23 +25,23 @@ np.set_printoptions(threshold=sys.maxsize)
 def augment(data, labels, mutations, runs=3, un=False):
     """creates pseudo data from original data by adding it randomly\n
         :parameter
-            data: ndarray of strings\n
-            array of variants like ['S1A', 'D35T,V20R', ...]\n
-            labels: ndarray of floats or ints\n
-            array with the corresponding scores of the provided dataa\n
-            mutations: ndarray of ints\n
-            array with number of mutations of each variant\n
-            runs: int (optional - default 3)\n
-            how often the augmentation should be performed\n
-            un: bool (optional - default False)\n
-            whether duplicated "new" mutations should be removed\n
+            - data: ndarray of strings\n
+              array of variants like ['S1A', 'D35T,V20R', ...]\n
+            - labels: ndarray of floats or ints\n
+              array with the corresponding scores of the provided dataa\n
+            - mutations: ndarray of ints\n
+              array with number of mutations of each variant\n
+            - runs: int (optional - default 3)\n
+              how often the augmentation should be performed\n
+            - un: bool (optional - default False)\n
+              whether duplicated "new" mutations should be removed\n
         :return
-            nd: ndarray of strings\n
-            augmented version of data\n
-            nl: ndarray of floats or ints\n
-            augmented version of labels\n
-            nm: ndarray of ints\n
-            augmented version of mutations\n
+            - nd: ndarray of strings\n
+              augmented version of data\n
+            - nl: ndarray of floats or ints\n
+              augmented version of labels\n
+            - nm: ndarray of ints\n
+              augmented version of mutations\n
             """
 
     # all possible indices of the data
@@ -64,7 +64,7 @@ def augment(data, labels, mutations, runs=3, un=False):
         # to later remove this augmentations
         for cj, (j, k) in enumerate(zip(data, data[pos_inds])):
             pos_new_data = np.sort(j.split(",") + k.split(","))
-            # check the new data if it has the same mutation more than once - if so add its index to the to del(ete) ids
+            # check the new data if it has the same mutation more than once - if so add its index to the to_del(ete) ids
             if len(np.unique(pos_new_data)) != new_mutations[cj]:
                 to_del += [cj]
             new_data += [",".join(pos_new_data)]
@@ -90,7 +90,8 @@ def augment(data, labels, mutations, runs=3, un=False):
 def data_generator_vals(wt_seq):
     """returns values/ numpy arrays based on the wt_seq for the DataGenerator\n
         :parameter
-            wt_seq: wild type sequence as list eg ['A', 'V', 'L']\n
+            - wt_seq: str\n
+              wild type sequence as str eg 'AVLI'\n
         :returns
             - hm_pos_vals: ndarray of int\n
               values for interactions with valid hydrogen bonding partners\n
@@ -151,39 +152,32 @@ def progress_bar(num_batches, bar_len, batch):
     """prints progress bar with percentage that can be overwritten with a subsequent print statement
         - should be implemented with on_train_batch_end\n
         :parameter
-            num_batches: int\n
-            number of batches per epoch
-            bar_len: int\n
-            length of the progress bar\b
-            batch: int\n
-            number of the current batch
+            - num_batches: int\n
+              number of batches per epoch
+            - bar_len: int\n
+              length of the progress bar\b
+            - batch: int\n
+              number of the current batch
         :return
             None\n"""
-    # number of '=' per batch in the progress bar
-    split_size = bar_len // num_batches
-    o_nb = num_batches
-    o_ba = batch
+    try:
+        # current bar length - how many '=' the bar needs to have at current batch
+        cur_bar = int(bar_len * (bar_len * (batch / bar_len) / num_batches))  # int(bar_len * (batch / batches))
 
-    # if num_batches is bigger than bar_len - bar gets updated update_freq times with the same values for compensation
-    if split_size == 0:
-        update_freq = num_batches / bar_len
-        num_batches = np.floor(num_batches / update_freq).astype(int)
-        batch = np.floor(batch / update_freq).astype(int)
-        split_size = 1
+        # to get a complete bar at the end
+        if batch == num_batches-1:
+            cur_bar = bar_len
+        # printing the progress bar
+        bar_string = "\r[{}>{}] {:0.0f}%".format("=" * cur_bar, " " * (bar_len - cur_bar),
+                                                 (batch + 1) / num_batches * 100)
+        print(bar_string, end="")
 
-    # list with number of '=' to print
-    splits = np.arange(split_size, bar_len)[::split_size]
-    splits = np.append(splits, bar_len)
-
-    # progress bar with percentage
-    bar_string = "\r[{}>{}] {:0.0f}%".format("=" * splits[batch], " " * (bar_len - splits[batch]),
-                                             (batch + 1) / num_batches * 100)
-    print(bar_string, end="")
-
-    # set cursor to start of the line to overwrite progress bar when epoch is done
-    if o_nb - o_ba == 1:
-        print("\r[{}>] 100%".format("=" * bar_len), end="")
-        print("\r\r", end="")
+        # set cursor to start of the line to overwrite progress bar when epoch is done
+        if num_batches - batch == 1:
+            print("\r[{}>] 100%".format("=" * bar_len), end="")
+            print("\r\r", end="")
+    except Exception as e:
+        print(e, "led to an error in the progress bar display")
 
 
 class DataGenerator(keras.utils.Sequence):
@@ -275,7 +269,7 @@ class DataGenerator(keras.utils.Sequence):
 
     def __len__(self):
         """number of batches per epoch"""
-        return int(np.floor(len(self.features) / self.batch_size))  # ceil before
+        return int(np.ceil(len(self.features) / self.batch_size))
 
     def __getitem__(self, idx):
         """Generate one batch of data"""
@@ -296,10 +290,12 @@ class DataGenerator(keras.utils.Sequence):
 
     def __batch_variants(self, features_to_encode, corresponding_labels):
         """creates interaction matrices of variants for a batch"""
-        batch_features = np.empty((self.batch_size, *self.dim, self.n_channels))
-        batch_labels = np.empty(self.batch_size, dtype=float)
+        first_dim = corresponding_labels.shape[0]
+        batch_features = np.empty((first_dim, *self.dim, self.n_channels))
+        batch_labels = np.empty(first_dim, dtype=float)
 
         for ci, i in enumerate(features_to_encode):
+            # variant i encoded in 6 matrices
             final_matrix = model_interactions(feature_to_encode=i, interaction_matrix=self.interaction_matrix,
                                               index_matrix=self.mat_index, factor_matrix=self.factor,
                                               distance_matrix=self.dist_mat, dist_thrh=self.dist_th,
@@ -345,11 +341,20 @@ class CustomPrint(keras.callbacks.Callback):
     """prints custom stats during training\n
     ...\n
     Attributes:\n
+    - num_batches: int\n
+      number of batches per epoch\n
     - epoch_print: int, (optional - default 1)\n
       interval at which loss and the change in loss should be printed\n
     - epoch_stat_print: int, (optional - default 10)\n
       interval at which best train epoch, the best validation epoch and the difference in the loss between them
       should be printed\n
+    - pb_len: int, (optional - default 60)\n
+      length of the progress bar\n
+    - model_d: str, (optional - default '')\n
+      filepath where the models should be saved\n
+    - model_save_interval: int, (optional - default 5)\n
+      minimum nuber of epochs to pass to save the model - only gets saved when the validation loss has improved 
+      since the last time the model was saved\n
     """
 
     def __init__(self, num_batches, epoch_print=1, epoch_stat_print=10, pb_len=60, model_d="", model_save_interval=5,
@@ -383,6 +388,7 @@ class CustomPrint(keras.callbacks.Callback):
         progress_bar(num_batches=self.num_batches, bar_len=self.pb_len, batch=batch)
 
     def on_epoch_end(self, epoch, logs=None):
+        # loss and validation loss of this epoch
         cur_loss = logs["loss"]
         cur_val_loss = logs["val_loss"]
 
@@ -391,21 +397,24 @@ class CustomPrint(keras.callbacks.Callback):
                   "seconds per epoch: {:0.4f}\n".format(str(epoch), cur_loss, cur_val_loss, cur_loss - self.latest_loss,
                                                         cur_val_loss - self.latest_val_loss,
                                                         time.time() - self.start_time_epoch))
-
+        # update the latest loss and latest validation loss to loss of this epoch
         self.latest_loss = cur_loss
         self.latest_val_loss = cur_val_loss
-
+        # update the best loss if loss of current epoch was better
         if cur_loss < self.best_loss:
             self.best_loss = cur_loss
             self.bl_epoch = epoch
+        # update the best validation loss if current epoch was better
         if cur_val_loss < self.best_val_loss:
             self.best_val_loss = cur_val_loss
             self.bvl_epoch = epoch
+            # save model if the validation loss improved since the last time it was saved and min model_save_interval
+            # epochs have passed
             if self.save:
                 if epoch - self.epoch_since_model_save >= self.model_save_interval:
                     self.model.save(self.model_d, overwrite=True)
                     self.epoch_since_model_save = epoch
-
+        # print stats of the epoch after the given epoch_stat_print interval
         if epoch % self.epoch_stat_print == 0 and epoch > 0:
             d = np.abs(self.best_loss - self.best_val_loss)
             if d != 0. and self.best_val_loss != 0.:
@@ -419,6 +428,7 @@ class CustomPrint(keras.callbacks.Callback):
                   .format(str(self.bl_epoch), str(self.bvl_epoch), d, dp, d_cl, d_cvl))
 
     def on_train_end(self, logs=None):
+        # save model in the end and print overall training stats
         if self.save:
             self.model.save(self.model_d + "_end")
         print("Overall best epoch stats")
@@ -770,7 +780,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
             # summary of the new model
             model.summary()
 
-        model.compile(optimizer(learning_rate=lr), loss="mean_absolute_error", metrics=["mae"], run_eagerly=True)
+        model.compile(optimizer(learning_rate=lr), loss="mean_absolute_error", metrics=["mae"])
 
         all_callbacks = []
         # deploying early stop parameters
@@ -796,7 +806,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
 
         # custom stats print
         # number of batches needed for status bar increments
-        n_batches = int(np.floor(len(train_data) / batch_size))
+        n_batches = int(np.ceil(len(train_data) / batch_size))
         all_callbacks += [CustomPrint(num_batches=n_batches, epoch_print=1, epoch_stat_print=10,
                                       model_d=recent_model_dir, save=save_model)]
 
@@ -828,7 +838,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         test_params = {'interaction_matrix': comb_bool,
                        'dim': comb_bool.shape,
                        'n_channels': channel_num,
-                       'batch_size': 1,
+                       'batch_size': batch_size,
                        'first_ind': first_ind,
                        'hm_converted': hm_converted,
                        'hm_pos_vals': hm_pos_vals,
@@ -876,10 +886,6 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
                     else:
                         w_log.write(i)
             w_log.close()
-
-            # saves model in result path
-            # if save_model:
-            # model.save(create_folder(result_dir, name), name)
 
             # training and validation plot of the training
             if validate_training:
