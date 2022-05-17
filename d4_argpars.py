@@ -240,21 +240,29 @@ def optimize_dict(p_dir=""):
             """
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("-ohg", "--opt_hill_gen", type=str, required=False, default="hill",
+                        help="str: 'hill' for hill climb, 'blosum' for blosum search, 'genetic' "
+                             "for genetic algorithm and 'particle_swarm' for particle swarm search")
+    parser.add_argument("-s", "--sequence", type=str, required=True,
+                        help="str: amino acid sequence of the protein of interest e.g. 'AVLI...'")
     parser.add_argument("-pf", "--protein_pdb", type=str, required=True,
                         help="str: filepath to the pdb file of the protein of interest")
     parser.add_argument("-mf", "--model_filepath", type=str, required=True,
                         help="str: filepath to the model that was trained on data of the protein of interest")
-    parser.add_argument("-s", "--sequence", type=str, required=True,
-                        help="str: amino acid sequence of the protein of interest e.g. 'AVLI...'")
-    parser.add_argument("-ohg", "--opt_hill_gen", type=str, required=False, default="hill",
-                        help="str: 'hill' for hill climb, 'blosum' for blosum search, 'genetic' "
-                             "for genetic knapsack search")
     parser.add_argument("-b", "--budget", type=int, required=False, default=200,
                         help="int: number of iterations the algorithm should run its search")
-    parser.add_argument("-tm", "--target_mutations", type=int, required=False, default=None,
-                        help="int: maximum number of mutations to introduce - no limit if set to None")
     parser.add_argument("-d", "--dist_th", type=int, required=False, default=20,
                         help="int: distance threshold used when training the model")
+    parser.add_argument("-p", "--course_plot", action="store_true",
+                        help="set flag to show a plot how the score evolved over time")
+    parser.add_argument("-sp", "--save_plot", type=str, required=False, default=None,
+                        help="str: filepath where the plot should be saved to save the plot")
+
+    parser.add_argument("-tm", "--target_mutations", type=int, required=False, default=None,
+                        help="int: maximum number of mutations to introduce - no limit if set to None")
+    parser.add_argument("-st", "--start_temp", type=int, required=False, default=None,
+                        help="int: start temperature - when used simulated annealing is used")
+
     parser.add_argument("-mp", "--mutation_probability", type=float, required=False, default=0.2,
                         help="float: probability that a point mutation happens")
     parser.add_argument("-cp", "--crossover_probability", type=float, required=False, default=0.5,
@@ -269,31 +277,47 @@ def optimize_dict(p_dir=""):
                         help="int: number of contenders in a tournament")
     parser.add_argument("-tn", "--tournament_num", type=int, required=False, default=10,
                         help="int: number of tournaments per round")
-    parser.add_argument("-p", "--course_plot", action="store_true",
-                        help="set flag to show a plot how the score evolved over time")
-    parser.add_argument("-sp", "--save_plot", type=str, required=False, default=None,
-                        help="str: filepath where the plot should be saved to save the plot")
+
+    parser.add_argument("-ip", "--init_particles", type=int, required=False, default=200,
+                        help="int: start temperature - when used simulated annealing is used")
+    parser.add_argument("-dp", "--dir_pressure", type=float, required=False, default=0.5,
+                        help="float: fraction (<= 1.) of the global best solution should be transferred to all "
+                             "particles per iteration")
+    parser.add_argument("-di", "--diversity", type=int, required=False, default=2,
+                        help="int: how many random mutations per particle should be introduced at the start")
+
+    parser.add_argument("-rs", "--random_seed", type=int, required=False, default=None,
+                        help="numpy random seed")
 
     args = parser.parse_args()
 
-    d = {"pdb_filepath": os.path.join(p_dir, args.protein_pdb),
-         "model_filepath": os.path.join(p_dir, args.model_filepath),
-         "seq": args.sequence,
-         "alg": args.opt_hill_gen,
-         "budget": args.budget,
-         "target_mutations": args.target_mutations,
-         "mutation_probability": args.mutation_probability,
-         "crossover_probability": args.crossover_probability,
-         "crossover_num": args.crossover_num,
-         "num_parents": args.num_parents,
-         "init_mut": args.init_mut,
-         "tournament_size": args.tournament_size,
-         "tournament_num": args.tournament_num,
-         "show_score_course": args.course_plot,
-         "save_plot": args.save_plot,
-         "dist_th": args.dist_th}
+    main_d = {"seq": args.sequence,
+              "pdb_filepath": os.path.join(p_dir, args.protein_pdb),
+              "model_filepath": os.path.join(p_dir, args.model_filepath),
+              "budget": args.budget,
+              "dist_th": args.dist_th,
+              "show_score_course": args.course_plot,
+              "save_plot": args.save_plot}
 
-    return d
+    hill_dict = {"target_mutations": args.target_mutations,
+                 "start_temp": args.start_temp}
+
+    blosum_dict = {"target_mutations": args.target_mutations}
+
+    genetic_dict = {"mutation_probability": args.mutation_probability,
+                    "crossover_probability": args.crossover_probability,
+                    "crossover_num": args.crossover_num,
+                    "num_parents": args.num_parents,
+                    "init_mut": args.init_mut,
+                    "target_mutations": args.target_mutations,
+                    "tournament_size": args.tournament_size,
+                    "tournament_num": args.tournament_num}
+
+    particle_dict = {"init_particles": args.init_particles,
+                     "dir_pressure": args.dir_pressure,
+                     "diversity": args.diversity}
+
+    return main_d, args.opt_hill_gen, hill_dict, blosum_dict, genetic_dict, particle_dict, args.random_seed
 
 
 if __name__ == "__main__":
