@@ -243,18 +243,7 @@ def plot_reruns(protein_name, result_path=None):
             :return
                 None"""
     if result_path is None:
-        result_path = "result_files/rerun_results/{}_results.csv".format(protein_name.lower())
-
-    # read data and convert it to ndarrays
-    data = pd.read_csv(result_path, delimiter=",")
-    mse = np.asarray(data["mse"])
-    pearson = np.asarray(data["pearson_r"])
-    spearman = np.asarray(data["spearman_r"])
-
-    # split for not augmented and augmented
-    ana_mse = np.asarray(np.split(mse, 2))
-    ana_pearson = np.asarray(np.split(pearson, 2))
-    ana_spearman = np.asarray(np.split(spearman, 2))
+        result_path = "result_files/rr3_results/{}_results.csv".format(protein_name.lower())
 
     # get the sequence convolution data to compare the runs to
     g_data = pd.read_csv("nononsense/{}_test_formatted.txt".format(protein_name), delimiter=",")
@@ -266,6 +255,17 @@ def plot_reruns(protein_name, result_path=None):
     g_split_mses = np.median(np.split(g_mses, 3), axis=0)
     g_split_pearsons = np.median(np.split(g_pearsons, 3), axis=0)
     g_split_spearmans = np.median(np.split(g_spearmans, 3), axis=0)
+
+    # read data and convert it to ndarrays
+    data = pd.read_csv(result_path, delimiter=",")
+    mse = np.asarray(data["mse"])
+    pearson = np.asarray(data["pearson_r"])
+    spearman = np.asarray(data["spearman_r"])
+
+    # split for not augmented and augmented
+    ana_mse = np.asarray(np.split(mse, 2))
+    ana_pearson = np.asarray(np.split(pearson, 2))
+    ana_spearman = np.asarray(np.split(spearman, 2))
 
     fig, axs = plt.subplots(2, 3)
     # different training set sizes
