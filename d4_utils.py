@@ -1,8 +1,10 @@
+import os
+import warnings
+
 import numpy as np
 import pandas as pd
-import os
+
 import tensorflow as tf
-import warnings
 
 from d4_models import simple_model, simple_model_norm, simple_model_imp, create_simple_model, simple_model_gap, \
     simple_stride_model_test, shrinking_res, inception_res, deeper_res, res_net, vgg, simple_longer, \
@@ -12,14 +14,14 @@ from d4_models import simple_model, simple_model_norm, simple_model_imp, create_
 def protein_settings(protein_name, data_path="./datasets/protein_settings_ori.txt"):
     """gets different setting for the protein of interest from the protein_settings file\n
         :parameter
-            protein_name: str\n
-            name of the protein in the protein_settings file
-            data_path: str\n
-            path to the protein_settings.txt file
+            - protein_name: str\n
+              name of the protein in the protein_settings file
+            - data_path: str\n
+              path to the protein_settings.txt file
         :return
-            protein_settings_dict: dict\n
-            dictionary containing sequence, score, variants, number_mutations, offset column names
-            :key sequence, score, variants, number_mutations, offset\n"""
+            - protein_settings_dict: dict\n
+              dictionary containing sequence, score, variants, number_mutations, offset column names
+              :key sequence, score, variants, number_mutations, offset\n"""
     # all data of the different proteins
     settings = pd.read_csv(data_path, delimiter=",")
     # for which name to look for in the file
@@ -34,17 +36,18 @@ def protein_settings(protein_name, data_path="./datasets/protein_settings_ori.tx
 def create_folder(parent_dir, dir_name, add=""):
     """creates directory for current experiment\n
         :parameter
-            parent_dir: str\n
-            path where the new directory should be created\n
-            dir_name: str\n
-            name of the new directory\n
-            add: str, (optional - default "")\n
-            add to the name of the new directory\n
+            - parent_dir: str\n
+              path where the new directory should be created\n
+            - dir_name: str\n
+              name of the new directory\n
+            - add: str, (optional - default "")\n
+              add to the name of the new directory\n
         :return
-            path: str\n
-            path where the folder was created\n"""
+            - path: str\n
+              path where the folder was created\n"""
     # replace "/" in the directory name to avoid the creation of a deeper folder
     if "/" in dir_name:
+        warnings.warn("’/’ in dir_name was removed to avoid the creation of a deeper folder")
         dir_name = dir_name.replace("/", "_").replace("\\", "_")
     directory = dir_name + add
     # create the file if it doesn't exist already
@@ -57,12 +60,12 @@ def create_folder(parent_dir, dir_name, add=""):
 def log_file(file_path, write_str, optional_header=""):
     """reads previous contend and writes it and additional logs info's specified in write_str to log file\n
         :parameter
-            file_path: str\n
-            path to log file\n
-            write_str: str\n
-            string that should be written to the log file\n
-            optional_header: str, (optional - default "")\n
-            optional header to indicate the column names (',' separated)\n
+            - file_path: str\n
+              path to log file\n
+            - write_str: str\n
+              string that should be written to the log file\n
+            - optional_header: str, (optional - default "")\n
+              optional header to indicate the column names (',' separated)\n
         :return
             None"""
     try:
@@ -95,18 +98,19 @@ def compare_get_settings(run_name1, run_name2=None,
         prints the differences\n
         can also be used to display the differences in the results from results.csv of two runs\n
         :parameter
-            run_name1: str\n
-            name of the row of interest\n
-            run_name2: str or None, (optional - None)\n
-            name of the row to compare with\n
-            file_path1: str, optional\n
-            path to the file that should be parsed\n
-            file_path2: str, optional\n
-            path to the file that should be parsed for comparison (can be the same or a different one than file_path1\n
-            column_to_search1: str, (optional - default 'name')\n
-            specifies the column in which the run_name1 should be searched\n
-            column_to_search2: str, (optional - default 'name')\n
-            specifies the column in which the run_name2 should be searched\n
+            - run_name1: str\n
+              name of the row of interest\n
+            - run_name2: str or None, (optional - None)\n
+              name of the row to compare with\n
+            - file_path1: str, optional\n
+              path to the file that should be parsed\n
+            - file_path2: str, optional\n
+              path to the file that should be parsed for comparison (can be the same or a different one than
+              file_path1\n
+            - column_to_search1: str, (optional - default 'name')\n
+              specifies the column in which the run_name1 should be searched\n
+            - column_to_search2: str, (optional - default 'name')\n
+              specifies the column in which the run_name2 should be searched\n
         :return
             None"""
     data1 = pd.read_csv(file_path1, delimiter=",")
@@ -145,11 +149,11 @@ def compare_get_settings(run_name1, run_name2=None,
 def get_func(name):
     """creates a function from a string\n
         :parameter
-            name:str\n
-            name of the function of interest\n
+            - name:str\n
+              name of the function of interest\n
         :return
-            method: function object\n
-            the function object ot the function of interest"""
+            - method: function object\n
+              the function object ot the function of interest"""
     possibles = globals().copy()
     possibles.update(locals())
     method = possibles.get(name)
@@ -158,19 +162,18 @@ def get_func(name):
 
 def run_dict(run_name, column_to_search="name", data_path="./result_files/log_file.csv"):
     """creates a dictionary from data_path that can be used as input for the run_all at d4batch_driver.py\n
-       uses adam optimizer if not specified\n
         :parameter
-            run_name: str\n
-            name of the run whose parameters should be used\n
-            column_to_search: str, (optional - "name")\n
-            specifies the column in which the run_name should be searched\n
-            file_path: str, optional\n
-            path to the file that should be parsed\n
-            opt: class object\n
-            optimizer to use\n
+            - run_name: str\n
+              name of the run whose parameters should be used\n
+            - column_to_search: str, (optional - "name")\n
+              specifies the column in which the run_name should be searched\n
+            - file_path: str, optional\n
+              path to the file that should be parsed\n
+            - opt: class object\n
+              optimizer to use\n
         :return
-            pre_dict: dict\n
-            dictionary containing run_all parameters"""
+            - pre_dict: dict\n
+              dictionary containing run_all parameters"""
 
     # data for the dictionary
     data = pd.read_csv(data_path, delimiter=",")
@@ -186,9 +189,7 @@ def run_dict(run_name, column_to_search="name", data_path="./result_files/log_fi
     for i in range(len(pre_dict)):
         value_i = pre_values[i]
         value_i_type = type(value_i)
-        if any([value_i_type == int, value_i_type == bool, value_i_type == float]):
-            pass
-        else:
+        if not any([value_i_type == int, value_i_type == bool, value_i_type == float]):
             if value_i.isdecimal():
                 pre_dict[pre_keys[i]] = int(value_i)
             elif value_i == "None":
@@ -220,10 +221,10 @@ def run_dict(run_name, column_to_search="name", data_path="./result_files/log_fi
 def clear_log(file_path, text=None):
     """clears or creates log file\n
         :parameter
-            file_path: str\n
-            path ot log file\n
-            text: str or None, (optional - default None)\n
-            text that should be written to the file if None nothing gets written to the file\n"""
+            - file_path: str\n
+              path ot log file\n
+            - text: str or None, (optional - default None)\n
+              text that should be written to the file if None nothing gets written to the file\n"""
     a = open(file_path, "w+")
     if text is not None:
         a.write(text)
@@ -233,10 +234,10 @@ def clear_log(file_path, text=None):
 def remove_csv_column(file_path, col_name=None):
     """removes one or more columns of a csv file\n
         :parameter
-            file_path: str\n
-            path to csv file where columns should be removed\n
-            col_name: tuple of one or multiple strings\n
-            column header(s) that should be removed\n
+            - file_path: str\n
+              path to csv file where columns should be removed\n
+            - col_name: tuple of one or multiple strings\n
+              column header(s) that should be removed\n
         :return
             None
         """
@@ -246,6 +247,92 @@ def remove_csv_column(file_path, col_name=None):
     new_content = content.drop(columns=[*col_name], axis=1)
     # write to file
     new_content.to_csv(file_path, index=False)
+
+
+def read_blosum():
+    """read blosum matrix file from https://www.ncbi.nlm.nih.gov/Class/FieldGuide/BLOSUM62.txt and modify it\n
+        :parameter
+            None
+        :returns
+            - blosum_matrix: 2D ndarray of ints\n
+              blosum matrix with 0 filled diagonal
+            - blosum_keys: list of str\n
+              which row/ column in the matrix corresponds to which amino acid
+            """
+    # read the file
+    data = open("datasets/BLOSUM62.txt", "r")
+    lines = data.readlines()
+    data.close()
+    line_counter = 0
+    value_lines = []
+    keys = []
+    for i in lines:
+        line = i.strip()
+        if not line.startswith("#"):
+            # extract which amino acid is in which row / column
+            if line_counter == 0:
+                keys += line.split("  ")[:-4]
+            else:
+                # get the matrix and get rid of spaces
+                data_line = line.split(" ")
+                read_data_line = []
+                for k in data_line:
+                    kstrip = k.strip()
+                    if len(kstrip) > 0:
+                        read_data_line += [kstrip]
+                value_lines += [read_data_line[1:-4]]
+            line_counter += 1
+    # create 2d ndarray an fill diagonal with 0
+    blosum_matrix = np.asarray(value_lines, dtype=int)
+    blosum_matrix = blosum_matrix[:-4]
+    np.fill_diagonal(blosum_matrix, 0)
+    blosum_keys = np.asarray(keys)
+    return blosum_matrix, blosum_keys
+
+
+def present_matrix(matrix, col_row):
+    """prints a given square matrix where columns and rows have the same one letter head in an easy readable way\n
+        :parameter
+            - matrix: 2D ndarray of ints or floats\n
+              substitution matrix\n
+            - col_row: list of str\n
+              name of the columns/ rows (usually the amino acid one-letter code)\n
+        :return
+            None"""
+
+    max_len = 0
+    for i in matrix.flatten().astype(str):
+        l = len(i)
+        if l > max_len:
+            max_len = l
+    inter_cr = []
+    for i in col_row:
+        dcr = max_len - len(i)
+        inter_cr += [" " * dcr + i]
+    print(" " * (max_len - 1), " ".join(inter_cr))
+
+    for ci, i in enumerate(matrix.astype(str)):
+        inter_i = [col_row[ci]]
+        for j in i:
+            dlj = max_len - len(j)
+            inter_i += [" " * dlj + j]
+        print(" ".join(inter_i))
+
+
+def star_message():
+    """prints start message\n"""
+    print("""
+                                o===o     o    o 
+                                ||  \\\   ||   || 
+                                ||   OO   o====O 
+                                ||  //        || 
+                                o===o         oo 
+                        """)
+    thy = "- .... .- -. -.- ....... -.-- --- ..- ....... ..-. --- .-. ....... ..- ... .. -. --. ....... -.. ....-"
+    hw = ".-- . ....... .... --- .--. . ....... .. - ....... .-- .. .-.. .-.. ....... . -. .... .- -. -.-. . " \
+         "....... -.-- --- ..- .-. ....... .-. . ... . .- .-. -.-. ...."
+    print(thy)
+    print(hw)
 
 
 aa_dict = {"ALA": "A", "ARG": "R", "ASN": "N", "ASP": "D", "CYS": "C", "GLN": "Q", "GLU": "E", "GLY": "G", "HIS": "H",
@@ -259,6 +346,17 @@ hydrophobicity = {'A': 1.8, 'C': 2.5, 'D': -3.5, 'E': -3.5, 'F': 2.8, 'G': -0.4,
 # neutral 0, negatively charged -1, positively charged 1
 charge = {'A': 0, 'C': 0, 'D': -1, 'E': -1, 'F': 0, 'G': 0, 'H': 1, 'I': 0, 'K': 1, 'L': 0, 'M': 0, 'N': 0, 'P': 0,
           'Q': 0, 'R': 1, 'S': 0, 'T': 0, 'V': 0, 'W': 0, 'Y': 0}
+"""
++- -1
+++  1
+--  1
+nn  0
+n+  0
+n-  0
+"""
+
+# charge = {'A': 2., 'C': 2., 'D': -1., 'E': -1., 'F': 2., 'G': 2., 'H': 1., 'I': 2., 'K': 1., 'L': 2., 'M': 2.,
+# 'N': 2., 'P': 2., 'Q': 2., 'R': 1., 'S': 2., 'T': 2., 'V': 2., 'W': 2., 'Y': 2.}
 
 # hydrogen bonding capability 0 no hydrogen bonding, 1 acceptor, 2 donor, 3 donor and acceptor
 h_bonding = {'A': 0, 'C': 0, 'D': 1, 'E': 1, 'F': 0, 'G': 0, 'H': 3, 'I': 0, 'K': 2, 'L': 0, 'M': 0, 'N': 3, 'P': 0,
@@ -268,6 +366,7 @@ h_bonding = {'A': 0, 'C': 0, 'D': 1, 'E': 1, 'F': 0, 'G': 0, 'H': 3, 'I': 0, 'K'
 sasa = {'A': 75, 'C': 115, 'D': 130, 'E': 161, 'F': 209, 'G': 0, 'H': 180, 'I': 172, 'K': 205, 'L': 172, 'M': 184,
         'N': 142, 'P': 134, 'Q': 173, 'R': 236, 'S': 95, 'T': 130, 'V': 143, 'W': 254, 'Y': 222}
 
+# amino acid side chain length from CA to the furthest side chain atom
 side_chain_length = {'A': 1.53832,
                      'C': 2.75909,
                      'D': 3.66044,
@@ -291,10 +390,10 @@ side_chain_length = {'A': 1.53832,
 
 if __name__ == "__main__":
     pass
-
     # compare_get_settings("avgfp_09_03_2022_134211", "avgfp_09_03_2022_132158")
     # run_dict("bgl3_06_03_2022_215803")
     # compare_get_settings("nononsense_pab1_22_03_2022_093849", "nononsense_pab1_22_03_2022_094448")
     # compare_get_settings("nononsense_pab1_21_03_2022_195748", "nononsense_pab1_17_03_2022_073620", file_path1="nononsense/second_split_run/log_results/pab1_log_file.csv",file_path2="nononsense/first_split_run/logs_results_cnn/pab1_log_file.csv")
     # compare_get_settings("nononsense_avgfp_12_03_2022_080540")
 
+    star_message()
