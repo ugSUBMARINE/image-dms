@@ -1,6 +1,6 @@
-import pandas as pd
-import numpy as np
 import os
+import numpy as np
+import pandas as pd
 from matplotlib import pyplot as plt
 
 
@@ -255,44 +255,46 @@ def split_inds(file_path, variants, score, number_mutations, split=None, remove_
                split_file_path=None, train_name="train", tune_name="tune", test_name="test"):
     """get indices of variants that don't feature a nonsense mutation\n
         :parameter
-            file_path: str\n
-            path to the tsv file of interest\n
-            variants: str\n
-            how the variants column is labeled in the tsv file\n
-            score: str\n
-            how the score column is labeled in the tsv file\n
-            number_mutations: str\n
-            how the number_mutations column is labeled in the tsv file\n
-            split: None or list of int/float, (optional - default None)\n
-            specifies the split for train, tune, test indices\n
-            - float specifies fractions of the whole dataset\n
-              eg [0.25, 0.25, 0.5] creates a train and tune dataset with 50 entries each and a test dataset of 100
-              if the whole dataset contains 200 entries\n
-            - int specifies the different number of samples per dataset\n
-              eg [50,50,100] leads to a train and a tune dataset with 50 entries each and a test dataset of 100
-              if the whole dataset contains 200 entries\n
-            - None uses [0.8, 0.15, 0.05] as split\n
-            remove_nonsense: bool, (optional - default True)\n
-            True removes indices of nonsense mutations of all possible indices to choose from\n
-            silent: bool, (optional - default False)\n
-            if True doesn't print split sizes\n
-            split_file_path: None, str or dict, (optional - default None)\n
-            - None the splits get created according to split\n
-            - str splits get created according to the splits specified in the file in the directory - filenames without
-              their file extensions need to be specified in train_name, tune_name and test_name\n
-            - dict splits get created according to the specification in the dict -  train_name, tune_name and test_name
-              specify the keys for the dictionary how the train tune and test keys are named\n
-            train_name, tune_name, test_name, str (optional - default 'train', 'tune', 'test')\n
-            names of the train, tune and test data files - without their file extension e.g. 'train.txt' needs 'train'\n
+            - file_path: str\n
+              path to the tsv file of interest\n
+            - variants: str\n
+              how the variants column is labeled in the tsv file\n
+            - score: str\n
+              how the score column is labeled in the tsv file\n
+            - number_mutations: str\n
+              how the number_mutations column is labeled in the tsv file\n
+            - split: None or list of int/float, (optional - default None)\n
+              specifies the split for train, tune, test indices\n
+                - float specifies fractions of the whole dataset\n
+                  eg [0.25, 0.25, 0.5] creates a train and tune dataset with 50 entries each and a test dataset of 100
+                  if the whole dataset contains 200 entries\n
+                - int specifies the different number of samples per dataset\n
+                  eg [50,50,100] leads to a train and a tune dataset with 50 entries each and a test dataset of 100
+                  if the whole dataset contains 200 entries\n
+                - None uses [0.8, 0.15, 0.05] as split\n
+            - remove_nonsense: bool, (optional - default True)\n
+              True removes indices of nonsense mutations of all possible indices to choose from\n
+            - silent: bool, (optional - default False)\n
+              if True doesn't print split sizes\n
+            - split_file_path: None, str or dict, (optional - default None)\n
+                - None the splits get created according to split\n
+                - str splits get created according to the splits specified in the file in the directory -
+                  filenames without their file extensions need to be specified in train_name, tune_name and test_name\n
+                - dict splits get created according to the specification in the dict -
+                  train_name, tune_name and test_name specify the keys for the dictionary how the train tune and
+                  test keys are named\n
+            - train_name, tune_name, test_name, str (optional - default 'train', 'tune', 'test')\n
+              names of the train, tune and test data files - without their file extension e.g.
+              'train.txt' needs 'train'\n
         :returns
-            data_dict: dict\n
-            dictionary containing the arrays with indices for the three data splits\n
-            :key 'train', 'tune', 'test'
-            data: dict\n
-            dictionary containing the arrays with variants (data), scores (labels) and number of mutations (mutations)
-            for the train, tune and test splits\n
-            prefix = ['train', 'tune', 'test']\n
-            :key prefix_data, prefix_labels, prefix_mutations"""
+            - data_dict: dict\n
+              dictionary containing the arrays with indices for the three data splits\n
+              :key 'train', 'tune', 'test'
+            - data: dict\n
+              dictionary containing the arrays with variants (data), scores (labels) and number of mutations (mutations)
+              for the train, tune and test splits\n
+              prefix = ['train', 'tune', 'test']\n
+              :key prefix_data, prefix_labels, prefix_mutations"""
 
     raw_data = pd.read_csv(file_path, delimiter="\t")
     # extract variants column
@@ -410,24 +412,24 @@ def split_inds(file_path, variants, score, number_mutations, split=None, remove_
 
 
 def create_split_file(p_dir, name, train_split, tune_split, test_split):
-    """creates train tune and test split txt files in a directory called 'splits'
+    """creates train tune and test split txt files in a directory called 'splits'\n
         :parameter
-            p_dir: str\n
-            where the splits' directory should be created\n
-            name: str\n:
-            name of the protein\n
-            train_split, tune_split, test_split: lists or list like\n
-            lists that contain the indices of the splits that should be written to the corresponding files"""
+            - p_dir: str\n
+              where the splits' directory should be created\n
+            - name: str\n
+              name of the protein\n
+            - train_split, tune_split, test_split: lists or list like\n
+              lists that contain the indices of the splits that should be written to the corresponding files"""
 
     def open_and_write(file_path, fname, data):
         """writes splits to file\n
             :parameter
-                file_path: str\n
-                where the file should be created
-                name: str\n
-                name of the file\n
-                data: list or list like\n
-                data that should be writen to file"""
+                - file_path: str\n
+                  where the file should be created
+                - name: str\n
+                  name of the file\n
+                - data: list or list like\n
+                  data that should be writen to file"""
         file = open(file_path + "/" + fname + ".txt", "w+")
         for i in data:
             file.write(str(i) + "\n")
@@ -450,11 +452,11 @@ def create_split_file(p_dir, name, train_split, tune_split, test_split):
 def read_split_file(file_path):
     """parses txt file that contains the indices for a split (one index per row) and returns the indices as ndarray\n
         :parameter
-            file_path: str\n
-            path where the file is stored\n
+            - file_path: str\n
+              path where the file is stored\n
         :return
-            split_ind: list\n
-            contains the split indices of the parsed txt file\n"""
+            - split_ind: list\n
+              contains the split indices of the parsed txt file\n"""
     split_file = open(file_path, "r")
     content = split_file.readlines()
     split_ind = []
@@ -467,12 +469,12 @@ def read_split_file(file_path):
 def read_split_dir(file_path):
     """reads train.txt, tune.txt, test.txt files from a directory and returns their index content as list of lists\n
         :parameter
-            file_path: str\n
-            path to directory where the three files are stored\n
+            - file_path: str\n
+              path to directory where the three files are stored\n
         :return
-            splits_dict: dict\n
-            dictionary containing the content of the files in file_path with their file names as keys and their content
-            as values\n"""
+            - splits_dict: dict\n
+              dictionary containing the content of the files in file_path with their file names as keys and their
+              content as values\n"""
     if os.path.isdir(file_path):
         s_dir, _, files = list(os.walk(file_path))[0]
         splits = []
@@ -493,15 +495,15 @@ def read_split_dir(file_path):
 def create_inds(data_path, train_size, tune_size=5000, test_size=5000):
     """creates split indices that can be used to split a tsv files rows into train tune and test datasets\n
         :parameter
-        data_path: str\n
-        location of the tsv file for which the splits should be produced\n
-        train_size: int\n
-        size of the train split\n
-        tune_size, test_size: int, (optional, default 5000)\n
-        sizes of the tune and test split\n
+        - data_path: str\n
+          location of the tsv file for which the splits should be produced\n
+        - train_size: int\n
+          size of the train split\n
+        - tune_size, test_size: int, (optional, default 5000)\n
+          sizes of the tune and test split\n
         :returns
-        train, tune, test: ndarray\n
-        arrays containing the split indices for each split\n"""
+        - train, tune, test: ndarray\n
+          arrays containing the split indices for each split\n"""
     data_file = pd.read_csv(data_path, delimiter="\t")
     # all possible indices
     pos_inds = np.arange(len(data_file))
@@ -516,12 +518,14 @@ def create_inds(data_path, train_size, tune_size=5000, test_size=5000):
 def create_txt(file_path, data, name):
     """writes data (indices) to .txt file with one index per row\n
         :parameter
-            file_path: str\n
-            where the file should be stored\n
-            data: list or list like\n
-            data that should be written per line to the .txt file\n
-            name: str\n
-            name of the file that should be created\n"""
+            - file_path: str\n
+              where the file should be stored\n
+            - data: list or list like\n
+              data that should be written per line to the .txt file\n
+            - name: str\n
+              name of the file that should be created\n
+        :return
+            None"""
     # creates dir if it doesn't already exist
     if not os.path.isdir(file_path):
         os.mkdir(file_path)
