@@ -1,12 +1,13 @@
+import os
+
 import scipy.stats
 import numpy as np
 from matplotlib import pyplot as plt
-import os
 
 
-def validate(generator_v, model_v, history_v, name_v, max_train_mutations_v, save_fig_v=None, plot_fig=False):
+def validate(generator_v, model_v, history_v, name_v, save_fig_v=None, plot_fig=False):
     # get loss, accuracy and history of the previous trained model and plotting it
-    test_loss, test_acc = model_v.evaluate(generator_v, verbose=2)
+    test_loss, test_acc = model_v.evaluate(generator_v, verbose=0)
     train_val = history_v.history['mae']
     val_val = history_v.history['val_mae']
     plt.plot(train_val, label='mae', color="forestgreen")
@@ -18,18 +19,10 @@ def validate(generator_v, model_v, history_v, name_v, max_train_mutations_v, sav
     ymax = np.max(all_vals)
     plt.ylim([ymin - ymin * 0.1, ymax + ymax * 0.1])
     plt.legend()
-    # epoch with the best weights
-    epochs_bw = np.argmin(train_val)
-    # stats
-    val_text = name_v + "\nmax_mut_train: " + str(max_train_mutations_v) + "\nepochs for best weights: " + str(
-        epochs_bw) + "\nmae: " + str(np.around(test_loss, decimals=4))
-    plt.gcf().text(0.5, 0.9, val_text, fontsize=14)
-    plt.subplots_adjust(left=0.5)
     if save_fig_v is not None:
         plt.savefig(os.path.join(save_fig_v, "history_" + name_v))
     if plot_fig:
         plt.show()
-    return val_val, epochs_bw, test_loss
 
 
 def pearson_spearman(model, generator, labels):
