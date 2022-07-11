@@ -4,7 +4,7 @@ import tensorflow as tf
 
 from d4_models import simple_model, simple_model_norm, simple_model_imp, create_simple_model, simple_model_gap, \
     simple_stride_model_test, shrinking_res, inception_res, deeper_res, res_net, vgg, simple_longer, \
-    simple_stride_model, get_conv_mixer_256_8, depth_conv
+    simple_stride_model, get_conv_mixer_256_8, depth_conv, dense_net2
 from d4_utils import protein_settings
 
 
@@ -12,14 +12,14 @@ def arg_dict(p_dir=""):
     """creates a parameter dict for run_all with the use of argparse
         :parameter
             - p_dir: str, (optional - default "")\n
-              directory where the datasets are stored\n
+              directory where the dataset folder are stored and all the .py files are stored\n
         :return
             - d: dict\n
-              dictionary specifying all parameters for run_all in d4batch_driver.py\n
+              dictionary specifying all parameters for run_all in d4_cmd_driver.py\n
         """
     pos_models = [simple_model, simple_model_norm, simple_model_imp, create_simple_model, simple_model_gap,
                   simple_stride_model_test, shrinking_res, inception_res, deeper_res, res_net, vgg, simple_longer,
-                  simple_stride_model, get_conv_mixer_256_8, depth_conv]
+                  simple_stride_model, get_conv_mixer_256_8, depth_conv, dense_net2]
 
     model_str = []
     for ci, i in enumerate(pos_models):
@@ -28,6 +28,10 @@ def arg_dict(p_dir=""):
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-pn", "--protein_name", type=str, required=False, default=None,
                         help="str: name of the protein in the protein settings file")
+    parser.add_argument("-qn", "--query_name", type=str, required=True, default=None,
+                        help="str: name of the wild type sequence in the protein alignment file")
+    parser.add_argument("-af", "--alignment_file", type=str, required=True, default=None,
+                        help="str: alignemt file for the protein of interest")
     parser.add_argument("-tw", "--transfer_conv_weights", type=str, required=False, default=None,
                         help="str: file path to a suitable trained network to transfer its convolution layer weights "
                              "to the new model")
@@ -182,11 +186,15 @@ def arg_dict(p_dir=""):
         raise FileNotFoundError("tsv file path is incorrect - file '{}' doesn't exist".format(str(tsv_ex)))
     if not os.path.isfile(pdb_ex):
         raise FileNotFoundError("pdb file path is incorrect - file '{}' doesn't exist".format(str(pdb_ex)))
+    if not os.path.isfile(args.alignment_file):
+        raise FileNotFoundError("alignment file path is incorrect - file '{}' doesn't exist".format(str(args.alignment_file)))
 
     split_file_creation_ex = args.split_file_creation
     use_split_file_ex = args.use_split_file
 
     d = {"p_dir": args.p_dir,
+         "algn_path":args.alignment_file,
+         "algn_bl":args.query_name,
          "transfer_conv_weights": args.transfer_conv_weights,
          "train_conv_layers": args.train_conv_layers,
          "training_epochs": args.training_epochs,
@@ -240,16 +248,22 @@ def optimize_dict(p_dir=""):
             """
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    # general arguments
     parser.add_argument("-ohg", "--opt_hill_gen", type=str, required=False, default="hill",
-                        help="str: 'hill' for hill climb, 'blosum' for blosum search, 'genetic' "
-                             "for genetic algorithm and 'particle_swarm' for particle swarm search")
+                        help="str: 'hill' for hill climb, 'blosum' for blosum search, 'blosum_prob' for blosum "
+                             "probability search, 'q_learn' for Q- learning, 'genetic' for genetic algorithm and "
+                             "'particle_swarm' for particle swarm search")
     parser.add_argument("-s", "--sequence", type=str, required=True,
                         help="str: amino acid sequence of the protein of interest e.g. 'AVLI...'")
     parser.add_argument("-pf", "--protein_pdb", type=str, required=True,
                         help="str: filepath to the pdb file of the protein of interest")
     parser.add_argument("-mf", "--model_filepath", type=str, required=True,
                         help="str: filepath to the model that was trained on data of the protein of interest")
-    parser.add_argument("-b", "--budget", type=int, required=False, default=200,
+    parser.add_argument("-qn", "--query_name", type=str, required=True, default=None,
+                        help="str: name of the wild type sequence in the protein alignment file")
+    parser.add_argument("-af", "--alignment_file", type=str, required=True, default=None,
+                        help="str: alignemt file for the protein of interest")
+    parser.add_argument("-b", "--budget", type=int, required=False, default=400,
                         help="int: number of iterations the algorithm should run its search")
     parser.add_argument("-d", "--dist_th", type=int, required=False, default=20,
                         help="int: distance threshold used when training the model")
@@ -257,12 +271,18 @@ def optimize_dict(p_dir=""):
                         help="set flag to show a plot how the score evolved over time")
     parser.add_argument("-sp", "--save_plot", type=str, required=False, default=None,
                         help="str: filepath where the plot should be saved to save the plot")
-
+    # hill climb
     parser.add_argument("-tm", "--target_mutations", type=int, required=False, default=None,
                         help="int: maximum number of mutations to introduce - no limit if set to None")
-    parser.add_argument("-st", "--start_temp", type=int, required=False, default=None,
+    parser.add_argument("-st", "--start_temp", type=float, required=False, default=None,
                         help="int: start temperature - when used simulated annealing is used")
-
+    parser.add_argument("-ar", "--abs_random", type=float, required=False, default=-1.,
+                        help="float: enter a number > 1. to get an absolute random search where the sequence gets "
+                             "mutated regardless whether an improvement was found or not (but only the best sequence "
+                             "ever gets stored) or -1. so the working sequence only gets updated to a new sequence when"
+                             " the found one has a higher score than the previous one (start_temp needs to be 'None' to"
+                             " work)")
+    # genetic algorithm
     parser.add_argument("-mp", "--mutation_probability", type=float, required=False, default=0.2,
                         help="float: probability that a point mutation happens")
     parser.add_argument("-cp", "--crossover_probability", type=float, required=False, default=0.5,
@@ -277,30 +297,43 @@ def optimize_dict(p_dir=""):
                         help="int: number of contenders in a tournament")
     parser.add_argument("-tn", "--tournament_num", type=int, required=False, default=10,
                         help="int: number of tournaments per round")
-
+    # particle swarm
     parser.add_argument("-ip", "--init_particles", type=int, required=False, default=200,
-                        help="int: start temperature - when used simulated annealing is used")
+                        help="int: swarm size")
     parser.add_argument("-dp", "--dir_pressure", type=float, required=False, default=0.5,
                         help="float: fraction (<= 1.) of the global best solution should be transferred to all "
                              "particles per iteration")
     parser.add_argument("-di", "--diversity", type=int, required=False, default=2,
                         help="int: how many random mutations per particle should be introduced at the start")
+    # q- learning
+    parser.add_argument("-e", "--epsilon", type=float, required=False, default=0.7,
+                        help="float: exploration rate - probability of choosing a random action (decays with epsilon "
+                             "* (1 / num_iteration))")
+    parser.add_argument("-lr", "--learning_rate", type=float, required=False, default=0.1,
+                        help="float: how much influence new information an all previously found mutations on certain "
+                             "position has")
+    parser.add_argument("-g", "--gamma", type=float, required=False, default=0.3,
+                        help="float: discount factor - determines the importance of future rewards")
 
     parser.add_argument("-rs", "--random_seed", type=int, required=False, default=None,
                         help="numpy random seed")
 
     args = parser.parse_args()
 
+    # dictionaries that serve as input for the different algorithms in the Optimization class
     main_d = {"seq": args.sequence,
               "pdb_filepath": os.path.join(p_dir, args.protein_pdb),
               "model_filepath": os.path.join(p_dir, args.model_filepath),
+              "algn_base":args.query_name,
+              "algn_path":args.alignment_file,
               "budget": args.budget,
               "dist_th": args.dist_th,
               "show_score_course": args.course_plot,
               "save_plot": args.save_plot}
 
     hill_dict = {"target_mutations": args.target_mutations,
-                 "start_temp": args.start_temp}
+                 "start_temp": args.start_temp,
+                 "abs_random": args.abs_random}
 
     blosum_dict = {"target_mutations": args.target_mutations}
 
@@ -317,9 +350,14 @@ def optimize_dict(p_dir=""):
                      "dir_pressure": args.dir_pressure,
                      "diversity": args.diversity}
 
-    return main_d, args.opt_hill_gen, hill_dict, blosum_dict, genetic_dict, particle_dict, args.random_seed
+    q_learn_dict = {"epsilon": args.epsilon,
+                    "lr": args.learning_rate,
+                    "gamma": args.gamma}
+
+    return main_d, args.opt_hill_gen, hill_dict, blosum_dict, genetic_dict, particle_dict, q_learn_dict, \
+           args.random_seed
 
 
 if __name__ == "__main__":
-    # arg_dict()
-    optimize_dict()
+    arg_dict()
+    # optimize_dict()
