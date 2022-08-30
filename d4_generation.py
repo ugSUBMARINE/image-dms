@@ -12,10 +12,14 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
-from d4_utils import create_folder, log_file, hydrophobicity, h_bonding, charge, sasa, side_chain_length, clear_log
+from d4_utils import create_folder, log_file, hydrophobicity, h_bonding, \
+                     charge, sasa, side_chain_length, aa_dict_pos, clear_log
 from d4_stats import validate, validation, pearson_spearman
 from d4_split import split_inds, create_split_file
-from d4_interactions import atom_interaction_matrix_d, check_structure, model_interactions
+from d4_interactions import atom_interaction_matrix_d, check_structure, \
+                            model_interactions
+from d4_alignments import alignment_table
+import d4_models as d4m
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['PYTHONHASHSEES'] = str(0)
@@ -28,13 +32,13 @@ def augment(data, labels, mutations, runs=3, un=False):
             - data: ndarray of strings\n
               array of variants like ['S1A', 'D35T,V20R', ...]\n
             - labels: ndarray of floats or ints\n
-              array with the corresponding scores of the provided dataa\n
+              array with the corresponding scores of the provided data\n
             - mutations: ndarray of ints\n
               array with number of mutations of each variant\n
             - runs: int (optional - default 3)\n
               how often the augmentation should be performed\n
             - un: bool (optional - default False)\n
-              whether duplicated "new" mutations should be removed\n
+              whether duplicated "new" variants should be removed\n
         :return
             - nd: ndarray of strings\n
               augmented version of data\n
@@ -57,14 +61,16 @@ def augment(data, labels, mutations, runs=3, un=False):
         # add original labels and mutations with the original shuffled
         new_labels = labels + labels[pos_inds]
         new_mutations = mutations + mutations[pos_inds]
-
+        
         new_data = []
         to_del = []
-        # extract the mutations that are added and check if one contains the same mutation and add this index to to_del
+        # extract the mutations that are added and check if one contains the 
+        # same mutation and add this index to to_del
         # to later remove this augmentations
         for cj, (j, k) in enumerate(zip(data, data[pos_inds])):
             pos_new_data = np.sort(j.split(",") + k.split(","))
-            # check the new data if it has the same mutation more than once - if so add its index to the to_del(ete) ids
+            # check the new data if it has the same mutation more than once 
+            # - if so add its index to the to_del(ete) ids
             if len(np.unique(pos_new_data)) != new_mutations[cj]:
                 to_del += [cj]
             new_data += [",".join(pos_new_data)]
@@ -87,7 +93,7 @@ def augment(data, labels, mutations, runs=3, un=False):
     return np.asarray(nd), np.asarray(nl), np.asarray(nm)
 
 
-def data_generator_vals(wt_seq):
+def data_generator_vals(wt_seq, alignment_path, alignment_base):
     """returns values/ numpy arrays based on the wt_seq for the DataGenerator\n
         :parameter
             - wt_seq: str\n
@@ -95,12 +101,6 @@ def data_generator_vals(wt_seq):
         :returns
             - hm_pos_vals: ndarray of int\n
               values for interactions with valid hydrogen bonding partners\n
-            - ch_good_vals: ndarray of float\n
-              values representing +/- charge pairs\n
-            - ch_mid_vals: ndarray of float\n
-              values representing +/n or -/n charge pairs\n
-            - ch_bad_vals: ndarray of float\n
-              values representing +/+ or -/- charge pairs\n
             - hp_norm: float\n
               max value possible for hydrophobicity interactions\n
             - ia_norm: float\n
@@ -118,25 +118,32 @@ def data_generator_vals(wt_seq):
             - cl_converted: ndarray of float\n
               wt_seq converted into side chain length values\n
             - cl_norm: float\n
-              max value possible for interaction ares interactions\n"""
+              max value possible for interaction ares interactions\n
+            - co_converted: ndarray of int\n
+              wt_seq converted to amino acid positions in the alignment table\n
+            -co_table: nx20 ndarray of floats\n
+              each row specifies which amino acids are conserved at that
+              sequence position and how conserved they are\n
+            -co_rows: 1D ndarray of ints\n
+              inde help with indices of each sequence position\n"""
+              
 
     hm_pos_vals = np.asarray([2, 3, 6, 9])
-
-    ch_good_vals = np.asarray([-1., 4.])
-    ch_mid_vals = np.asarray([-2., 2.])
-    ch_bad_vals = np.asarray([1.])
 
     h_vals = list(hydrophobicity.values())
     hp_norm = np.abs(max(h_vals) - min(h_vals))
     ia_norm = max(list(sasa.values())) * 2
-    cl_norm = 2 * max(side_chain_length.values())  # + dist_thr
+    cl_norm = 2 * max(side_chain_length.values())  
 
     hm_converted = np.asarray(list(map(h_bonding.get, wt_seq)))
     hp_converted = np.asarray(list(map(hydrophobicity.get, wt_seq)))
     cm_converted = np.asarray(list(map(charge.get, wt_seq)))
     ia_converted = np.asarray(list(map(sasa.get, wt_seq)))
     cl_converted = np.asarray(list(map(side_chain_length.get, wt_seq)))
-
+    co_converted = np.asarray(list(map(aa_dict_pos.get, wt_seq)))
+    
+    co_table, co_rows = alignment_table(alignment_path, alignment_base)
+    
     wt_len = len(wt_seq)
     mat_size = wt_len * wt_len
     pre_mat_index = np.arange(mat_size).reshape(wt_len, wt_len) / (mat_size - 1)
@@ -144,13 +151,15 @@ def data_generator_vals(wt_seq):
     mat_index = pre_mat_index + pre_mat_index.T - np.diag(np.diag(pre_mat_index))
     np.fill_diagonal(mat_index, 0)
 
-    return hm_pos_vals, ch_good_vals, ch_mid_vals, ch_bad_vals, hp_norm, ia_norm, hm_converted, hp_converted, \
-           cm_converted, ia_converted, mat_index, cl_converted, cl_norm
+    return hm_pos_vals, hp_norm, ia_norm, hm_converted, hp_converted, \
+            cm_converted, ia_converted, mat_index, cl_converted, cl_norm, \
+            co_converted, co_table, co_rows
 
 
 def progress_bar(num_batches, bar_len, batch):
-    """prints progress bar with percentage that can be overwritten with a subsequent print statement
-        - should be implemented with on_train_batch_end\n
+    """prints progress bar with percentage that can be overwritten with a "\
+            "subsequent print statement - should be implemented with "\
+            "on_train_batch_end\n
         :parameter
             - num_batches: int\n
               number of batches per epoch
@@ -162,17 +171,20 @@ def progress_bar(num_batches, bar_len, batch):
             None\n"""
     try:
         # current bar length - how many '=' the bar needs to have at current batch
-        cur_bar = int(bar_len * (bar_len * (batch / bar_len) / num_batches))  # int(bar_len * (batch / batches))
+        cur_bar = int(bar_len * (bar_len * (batch / bar_len) / num_batches)) 
+        # cur_bar = int(bar_len * (batch / num_batches))
 
         # to get a complete bar at the end
-        if batch == num_batches-1:
+        if batch == num_batches - 1:
             cur_bar = bar_len
         # printing the progress bar
-        bar_string = "\r[{}>{}] {:0.0f}%".format("=" * cur_bar, " " * (bar_len - cur_bar),
+        bar_string = "\r[{}>{}] {:0.0f}%".format("=" * cur_bar, 
+                                                 " " * (bar_len - cur_bar),
                                                  (batch + 1) / num_batches * 100)
         print(bar_string, end="")
 
-        # set cursor to start of the line to overwrite progress bar when epoch is done
+        # set cursor to start of the line to overwrite progress bar when epoch 
+        # is done
         if num_batches - batch == 1:
             print("\r[{}>] 100%".format("=" * bar_len), end="")
             print("\r\r", end="")
@@ -182,12 +194,13 @@ def progress_bar(num_batches, bar_len, batch):
 
 class DataGenerator(keras.utils.Sequence):
     """
-    Generates n_channel x n x n matrices to feed them as batches to a network where n denotes len(wild type sequence)\n
+    Generates n_channel x n x n matrices to feed them as batches to a network"\
+            "where n denotes len(wild type sequence)\n
     modified after 'https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly'\n
     ...\n
     Attributes:\n
     - features: list of str\n
-      features that should be encoded ec ['A2S,E3R' 'T6W']\n
+      features that should be encoded eg ['A2S,E3R' 'T6W']\n
     - labels: list of int / float\n
       the corresponding labels to the features\n
     - interaction_matrix: 2D ndarray of bool\n
@@ -212,18 +225,13 @@ class DataGenerator(keras.utils.Sequence):
       max possible value for hydrophobicity change\n
     - cm_converted: ndarray of floats\n
       wt sequence charge encoded\n
-    - ch_good_vals: int\n
-      values for +-, nn interactions\n
-    - ch_mid_vals: int\n
-      values for n+, n- interactions\n
-    - ch_bad_vals: int\n
-      values for --, ++ interactions\n
     - ia_converted: ndarray of floats\n
       wt sequence interaction area encoded\n
     - ia_norm: float\n
       max value for interaction area change\n
     - mat_index: 2D ndarray of ints\n
-      symmetrical index matrix (for adjacency matrix) that represents the position of each interaction in the matrices
+      symmetrical index matrix (for adjacency matrix) that represents the "\
+              "position of each interaction in the matrices
     - cl_converted: ndarray of floats\n
       wild type sequence clash encoded
     - cl_norm: float\n
@@ -232,16 +240,26 @@ class DataGenerator(keras.utils.Sequence):
       ture distances between all residues
     - dist_th
       maximum distance for residues to be counted as interaction
+    - co_converted ndarray of int or floats:\n
+      wild type sequence position in alignment_table encoded\n
+    - co_table: ndarray or floats\n
+      nx20 array- which amino acids are how conserved at which sequence "\
+                 "position\n
+    - co_rows: ndarray of ints\n
+      indexing help for alignment_table\n      
     - shuffle: bool, (optional - default True)\n
       if True data gets shuffled after every epoch\n
     - train: bool, (optional - default True)\n
-      if True Generator returns features and labels (use turing training) else only features\n
+      if True Generator returns features and labels (use turing training) "\
+             "else only features\n
     """
 
-    def __init__(self, features, labels, interaction_matrix, dim, n_channels, batch_size, first_ind,
-                 hm_converted, hm_pos_vals, factor, hp_converted, hp_norm, cm_converted, ch_good_vals, ch_mid_vals,
-                 ch_bad_vals, ia_converted, ia_norm, mat_index, cl_converted, cl_norm, dist_mat, dist_th, shuffle=True,
-                 train=True):
+    def __init__(self, features, labels, interaction_matrix, dim, n_channels, \
+                 batch_size, first_ind, hm_converted, hm_pos_vals, factor, \
+                 hp_converted, hp_norm, cm_converted, ia_converted, ia_norm, \
+                 mat_index, cl_converted, cl_norm, dist_mat, dist_th, \
+                 co_converted, co_table, co_rows, \
+                 shuffle=True, train=True):
         self.features, self.labels = features, labels
         self.interaction_matrix = interaction_matrix
         self.dim = dim
@@ -254,9 +272,6 @@ class DataGenerator(keras.utils.Sequence):
         self.hp_converted = hp_converted
         self.hp_norm = hp_norm
         self.cm_converted = cm_converted
-        self.ch_good_vals = ch_good_vals
-        self.ch_mid_vals = ch_mid_vals
-        self.ch_bad_vals = ch_bad_vals
         self.ia_converted = ia_converted
         self.ia_norm = ia_norm
         self.mat_index = mat_index
@@ -264,6 +279,9 @@ class DataGenerator(keras.utils.Sequence):
         self.cl_norm = cl_norm
         self.dist_mat = dist_mat
         self.dist_th = dist_th
+        self.co_converted = co_converted
+        self.co_table = co_table
+        self.co_rows = co_rows
         self.shuffle = shuffle
         self.train = train
 
@@ -273,8 +291,10 @@ class DataGenerator(keras.utils.Sequence):
 
     def __getitem__(self, idx):
         """Generate one batch of data"""
-        features_batch = self.features[idx * self.batch_size:(idx + 1) * self.batch_size]
-        label_batch = self.labels[idx * self.batch_size:(idx + 1) * self.batch_size]
+        features_batch = self.features[idx * self.batch_size:(idx + 1) * \
+                                       self.batch_size]
+        label_batch = self.labels[idx * self.batch_size:(idx + 1) * \
+                                  self.batch_size]
 
         f, l = self.__batch_variants(features_batch, label_batch)
         if self.train:
@@ -295,16 +315,20 @@ class DataGenerator(keras.utils.Sequence):
         batch_labels = np.empty(first_dim, dtype=float)
 
         for ci, i in enumerate(features_to_encode):
-            # variant i encoded in 6 matrices
-            final_matrix = model_interactions(feature_to_encode=i, interaction_matrix=self.interaction_matrix,
-                                              index_matrix=self.mat_index, factor_matrix=self.factor,
-                                              distance_matrix=self.dist_mat, dist_thrh=self.dist_th,
-                                              first_ind=self.first_ind, hmc=self.hm_converted, hb=h_bonding,
-                                              hm_pv=self.hm_pos_vals, hpc=self.hp_converted, hp=hydrophobicity,
-                                              hpn=self.hp_norm, cmc=self.cm_converted, c=charge, cgv=self.ch_good_vals,
-                                              cmv=self.ch_mid_vals, cbv=self.ch_bad_vals, iac=self.ia_converted,
-                                              sa=sasa, ian=self.ia_norm, clc=self.cl_converted, scl=side_chain_length,
-                                              cln=self.cl_norm)
+            # variant i encoded as matrices
+            final_matrix = model_interactions(feature_to_encode=i, 
+                    interaction_matrix=self.interaction_matrix,
+                    index_matrix=self.mat_index, factor_matrix=self.factor,
+                    distance_matrix=self.dist_mat, dist_thrh=self.dist_th,
+                    first_ind=self.first_ind, hmc=self.hm_converted, 
+                    hb=h_bonding, hm_pv=self.hm_pos_vals, hpc=self.hp_converted, 
+                    hp=hydrophobicity, hpn=self.hp_norm, cmc=self.cm_converted, 
+                    c=charge, iac=self.ia_converted, sa=sasa, 
+                    ian=self.ia_norm, clc=self.cl_converted, 
+                    scl=side_chain_length, cln=self.cl_norm, 
+                    coc=self.co_converted, cp=aa_dict_pos,
+                    cot=self.co_table, cor=self.co_rows)
+
             batch_features[ci] = final_matrix
             batch_labels[ci] = corresponding_labels[ci]
         return batch_features, batch_labels
@@ -346,19 +370,21 @@ class CustomPrint(keras.callbacks.Callback):
     - epoch_print: int, (optional - default 1)\n
       interval at which loss and the change in loss should be printed\n
     - epoch_stat_print: int, (optional - default 10)\n
-      interval at which best train epoch, the best validation epoch and the difference in the loss between them
+      interval at which best train epoch, the best validation epoch and the "\
+              "difference in the loss between them
       should be printed\n
     - pb_len: int, (optional - default 60)\n
       length of the progress bar\n
     - model_d: str, (optional - default '')\n
       filepath where the models should be saved\n
     - model_save_interval: int, (optional - default 5)\n
-      minimum nuber of epochs to pass to save the model - only gets saved when the validation loss has improved 
+      minimum nuber of epochs to pass to save the model - only gets saved "\
+              "when the validation loss has improved 
       since the last time the model was saved\n
     """
 
-    def __init__(self, num_batches, epoch_print=1, epoch_stat_print=10, pb_len=60, model_d="", model_save_interval=5,
-                 save=False):
+    def __init__(self, num_batches, epoch_print=1, epoch_stat_print=10, 
+                 pb_len=60, model_d="", model_save_interval=5, save=False):
         self.epoch_print = epoch_print
         self.best_loss = np.Inf
         self.bl_epoch = 0
@@ -385,7 +411,8 @@ class CustomPrint(keras.callbacks.Callback):
             print("*** training started ***")
 
     def on_train_batch_end(self, batch, logs=None):
-        progress_bar(num_batches=self.num_batches, bar_len=self.pb_len, batch=batch)
+        progress_bar(num_batches=self.num_batches, bar_len=self.pb_len, 
+                     batch=batch)
 
     def on_epoch_end(self, epoch, logs=None):
         # loss and validation loss of this epoch
@@ -408,10 +435,11 @@ class CustomPrint(keras.callbacks.Callback):
         if cur_val_loss < self.best_val_loss:
             self.best_val_loss = cur_val_loss
             self.bvl_epoch = epoch
-            # save model if the validation loss improved since the last time it was saved and min model_save_interval
-            # epochs have passed
+            # save model if the validation loss improved since the last time i
+            # it was saved and min model_save_interval epochs have passed
             if self.save:
-                if epoch - self.epoch_since_model_save >= self.model_save_interval:
+                if epoch - self.epoch_since_model_save >= \
+                            self.model_save_interval:
                     self.model.save(self.model_d, overwrite=True)
                     self.epoch_since_model_save = epoch
         # print stats of the epoch after the given epoch_stat_print interval
@@ -449,18 +477,16 @@ class ClearMemory(keras.callbacks.Callback):
         tf.keras.backend.clear_session()
 
 
-def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_seq, number_mutations, variants, score,
-            dist_thr, channel_num, max_train_mutations, training_epochs, test_num, first_ind, r_seed=None,
+def run_all(model_to_use, optimizer, tsv_file, pdb_file, wt_seq, number_mutations, variants, score,
+            dist_thr, channel_num, max_train_mutations, training_epochs, test_num, first_ind, algn_path, algn_bl, r_seed=None,
             deploy_early_stop=True, es_monitor="val_loss", es_min_d=0.01, es_patience=20, es_mode="auto",
             es_restore_bw=True, load_trained_model=None, batch_size=64, save_fig=None, show_fig=False,
             write_to_log=True, silent=False, extensive_test=False, save_model=False, load_trained_weights=None,
             no_nan=True, settings_test=False, p_dir="", split_def=None, validate_training=False, lr=0.001,
             transfer_conv_weights=None, train_conv_layers=False, write_temp=False, split_file_creation=False,
-            use_split_file=None, daug=False):
+            use_split_file=None, daug=False, clear_el=False):
     """ runs all functions to train a neural network\n
     :parameter\n
-    - architecture_name: str\n
-      name of the architecture\n
     - model_to_use: function object\n
       function that returns the model\n
     - optimizer: Optimizer object\n
@@ -482,14 +508,18 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
     - channel_num: int\n
       number of channels\n
     - max_train_mutations: int or None\n
-      int specifying maximum number of mutations per sequence to be used for training\n
-      None to use all mutations for training\n
+      - int specifying maximum number of mutations per sequence to be used for training\n
+      - None to use all mutations for training\n
     - training_epochs: int\n
       number of epochs used for training the model\n
     - test_num: int\n
       number of samples for the test after the model was trained\n
     - first_ind: int\n
       offset of the start of the sequence (when sequence doesn't start with residue 0)
+    - algn_path: str\n
+      path to the multiple sequence alignment in clustalw format\n
+    - algn_bl: str\n
+      name of the wild type sequence in the alignment file\n
     - r_seed: None, int, (optional - default None)\n
       numpy and tensorflow random seed\n
     - deploy_early_stop: bool, (optional - default True)\n
@@ -560,12 +590,19 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
       otherwise splits of the tsv file according to split_def will be used\n
     - daug: bool (optional - default True)\n
       True to use data augmentation\n
+    - clear_el: bool (optional - default False)\n
+      if True error log gets cleared before a run\n
     :return\n
         None\n
     """
     try:
         # dictionary with argument names as keys and the input as values
         arg_dict = locals()
+
+        # convert inputs to their respective fuction
+        model_to_use = getattr(d4m, model_to_use)
+        architecture_name = model_to_use.__code__.co_name
+        optimizer = getattr(tf.keras.optimizers, optimizer)
 
         # getting the proteins name
         p_name = os.path.split(tsv_file)[1].split(".")[0]
@@ -581,6 +618,8 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         temp_path = os.path.join(result_dir, "temp.csv")
         # path where the log_file is located
         log_file_path = os.path.join(result_dir, "log_file.csv")
+        # error log file path
+        error_log_path = os.path.join(result_dir, "error.log")
         # dir where models are stored
         model_base_dir = os.path.join(result_dir, "saved_models")
         recent_model_dir = os.path.join(result_dir, "saved_models", name)
@@ -597,11 +636,14 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         # clear temp file from previous content or create it if it doesn't exist
         clear_log(temp_path, name + "\n" + "epoch,loss,val_loss,time_in_sec,epoch_start_time\n")
 
-        # clear error.log from previous run
-        clear_log(os.path.join(result_dir, "error.log"))
+        # clear error.log from previous run or create it if it doesn't exist
+        if not os.path.exists(error_log_path) or clear_el:
+            clear_log(error_log_path)
 
         # resets all state generated by keras
         tf.keras.backend.clear_session()
+
+        # check for write_to_log
         if not write_to_log:
             warnings.warn("Write to log file disabled - not recommend behavior", UserWarning)
 
@@ -613,9 +655,9 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
 
         # creates a directory where plots will be saved
         if save_fig is not None:
-            result_path = create_folder(result_dir, name)
-            if save_fig is not None:
-                save_fig = result_path
+            save_fig = os.path.join(save_fig, "plots_" + name)
+            if not os.path.isdir(save_fig):
+                os.mkdir(save_fig)
 
         if not settings_test:
             # writes used arguments to log file
@@ -634,6 +676,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
                 log_file(log_file_path, values, header)
 
         starting_time = timer()
+
         # creating a list of the wt sequence string e.g. 'AVL...'  -> ['A', 'V', 'L',...]
         wt_seq = list(wt_seq)
 
@@ -647,10 +690,10 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
             create_split_file(p_dir=result_dir, name=name, train_split=ind_dict["train"], tune_split=ind_dict["tune"],
                               test_split=ind_dict["test"])
 
-        # data to train on
+        # data to train the model on
         # variants
         train_data = data_dict["train_data"]
-        # their respective score
+        # their respective scores
         train_labels = data_dict["train_labels"]
         # number of mutations per variant
         train_mutations = data_dict["train_mutations"]
@@ -675,7 +718,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
 
             # shuffle augmented data
             s_inds = np.arange(nt_len)
-            np.random.shuffle(s_inds)
+            # np.random.shuffle(s_inds)
             train_data = train_data[s_inds]
             train_labels = train_labels[s_inds]
             train_mutations = train_mutations[s_inds]
@@ -704,10 +747,16 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
 
             print("new train split size:", len(train_data))
 
+        # ---
+        "test data restriction"
+        tdr = int(len(data_dict["train_data"]) * 0.2)
+        # !!! REMOVE the slicing for test_data !!!
+        # ---
+
         # data to validate during training
-        test_data = data_dict["tune_data"]
-        test_labels = data_dict["tune_labels"]
-        test_mutations = data_dict["tune_mutations"]
+        test_data = data_dict["tune_data"] # [:tdr]
+        test_labels = data_dict["tune_labels"] # [:tdr]
+        test_mutations = data_dict["tune_mutations"] # [:tdr]
 
         # data the model has never seen
         unseen_data = data_dict["test_data"]
@@ -723,6 +772,7 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
             t_data = unseen_data[test_inds]
             t_labels = unseen_labels[test_inds]
             t_mutations = unseen_mutations[test_inds]
+            print("\n--- will be using unseen data for final model performance evaluation ---\n")
         else:
             if test_num > len(test_data):
                 test_num = len(test_data)
@@ -731,10 +781,12 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
             t_data = test_data[test_inds]
             t_labels = test_labels[test_inds]
             t_mutations = test_mutations[test_inds]
+            print("\n--- will be using validation data for evaluating the models performance ---\n")
 
         # possible values and encoded wt_seq (based on different properties) for the DataGenerator
-        hm_pos_vals, ch_good_vals, ch_mid_vals, ch_bad_vals, hp_norm, ia_norm, hm_converted, hp_converted, \
-        cm_converted, ia_converted, mat_index, cl_converted, cl_norm = data_generator_vals(wt_seq)
+        hm_pos_vals, hp_norm, ia_norm, hm_converted, hp_converted, \
+        cm_converted, ia_converted, mat_index, cl_converted, cl_norm, co_converted, co_table, co_rows = data_generator_vals(wt_seq,
+                algn_path, algn_bl)
 
         # distance-, factor- and interaction matrix
         dist_m, factor, comb_bool = atom_interaction_matrix_d(pdb_file, dist_th=dist_thr, plot_matrices=show_fig)
@@ -766,6 +818,13 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
             for i in range(len(trained_model.layers)):
                 if i > 0:
                     l_name = trained_model.layers[i].name
+                    #
+                    """
+                    layer_i = trained_model.layers[i]
+                    if not any([isinstance(layer_i, keras.layers.Dense), isinstance(layer_i, keras.layers.Flatten)])
+                        transfer_layers += [i]
+                    """
+                    #
                     if not any(["dense" in l_name, "flatten" in l_name]):
                         transfer_layers += [i]
 
@@ -822,9 +881,6 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
                   'hp_converted': hp_converted,
                   'hp_norm': hp_norm,
                   'cm_converted': cm_converted,
-                  'ch_good_vals': ch_good_vals,
-                  'ch_mid_vals': ch_mid_vals,
-                  'ch_bad_vals': ch_bad_vals,
                   'ia_converted': ia_converted,
                   'ia_norm': ia_norm,
                   'mat_index': mat_index,
@@ -832,6 +888,9 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
                   'cl_norm': cl_norm,
                   'dist_mat': dist_m,
                   'dist_th': dist_thr,
+                  'co_converted': co_converted,
+                  'co_table': co_table,
+                  'co_rows': co_rows,
                   'shuffle': True,
                   'train': True}
 
@@ -846,9 +905,6 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
                        'hp_converted': hp_converted,
                        'hp_norm': hp_norm,
                        'cm_converted': cm_converted,
-                       'ch_good_vals': ch_good_vals,
-                       'ch_mid_vals': ch_mid_vals,
-                       'ch_bad_vals': ch_bad_vals,
                        'ia_converted': ia_converted,
                        'ia_norm': ia_norm,
                        'mat_index': mat_index,
@@ -856,6 +912,9 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
                        'cl_norm': cl_norm,
                        'dist_mat': dist_m,
                        'dist_th': dist_thr,
+                       'co_converted': co_converted,
+                       'co_table': co_table,
+                       'co_rows': co_rows,
                        'shuffle': False,
                        'train': False}
 
@@ -863,6 +922,190 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
         training_generator = DataGenerator(train_data, train_labels, **params)
         validation_generator = DataGenerator(test_data, test_labels, **params)
         test_generator = DataGenerator(t_data, np.zeros(len(t_labels)), **test_params)
+        
+        # ---
+        """ 
+        import keras_tuner
+        def build_model(hp):
+            filter_num = hp.Int(
+                                "filter_num", 
+                                min_value=0, 
+                                max_value=256, 
+                                step=32, 
+                                default=12
+                                )
+            block_num = hp.Int(
+                              "block_num", 
+                              min_value=1, 
+                              max_value=6, 
+                              step=1, 
+                              default=4
+                              )
+            block_depth = hp.Int(
+                                 "block_depth", 
+                                 min_value=2, 
+                                 max_value=6, 
+                                 step=1, 
+                                 default=4
+                                 ) 
+            filter_size = hp.Choice(
+                                    "filter_size", 
+                                    [3, 5, 7, 9]
+                                    )
+            e_pool = hp.Choice(
+                               "e_pool", 
+                               ["avg", "max"]
+                               )
+            l_pool = hp.Choice(
+                               "l_pool", 
+                               ["avg", "max"]
+                               )
+            classif_l = hp.Int(
+                               "classif_l", 
+                               min_value=0, 
+                               max_value=3, 
+                               step=1
+                               )
+            model = model_to_use(
+                                 wt_seq, 
+                                 channel_num, 
+                                 filter_num=filter_num, 
+                                 block_num=block_num, 
+                                 block_depth=block_depth, 
+                                 classif_l=classif_l, 
+                                 e_pool=e_pool, 
+                                 l_pool=l_pool,
+                                 filter_size=filter_size, 
+                                 bn=False
+                                 )
+            model.compile(
+                          optimizer(learning_rate=lr), 
+                          loss="mean_absolute_error", 
+                          metrics="mae"
+                          )
+            return model
+        
+        tuner_dir = os.path.join(p_dir, "tuner")
+        print("Tuning results will be saved in", tuner_dir)
+        tuner = keras_tuner.BayesianOptimization(
+                                                 hypermodel=build_model,
+                                                 objective="val_loss",
+                                                 max_trials=45,
+                                                 executions_per_trial=2,
+                                                 overwrite=True,
+                                                 directory=tuner_dir,
+                                                 project_name=\
+                                                         "dense_net2_tune_{}"\
+                                                         .format(
+                                                                 len(train_data)
+                                                                 ))
+        tuner.search_space_summary()
+
+        tuner.search(
+                     training_generator, 
+                     validation_data=validation_generator,
+                     epochs=60, 
+                     callbacks=[all_callbacks]
+                     ) 
+        tuner.results_summary()
+        # best_hps = tuner.get_best_hyperparameters(5)
+        # model = build_model(best_hps[0])
+        """
+        """
+        import keras_tuner
+        def build_model(hp):
+            times = hp.Int(
+                              "times", 
+                              min_value=1, 
+                              max_value=6, 
+                              step=1, 
+                              default=2
+                              )
+            num_blocks = hp.Int(
+                                 "num_blocks", 
+                                 min_value=1, 
+                                 max_value=4, 
+                                 step=1, 
+                                 default=3
+                                 ) 
+            filter_s = hp.Choice(
+                                    "filter_s", 
+                                    [3, 5, 7, 9]
+                                    )
+            l_pool = hp.Choice(
+                               "l_pool", 
+                               ["avg", "max"]
+                               )
+            layer_base_size = hp.Int(
+                                "layer_base_size", 
+                                min_value=16, 
+                                max_value=256, 
+                                step=16, 
+                                default=16
+                                )
+            num_dense = hp.Int(
+                               "num_dense", 
+                               min_value=0, 
+                               max_value=5, 
+                               step=1
+                               )
+            dense_size = hp.Int(
+                                "dense_size",
+                                min_value=32,
+                                max_value=512,
+                                step= 32
+                                )
+            f_b = hp.Choice(
+                               "f_b", 
+                               ["flat", "global"]
+                               )
+
+            model = model_to_use(
+                                 wt_seq, 
+                                 channel_num, 
+                                 times=times,
+                                 num_blocks=num_blocks,
+                                 filter_s=filter_s,
+                                 l_pool=l_pool,
+                                 layer_base_size=layer_base_size,
+                                 num_dense=num_dense,
+                                 dense_size=dense_size,
+                                 f_b=f_b
+                                 )
+            model.compile(
+                          optimizer(learning_rate=lr), 
+                          loss="mean_absolute_error", 
+                          metrics="mae"
+                          )
+            return model
+        
+        tuner_dir = os.path.join(p_dir, "tuner")
+        print("Tuning results will be saved in", tuner_dir)
+        tuner = keras_tuner.BayesianOptimization(
+                                                 hypermodel=build_model,
+                                                 objective="val_loss",
+                                                 max_trials=40,
+                                                 executions_per_trial=1,
+                                                 overwrite=True,
+                                                 directory=tuner_dir,
+                                                 project_name=\
+                                                         "simple_tune_{}"\
+                                                         .format(
+                                                                 len(train_data)
+                                                                 ))
+        tuner.search_space_summary()
+
+        tuner.search(
+                     training_generator, 
+                     validation_data=validation_generator,
+                     epochs=70, 
+                     callbacks=[all_callbacks]
+                     ) 
+        tuner.results_summary()
+        best_hps = tuner.get_best_hyperparameters(5)
+        model = build_model(best_hps[0])
+        """
+        # ---
 
         if not settings_test:
             # training
@@ -897,12 +1140,12 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
             # calculating pearsons' r and spearman r for the test dataset
             try:
                 mae, mse, pearsonr, pp, spearmanr, sp = pearson_spearman(model, test_generator, t_labels)
-            except ValueError:
-                mae, mse, pearsonr, pp, spearmanr, sp = "nan", "nan", "nan", "nan", "nan", "nan"
-
-            print("{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n"
+                print("{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n"
                   .format("MAE", mae, "MSE", mse, "PearsonR", pearsonr, "PearsonP", pp, "SpearmanR", spearmanr,
                           "SpearmanP", sp))
+            except ValueError:
+                print("MAE:",mae)
+                print("Value Error while calculating statistics - most probably Nan during training.")
 
             # creating more detailed plots
             if extensive_test:
@@ -913,10 +1156,11 @@ def run_all(architecture_name, model_to_use, optimizer, tsv_file, pdb_file, wt_s
             result_string = ",".join([name, architecture_name, str(len(train_data)), str(len(test_data)),
                                       str(np.round(mae, 4)), str(np.round(mse, 4)), str(np.round(pearsonr, 4)),
                                       str(np.round(pp, 4)), str(np.round(spearmanr, 4)), str(np.round(sp, 4))])
-            # writing results to the result file
-            log_file(os.path.join(result_dir, "results.csv"), result_string,
-                     "name,architecture,train_data_size,test_data_size,mae,mse,pearson_r,pearson_p,spearman_r,"
-                     "spearman_p")
+            if write_to_log:
+                # writing results to the result file
+                log_file(os.path.join(result_dir, "results.csv"), result_string,
+                         "name,architecture,train_data_size,test_data_size,mae,mse,pearson_r,pearson_p,spearman_r,"
+                         "spearman_p")
 
         gc.collect()
         del model
