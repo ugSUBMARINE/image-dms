@@ -56,7 +56,7 @@ def pearson_spearman(model, generator, labels):
     # mean absolute error
     mae = np.mean(np.abs(diff))
     # mean squared error
-    mse = np.mean(diff**2)
+    mse = np.mean(diff ** 2)
     return mae, mse, pearson_r, pearson_r_p, spearman_r, spearman_r_p
 
 
@@ -108,7 +108,7 @@ def validation(model, generator, labels, v_mutations, p_name, test_num,
     ax1.tick_params(top=True, bottom=False, labelbottom=False, labeltop=True)
     ax1.set_xticks(np.arange(1, np.max(mutations) + 1, 1))
 
-    c = ["firebrick", "black"]
+    c = ["firebrick", "white"]
     cc = []
     for i in range(len(mutations)):
         if i % 2 == 0:
@@ -151,9 +151,9 @@ def validation(model, generator, labels, v_mutations, p_name, test_num,
     test_pearson_r, test_pearson_rp = scipy.stats.pearsonr(labels.astype(float), pred.astype(float))
     test_spearman_r, test_spearman_rp = scipy.stats.spearmanr(labels.astype(float), pred.astype(float))
 
-    test_text = p_name + "\nsample number: " + str(test_num) + "\nmean_error: " + str(
-        np.round(np.mean(all_errors), decimals=4)) + "\npearson r: " + str(
-        np.around(test_pearson_r, 4)) + "\nspearman r: " + str(np.around(test_spearman_r, 4))
+    test_text = p_name + "\nsample number: " + str(test_num) + "\nmean absolute error: " + str(
+        np.round(np.mean(all_errors), decimals=4)) + "\npearson r: " + str(np.around(test_pearson_r, 4)) + \
+        "\nspearman r: " + str(np.around(test_spearman_r, 4))
     plt.gcf().text(0.7, 0.8, test_text, fontsize=14)
     if save_fig is not None:
         plt.savefig(os.path.join(save_fig, "test_" + p_name))

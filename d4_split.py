@@ -6,20 +6,20 @@ from matplotlib import pyplot as plt
 
 def read_and_process(path_to_file, variants, silent=True, remove_astrix=True):
     """reads in the deep mutational scanning file and returns its data\n
-        :parameter
-            path_to_file: str\n
-            path to the tsv file\n
-            variants: str\n
-            how the variants' column in the file ins named\n
-            silent: bool, optional\n
-            if True doesn't print any stats/ information\n
-            remove_astrix: bool, optional\n
-            if True excludes nonsense mutations from the file\n
-        :returns
-            p_name: str\n
-            name of the protein\n
-            raw_data: pd.Dataframe\n
-            data as pandas df\n"""
+    :parameter
+        path_to_file: str\n
+        path to the tsv file\n
+        variants: str\n
+        how the variants' column in the file ins named\n
+        silent: bool, optional\n
+        if True doesn't print any stats/ information\n
+        remove_astrix: bool, optional\n
+        if True excludes nonsense mutations from the file\n
+    :returns
+        p_name: str\n
+        name of the protein\n
+        raw_data: pd.Dataframe\n
+        data as pandas df\n"""
     raw_data = pd.read_csv(path_to_file, delimiter="\t")
     # getting the proteins name
     if "/" in path_to_file:
@@ -45,32 +45,44 @@ def read_and_process(path_to_file, variants, silent=True, remove_astrix=True):
             rd_bool += ["*" not in i]
         raw_data = raw_data[rd_bool]
         if not silent:
-            print("*** {} rows had to be excluded due to incompatibility ***".format(np.sum(np.invert(rd_bool))))
+            print(
+                "*** {} rows had to be excluded due to incompatibility ***".format(
+                    np.sum(np.invert(rd_bool))
+                )
+            )
     return p_name, raw_data
 
 
-def check_seq(raw_data_cs, name_cs, wt_seq_cs, variants_cs, save_fig=None, plot_fig=False, silent=True):
+def check_seq(
+    raw_data_cs,
+    name_cs,
+    wt_seq_cs,
+    variants_cs,
+    save_fig=None,
+    plot_fig=False,
+    silent=True,
+):
     """checks whether the wild sequence and the sequence reconstructed from the raw data match and plot a histogram
-        which shows how often a certain residue was part of a mutation\n
-        :parameter
-            raw_data_cs: pd dataframe\n
-            dms data\n
-            name_cs: str\n
-            protein name\n
-            wt_seq_cs: list\n
-            wild type sequence as list eg ['A', 'V', 'L']\n
-            variants_cs: str\n
-            name of the variants' column in the raw data file\n
-            save_fig: any, optional\n
-            None doesn't safe the histogram anything else does\n
-            plot_fig: bool, optional\n
-            if True shows the histogram\n
-            silent:  bool, optional\n
-            if True doesn't show stats during execution\n
-        :return
-            first_ind: int\n
-            starting int of the sequence\n
-            """
+    which shows how often a certain residue was part of a mutation\n
+    :parameter
+        raw_data_cs: pd dataframe\n
+        dms data\n
+        name_cs: str\n
+        protein name\n
+        wt_seq_cs: list\n
+        wild type sequence as list eg ['A', 'V', 'L']\n
+        variants_cs: str\n
+        name of the variants' column in the raw data file\n
+        save_fig: any, optional\n
+        None doesn't safe the histogram anything else does\n
+        plot_fig: bool, optional\n
+        if True shows the histogram\n
+        silent:  bool, optional\n
+        if True doesn't show stats during execution\n
+    :return
+        first_ind: int\n
+        starting int of the sequence\n
+    """
     # all variants in a list
     v = raw_data_cs[variants_cs].tolist()
     # list of lists with original amino acid and its residue index in the sequence
@@ -91,7 +103,11 @@ def check_seq(raw_data_cs, name_cs, wt_seq_cs, variants_cs, save_fig=None, plot_
     print(first_ind)
     if first_ind != 1:
         if not silent:
-            print("*** {} used as start of the sequence indexing in the mutation file ***".format(str(first_ind)))
+            print(
+                "*** {} used as start of the sequence indexing in the mutation file ***".format(
+                    str(first_ind)
+                )
+            )
             print()
 
     # checking whether the reconstructed sequence is the same as the wt sequence
@@ -102,15 +118,27 @@ def check_seq(raw_data_cs, name_cs, wt_seq_cs, variants_cs, save_fig=None, plot_
         if i < len(pro_seq_inds) - 1:
             if pro_seq_inds[i + 1] - pro_seq_inds[i] > 1:
                 gap_count += pro_seq_inds[i + 1] - pro_seq_inds[i] - 1
-                gaps += [np.arange(pro_seq_inds[i] - first_ind + 1, pro_seq_inds[i + 1] - first_ind)]
+                gaps += [
+                    np.arange(
+                        pro_seq_inds[i] - first_ind + 1, pro_seq_inds[i + 1] - first_ind
+                    )
+                ]
                 if not silent:
-                    print("*** residues between {} and {} not mutated***".format(str(pro_seq_inds[i]),
-                                                                                 str(pro_seq_inds[i + 1])))
+                    print(
+                        "*** residues between {} and {} not mutated***".format(
+                            str(pro_seq_inds[i]), str(pro_seq_inds[i + 1])
+                        )
+                    )
 
     if gap_count != len(wt_seq_cs) - len(pro_seq_sorted):
         if not silent:
-            print("    Sequence constructed from mutations:\n   ", "".join(pro_seq_sorted[:, 0]))
-        raise ValueError("Wild type sequence doesn't match the sequence reconstructed from the mutation file")
+            print(
+                "    Sequence constructed from mutations:\n   ",
+                "".join(pro_seq_sorted[:, 0]),
+            )
+        raise ValueError(
+            "Wild type sequence doesn't match the sequence reconstructed from the mutation file"
+        )
     elif gap_count > 0:
         fill = pro_seq_inds.copy().astype(object)
         offset = 0
@@ -136,9 +164,9 @@ def check_seq(raw_data_cs, name_cs, wt_seq_cs, variants_cs, save_fig=None, plot_
         if not silent:
             print("reconstructed sequence\nwild type sequence\ngap indicator\n")
             for i in range(0, len(wt_seq_cs), 80):
-                print(r_seq_str[i:i + 80])
-                print(w_seq_str[i:i + 80])
-                print(uf[i:i + 80])
+                print(r_seq_str[i : i + 80])
+                print(w_seq_str[i : i + 80])
+                print(uf[i : i + 80])
                 print()
     else:
         print("*** sequence check passed ***")
@@ -146,8 +174,11 @@ def check_seq(raw_data_cs, name_cs, wt_seq_cs, variants_cs, save_fig=None, plot_
     if save_fig is not None:
         # histogram for how often a residue site was part of a mutation
         fig = plt.figure(figsize=(10, 6))
-        plt.hist(x=np.asarray(pre_seq)[:, 1].astype(int), bins=np.arange(first_ind, len(pro_seq) + 1 + first_ind),
-                 color="forestgreen")
+        plt.hist(
+            x=np.asarray(pre_seq)[:, 1].astype(int),
+            bins=np.arange(first_ind, len(pro_seq) + 1 + first_ind),
+            color="forestgreen",
+        )
         plt.xlabel("residue index")
         plt.ylabel("number of mutations")
         plt.title(name_cs)
@@ -157,40 +188,48 @@ def check_seq(raw_data_cs, name_cs, wt_seq_cs, variants_cs, save_fig=None, plot_
     return first_ind
 
 
-def split_data(raw_data_sd, variants_sd, score_sd, number_mutations_sd, max_train_mutations, train_split, r_seed,
-               silent=False):
+def split_data(
+    raw_data_sd,
+    variants_sd,
+    score_sd,
+    number_mutations_sd,
+    max_train_mutations,
+    train_split,
+    r_seed,
+    silent=False,
+):
     """splits data from raw_data_sd into training and test dataset\n
-        :parameter
-            raw_data_sd: pd dataframe\n
-            dms data\n
-            variants_sd: str\n
-            name of the variants column in raw_data_sd\n
-            score_sd: str\n
-            name of the score column in raw_data_sd\n
-            number_mutations_sd: str\n
-            name of the column that stats the number of mutations per variant in raw_data_sd \n
-            max_train_mutations: int on None
-                - maximum number of mutations per sequence to be used for training\n
-                - None: to use all mutations for training \n
-                - int: variants with mutations > max_train_mutations get stored in unseen_data\n
-            train_split: int or float
-                how much of the dataset should be used as training data (int to specify a number of data for the
-                training dataset or a float (<=1) to specify the fraction of the dataset used as training data\n
-            r_seed: int\n
-            random seed for pandas random_state\n
-            silent: bool, optional\n
-            if True doesn't show stats during execution\n
-        :returns
-            data: ndarray\n
-            variants\n
-            labels: ndarray\n
-            score for each variant\n
-            mutations: ndarray\n
-            number of mutations for each variant\n
-            train_data, train_labels, train_mutations\n
-            test_data, test_labels, test_mutations\n
-            if max_train_mutations is used (variants with more mutations than max_train_mutations):
-            unseen_data, unseen_labels, unseen_mutations\n """
+    :parameter
+        raw_data_sd: pd dataframe\n
+        dms data\n
+        variants_sd: str\n
+        name of the variants column in raw_data_sd\n
+        score_sd: str\n
+        name of the score column in raw_data_sd\n
+        number_mutations_sd: str\n
+        name of the column that stats the number of mutations per variant in raw_data_sd \n
+        max_train_mutations: int on None
+            - maximum number of mutations per sequence to be used for training\n
+            - None: to use all mutations for training \n
+            - int: variants with mutations > max_train_mutations get stored in unseen_data\n
+        train_split: int or float
+            how much of the dataset should be used as training data (int to specify a number of data for the
+            training dataset or a float (<=1) to specify the fraction of the dataset used as training data\n
+        r_seed: int\n
+        random seed for pandas random_state\n
+        silent: bool, optional\n
+        if True doesn't show stats during execution\n
+    :returns
+        data: ndarray\n
+        variants\n
+        labels: ndarray\n
+        score for each variant\n
+        mutations: ndarray\n
+        number of mutations for each variant\n
+        train_data, train_labels, train_mutations\n
+        test_data, test_labels, test_mutations\n
+        if max_train_mutations is used (variants with more mutations than max_train_mutations):
+        unseen_data, unseen_labels, unseen_mutations\n"""
     vas = raw_data_sd[[variants_sd, score_sd, number_mutations_sd]]
 
     if max_train_mutations is None:
@@ -247,54 +286,75 @@ def split_data(raw_data_sd, variants_sd, score_sd, number_mutations_sd, max_trai
             print("train data size:", len(train_data))
             print("test data size:", len(test_data))
             print("unseen data size:", len(unseen_data))
-    return train_data, train_labels, train_mutations, test_data, test_labels, test_mutations, unseen_data, unseen_labels, unseen_mutations
+    return (
+        train_data,
+        train_labels,
+        train_mutations,
+        test_data,
+        test_labels,
+        test_mutations,
+        unseen_data,
+        unseen_labels,
+        unseen_mutations,
+    )
 
 
 # ---------------------------------------------- NOW USED --------------------------------------------------------------
-def split_inds(file_path, variants, score, number_mutations, split=None, remove_nonsense=True, silent=False,
-               split_file_path=None, train_name="train", tune_name="tune", test_name="test"):
+def split_inds(
+    file_path,
+    variants,
+    score,
+    number_mutations,
+    split=None,
+    remove_nonsense=True,
+    silent=False,
+    split_file_path=None,
+    train_name="train",
+    tune_name="tune",
+    test_name="test",
+):
     """get indices of variants that don't feature a nonsense mutation\n
-        :parameter
-            - file_path: str\n
-              path to the tsv file of interest\n
-            - variants: str\n
-              how the variants column is labeled in the tsv file\n
-            - score: str\n
-              how the score column is labeled in the tsv file\n
-            - number_mutations: str\n
-              how the number_mutations column is labeled in the tsv file\n
-            - split: None or list of int/float, (optional - default None)\n
-              specifies the split for train, tune, test indices\n
-                - float specifies fractions of the whole dataset\n
-                  eg [0.25, 0.25, 0.5] creates a train and tune dataset with 50 entries each and a test dataset of 100
-                  if the whole dataset contains 200 entries\n
-                - int specifies the different number of samples per dataset\n
-                  eg [50,50,100] leads to a train and a tune dataset with 50 entries each and a test dataset of 100
-                  if the whole dataset contains 200 entries\n
-                - None uses [0.8, 0.15, 0.05] as split\n
-            - remove_nonsense: bool, (optional - default True)\n
-              True removes indices of nonsense mutations of all possible indices to choose from\n
-            - silent: bool, (optional - default False)\n
-              if True doesn't print split sizes\n
-            - split_file_path: None, str or dict, (optional - default None)\n
-                - None the splits get created according to split\n
-                - str splits get created according to the splits specified in the file in the directory -
-                  filenames without their file extensions need to be specified in train_name, tune_name and test_name\n
-                - dict splits get created according to the specification in the dict -
-                  train_name, tune_name and test_name specify the keys for the dictionary how the train tune and
-                  test keys are named\n
-            - train_name, tune_name, test_name, str (optional - default 'train', 'tune', 'test')\n
-              names of the train, tune and test data files - without their file extension e.g.
-              'train.txt' needs 'train'\n
-        :returns
-            - data_dict: dict\n
-              dictionary containing the arrays with indices for the three data splits\n
-              :key 'train', 'tune', 'test'
-            - data: dict\n
-              dictionary containing the arrays with variants (data), scores (labels) and number of mutations (mutations)
-              for the train, tune and test splits\n
-              prefix = ['train', 'tune', 'test']\n
-              :key prefix_data, prefix_labels, prefix_mutations"""
+    :parameter
+        - file_path: str\n
+          path to the tsv file of interest\n
+        - variants: str\n
+          how the variants column is labeled in the tsv file\n
+        - score: str\n
+          how the score column is labeled in the tsv file\n
+        - number_mutations: str\n
+          how the number_mutations column is labeled in the tsv file\n
+        - split: None or list of int/float, (optional - default None)\n
+          specifies the split for train, tune, test indices\n
+            - float specifies fractions of the whole dataset\n
+              eg [0.25, 0.25, 0.5] creates a train and tune dataset with 50 entries each and a test dataset of 100
+              if the whole dataset contains 200 entries\n
+            - int specifies the different number of samples per dataset\n
+              eg [50,50,100] leads to a train and a tune dataset with 50 entries each and a test dataset of 100
+              if the whole dataset contains 200 entries\n
+            - None uses [0.8, 0.15, 0.05] as split\n
+        - remove_nonsense: bool, (optional - default True)\n
+          True removes indices of nonsense mutations of all possible indices to choose from\n
+        - silent: bool, (optional - default False)\n
+          if True doesn't print split sizes\n
+        - split_file_path: None, str or dict, (optional - default None)\n
+            - None the splits get created according to split\n
+            - str splits get created according to the splits specified in the file in the directory -
+              filenames without their file extensions need to be specified in train_name, tune_name and test_name\n
+            - dict splits get created according to the specification in the dict -
+              train_name, tune_name and test_name specify the keys for the dictionary how the train tune and
+              test keys are named\n
+        - train_name, tune_name, test_name, str (optional - default 'train', 'tune', 'test')\n
+          names of the train, tune and test data files - without their file extension e.g.
+          'train.txt' needs 'train'\n
+    :returns
+        - data_dict: dict\n
+          dictionary containing the arrays with indices for the three data splits\n
+          :key 'train', 'tune', 'test'
+        - data: dict\n
+          dictionary containing the arrays with variants (data), scores (labels) and number of mutations (mutations)
+          for the train, tune and test splits\n
+          prefix = ['train', 'tune', 'test']\n
+          :key prefix_data, prefix_labels, prefix_mutations"""
 
     raw_data = pd.read_csv(file_path, delimiter="\t")
     # extract variants column
@@ -318,49 +378,63 @@ def split_inds(file_path, variants, score, number_mutations, split=None, remove_
         # check inputs
         if any([isinstance(split, list), split is None]):
             if split is not None and len(split) < 2:
-                raise ValueError("split needs to contain at least 2 inputs or needs to be None")
+                raise ValueError(
+                    "split needs to contain at least 2 inputs or needs to be None"
+                )
         if split is None:
             split = [int(np.ceil(pi_len * 0.8)), int(np.floor(pi_len * 0.15))]
         elif isinstance(split, list):
             if len(split) == 3:
-                if np.sum([split[0] > 0., split[1] > 0.]) < 2:
+                if not all([split[0] > 0.0, split[1] > 0.0]):
                     raise ValueError("train and tune split need to be > 0.")
-                if all([split[0] <= 1., split[1] <= 1., split[2] <= 1.]):
-                    if np.sum(split) > 1.:
+                if all([split[0] <= 1.0, split[1] <= 1.0, split[2] <= 1.0]):
+                    if np.sum(split) > 1.0:
                         raise ValueError("sum of split fractions can't be > 1.")
-                    split = [int(np.ceil(pi_len * split[0])), int(np.floor(pi_len * split[1]))]
-                elif all([split[0] >= 1., split[1] >= 1., split[2] >= 1.]):
+                    split = [
+                        int(np.ceil(pi_len * split[0])),
+                        int(np.floor(pi_len * split[1])),
+                    ]
+                elif all([split[0] >= 1.0, split[1] >= 1.0, split[2] >= 1.0]):
                     split[0] = int(split[0])
                     split[1] = int(split[1])
                     split[2] = int(split[2])
                 else:
-                    raise ValueError("split needs to be either all > 1 to be used as split size"
-                                     " or all < 1 to be used as fraction")
+                    raise ValueError(
+                        "split needs to be either all > 1 to be used as split size"
+                        " or all < 1 to be used as fraction"
+                    )
             elif len(split) == 2:
-                if np.sum([split[0] > 0., split[1] > 0.]) < 2:
+                if not all([split[0] > 0.0, split[1] > 0.0]):
                     raise ValueError("both splits need to be > 0.")
-                if all([split[0] <= 1., split[1] <= 1.]):
-                    if np.sum(split) > 1.:
+                if all([split[0] <= 1.0, split[1] <= 1.0]):
+                    if np.sum(split) > 1.0:
                         raise ValueError("sum of split fractions can't be > 1.")
-                    split = [int(np.ceil(pi_len * split[0])), int(np.floor(pi_len * split[1]))]
-                elif all([split[0] >= 1., split[1] >= 1.]):
+                    split = [
+                        int(np.ceil(pi_len * split[0])),
+                        int(np.floor(pi_len * split[1])),
+                    ]
+                elif all([split[0] >= 1.0, split[1] >= 1.0]):
                     split[0] = int(split[0])
                     split[1] = int(split[1])
                 else:
-                    raise ValueError("split needs to be either all > 1 to be used as split size"
-                                     " or all < 1 to be used as fraction")
+                    raise ValueError(
+                        "split needs to be either all > 1 to be used as split size"
+                        " or all < 1 to be used as fraction"
+                    )
             else:
                 raise ValueError("split as list needs to contain either 2 or 3 items")
         else:
-            raise ValueError("Incorrect split input needs to be list containing 'float' or 'int' or needs to be None")
+            raise ValueError(
+                "Incorrect split input needs to be list containing 'float' or 'int' or needs to be None"
+            )
 
         # split indices in separate data sets for train, tune, test
-        train = possible_inds[:split[0]]
-        tune = possible_inds[split[0]:split[0] + split[1]]
+        train = possible_inds[: split[0]]
+        tune = possible_inds[split[0] : split[0] + split[1]]
         try:
-            test = possible_inds[split[0] + split[1]: split[0] + split[1] + split[2]]
+            test = possible_inds[split[0] + split[1] : split[0] + split[1] + split[2]]
         except IndexError:
-            test = possible_inds[split[0] + split[1]:]
+            test = possible_inds[split[0] + split[1] :]
     elif type(split_file_path) == str:
         split_dict = read_split_dir(split_file_path)
         train = np.asarray(split_dict[train_name])
@@ -371,11 +445,18 @@ def split_inds(file_path, variants, score, number_mutations, split=None, remove_
         tune = np.asarray(split_file_path[tune_name])
         test = np.asarray(split_file_path[test_name])
     else:
-        raise ValueError("Incorrect input for split_file_path - expected None, str or dict but got {} instead"
-                         .format(type(split_file_path)))
+        raise ValueError(
+            "Incorrect input for split_file_path - expected None, str or dict but got {} instead".format(
+                type(split_file_path)
+            )
+        )
 
     if not silent:
-        print("size train split: {}\nsize tune split: {}\nsize test split: {}".format(len(train), len(tune), len(test)))
+        print(
+            "size train split: {}\nsize tune split: {}\nsize test split: {}".format(
+                len(train), len(tune), len(test)
+            )
+        )
     # dict containing the used indices to create the splits of the tsv file
     data_dict = {"train": train, "tune": tune, "test": test}
 
@@ -398,38 +479,40 @@ def split_inds(file_path, variants, score, number_mutations, split=None, remove_
     test_mutations = np.asarray(test_dataset[number_mutations])
 
     # dict containing the data, labels and number of mutations of the different splits
-    data = {"train_data": train_data,
-            "train_labels": train_labels,
-            "train_mutations": train_mutations,
-            "tune_data": tune_data,
-            "tune_labels": tune_labels,
-            "tune_mutations": tune_mutations,
-            "test_data": test_data,
-            "test_labels": test_labels,
-            "test_mutations": test_mutations}
+    data = {
+        "train_data": train_data,
+        "train_labels": train_labels,
+        "train_mutations": train_mutations,
+        "tune_data": tune_data,
+        "tune_labels": tune_labels,
+        "tune_mutations": tune_mutations,
+        "test_data": test_data,
+        "test_labels": test_labels,
+        "test_mutations": test_mutations,
+    }
 
     return data_dict, data
 
 
 def create_split_file(p_dir, name, train_split, tune_split, test_split):
     """creates train tune and test split txt files in a directory called 'splits'\n
-        :parameter
-            - p_dir: str\n
-              where the splits' directory should be created\n
-            - name: str\n
-              name of the protein\n
-            - train_split, tune_split, test_split: lists or list like\n
-              lists that contain the indices of the splits that should be written to the corresponding files"""
+    :parameter
+        - p_dir: str\n
+          where the splits' directory should be created\n
+        - name: str\n
+          name of the protein\n
+        - train_split, tune_split, test_split: lists or list like\n
+          lists that contain the indices of the splits that should be written to the corresponding files"""
 
     def open_and_write(file_path, fname, data):
         """writes splits to file\n
-            :parameter
-                - file_path: str\n
-                  where the file should be created
-                - name: str\n
-                  name of the file\n
-                - data: list or list like\n
-                  data that should be writen to file"""
+        :parameter
+            - file_path: str\n
+              where the file should be created
+            - name: str\n
+              name of the file\n
+            - data: list or list like\n
+              data that should be writen to file"""
         file = open(file_path + "/" + fname + ".txt", "w+")
         for i in data:
             file.write(str(i) + "\n")
@@ -451,12 +534,12 @@ def create_split_file(p_dir, name, train_split, tune_split, test_split):
 
 def read_split_file(file_path):
     """parses txt file that contains the indices for a split (one index per row) and returns the indices as ndarray\n
-        :parameter
-            - file_path: str\n
-              path where the file is stored\n
-        :return
-            - split_ind: list\n
-              contains the split indices of the parsed txt file\n"""
+    :parameter
+        - file_path: str\n
+          path where the file is stored\n
+    :return
+        - split_ind: list\n
+          contains the split indices of the parsed txt file\n"""
     split_file = open(file_path, "r")
     content = split_file.readlines()
     split_ind = []
@@ -468,13 +551,13 @@ def read_split_file(file_path):
 
 def read_split_dir(file_path):
     """reads train.txt, tune.txt, test.txt files from a directory and returns their index content as list of lists\n
-        :parameter
-            - file_path: str\n
-              path to directory where the three files are stored\n
-        :return
-            - splits_dict: dict\n
-              dictionary containing the content of the files in file_path with their file names as keys and their
-              content as values\n"""
+    :parameter
+        - file_path: str\n
+          path to directory where the three files are stored\n
+    :return
+        - splits_dict: dict\n
+          dictionary containing the content of the files in file_path with their file names as keys and their
+          content as values\n"""
     if os.path.isdir(file_path):
         s_dir, _, files = list(os.walk(file_path))[0]
         splits = []
@@ -486,52 +569,58 @@ def read_split_dir(file_path):
             splits_dict = dict(zip(names, splits))
             return splits_dict
         else:
-            raise FileNotFoundError("Wrong number of files to create train, tune, test index list - 3 needed but {} "
-                                    "are given".format(str(len(files))))
+            raise FileNotFoundError(
+                "Wrong number of files to create train, tune, test index list - 3 needed but {} "
+                "are given".format(str(len(files)))
+            )
     else:
-        raise FileNotFoundError("Directory '{}' containing the split files doesn't exist".format(str(file_path)))
+        raise FileNotFoundError(
+            "Directory '{}' containing the split files doesn't exist".format(
+                str(file_path)
+            )
+        )
 
 
 def create_inds(data_path, train_size, tune_size=5000, test_size=5000):
     """creates split indices that can be used to split a tsv files rows into train tune and test datasets\n
-        :parameter
-        - data_path: str\n
-          location of the tsv file for which the splits should be produced\n
-        - train_size: int\n
-          size of the train split\n
-        - tune_size, test_size: int, (optional, default 5000)\n
-          sizes of the tune and test split\n
-        :returns
-        - train, tune, test: ndarray\n
-          arrays containing the split indices for each split\n"""
+    :parameter
+    - data_path: str\n
+      location of the tsv file for which the splits should be produced\n
+    - train_size: int\n
+      size of the train split\n
+    - tune_size, test_size: int, (optional, default 5000)\n
+      sizes of the tune and test split\n
+    :returns
+    - train, tune, test: ndarray\n
+      arrays containing the split indices for each split\n"""
     data_file = pd.read_csv(data_path, delimiter="\t")
     # all possible indices
     pos_inds = np.arange(len(data_file))
     np.random.shuffle(pos_inds)
     # split indices into the respective splits
-    train = pos_inds[: train_size]
-    tune = pos_inds[train_size:train_size+tune_size]
-    test = pos_inds[train_size+tune_size:train_size+tune_size+test_size]
+    train = pos_inds[:train_size]
+    tune = pos_inds[train_size : train_size + tune_size]
+    test = pos_inds[train_size + tune_size : train_size + tune_size + test_size]
     return train, tune, test
 
 
 def create_txt(file_path, data, name):
     """writes data (indices) to .txt file with one index per row\n
-        :parameter
-            - file_path: str\n
-              where the file should be stored\n
-            - data: list or list like\n
-              data that should be written per line to the .txt file\n
-            - name: str\n
-              name of the file that should be created\n
-        :return
-            None"""
+    :parameter
+        - file_path: str\n
+          where the file should be stored\n
+        - data: list or list like\n
+          data that should be written per line to the .txt file\n
+        - name: str\n
+          name of the file that should be created\n
+    :return
+        None"""
     # creates dir if it doesn't already exist
     if not os.path.isdir(file_path):
         os.mkdir(file_path)
     a = open(os.path.join(file_path, name), "w+")
     for i in data:
-        a.write(str(i).strip()+"\n")
+        a.write(str(i).strip() + "\n")
     a.close()
 
 

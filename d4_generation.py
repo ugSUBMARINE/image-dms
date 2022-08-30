@@ -1117,7 +1117,7 @@ def run_all(
         test_generator = DataGenerator(t_data, np.zeros(len(t_labels)), **test_params)
 
         # ---
-        """ 
+        
         import keras_tuner
         def build_model(hp):
             filter_num = hp.Int(
@@ -1201,10 +1201,10 @@ def run_all(
                      callbacks=[all_callbacks]
                      ) 
         tuner.results_summary()
-        # best_hps = tuner.get_best_hyperparameters(5)
-        # model = build_model(best_hps[0])
-        """
-        """
+        best_hps = tuner.get_best_hyperparameters(5)
+        model = build_model(best_hps[0])
+     
+        """ 
         import keras_tuner
         def build_model(hp):
             times = hp.Int(
@@ -1297,7 +1297,7 @@ def run_all(
         tuner.results_summary()
         best_hps = tuner.get_best_hyperparameters(5)
         model = build_model(best_hps[0])
-        """
+        """ 
         # ---
 
         if not settings_test:
