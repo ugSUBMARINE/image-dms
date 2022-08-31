@@ -6,16 +6,16 @@ from d4_utils import aa_dict
 
 def data_coord_extraction(target_pdb_file):
     """calculates distance between residues and builds artificial CB for GLY based on the
-    side chains of amino acids (!= GLY) before if there is one or after it if Gly is the start amino acid\n
-    No duplicated side chain entries allowed\n
+    side chains of amino acids (!= GLY) before if there is one or after it if Gly is the start amino acid
+    No duplicated side chain entries allowed
     :parameter
-         - target_pdb_file: str\n
-           path to pdb file for protein of interest\n
+         - target_pdb_file: str
+           path to pdb file for protein of interest
     :returns
-         - new_data: 2D ndarray\n
-           contains information about all residues like [[Atom type, Residue 3letter, ChainID, ResidueID],...] \n
-         - new_coords: 2d ndarray\n
-           contains coordinates of corresponding residues to the new_data entries\n
+         - new_data: 2D ndarray
+           contains information about all residues like [[Atom type, Residue 3letter, ChainID, ResidueID],...] 
+         - new_coords: 2d ndarray
+           contains coordinates of corresponding residues to the new_data entries
     """
     # list of all data of the entries like [[Atom type, Residue 3letter, ChainID, ResidueID],...]
     res_data = []
@@ -57,13 +57,13 @@ def data_coord_extraction(target_pdb_file):
 
 def dist_calc_old(arr1, arr2):
     """calculates distance between arr1 and arr2 and returns a 2D array with all distances of all arr1 points
-    against all arr2 points\n
+    against all arr2 points
     :parameter
-        - arr1, arr2: ndarray\n
-          2D arrays of 1D lists with 3D coordinates eg [[x1, y1, z1],...]\n
+        - arr1, arr2: ndarray
+          2D arrays of 1D lists with 3D coordinates eg [[x1, y1, z1],...]
     :return
-        - dist: 2D ndarray\n
-          len(arr1) x len(arr2) distance matrix between arr1 and arr2\n"""
+        - dist: 2D ndarray
+          len(arr1) x len(arr2) distance matrix between arr1 and arr2"""
     # get only the x,y,z coordinates from the input arrays and reshape them so they can be subtracted from each other
     arr1_coords_rs = arr1.reshape(arr1.shape[0], 1, arr1.shape[1])
     arr2_coord_rs = arr2.reshape(1, arr2.shape[0], arr2.shape[1])
@@ -92,27 +92,27 @@ def dist_calc(arr1, arr2):
 
 
 def atom_interaction_matrix_d(path_to_pdb_file, dist_th=10.0, plot_matrices=False):
-    """computes the adjacency matrix for a given pdb file based on the closest side chain atoms\n
+    """computes the adjacency matrix for a given pdb file based on the closest side chain atoms
     :parameter
-        - path_to_pdb_file: str\n
-          path to pdb file of the protein of interest\n
-        - dist_th: int or float, (optional - default 10.)\n
-          maximum distance in \u212B of atoms of two residues to be seen as interacting\n
-        - plot_matrices: bool, (optional - default False)\n
+        - path_to_pdb_file: str
+          path to pdb file of the protein of interest
+        - dist_th: int or float, (optional - default 10.)
+          maximum distance in \u212B of atoms of two residues to be seen as interacting
+        - plot_matrices: bool, (optional - default False)
           if True plots matrices for (from left to right)
-            - distance to the closest side chain atom per residue\n
-            - distance between all side chain atoms\n
-            - inverse normalized 1st plot\n
-            - distance between CA atoms\n
-            - all interacting residues\n
+            - distance to the closest side chain atom per residue
+            - distance between all side chain atoms
+            - inverse normalized 1st plot
+            - distance between CA atoms
+            - all interacting residues
     :returns
-        adjacency is given per residue (the closest atom to any side chain atom of any other residue)\n
-        - red2: 2D ndarray of floats\n
-          adjacency (distance) matrix of the given protein with size len(protein_seq) x len(protein_seq)\n
-        - red2_norm: 2D ndarray of floats\n
-          inverse of the scaled red2: (1 - (red2 / np.max(red2))\n
-        - interacting_residues: boolean 2D ndarray\n
-          matrix where interacting residues are True\n"""
+        adjacency is given per residue (the closest atom to any side chain atom of any other residue)
+        - red2: 2D ndarray of floats
+          adjacency (distance) matrix of the given protein with size len(protein_seq) x len(protein_seq)
+        - red2_norm: 2D ndarray of floats
+          inverse of the scaled red2: (1 - (red2 / np.max(red2))
+        - interacting_residues: boolean 2D ndarray
+          matrix where interacting residues are True"""
     # data [[ATOM, RES, CHAIN, ResNR],..]
     data, coords = data_coord_extraction(path_to_pdb_file)
     # ca alpha distances
@@ -186,15 +186,15 @@ def atom_interaction_matrix_d(path_to_pdb_file, dist_th=10.0, plot_matrices=Fals
 
 def hydrophobicity_matrix(converted, norm):
     """matrix that represents how similar its pairs are in terms of hydrophobicity only for pairs that are true in
-    res_bool_matrix\n
+    res_bool_matrix
     :parameter
-        - converted: ndarray of int or floats\n
-          the sequence converted to the values of the corresponding dict\n
-        - norm: float or int\n
-          max value possible for interactions between two residues\n
+        - converted: ndarray of int or floats
+          the sequence converted to the values of the corresponding dict
+        - norm: float or int
+          max value possible for interactions between two residues
     :return
-        - hp_matrix: 2d ndarray of floats\n
-          len(wt_seq) x len(wt_seq) matrix with the similarity in terms of hydrophobicity of each pair\n"""
+        - hp_matrix: 2d ndarray of floats
+          len(wt_seq) x len(wt_seq) matrix with the similarity in terms of hydrophobicity of each pair"""
     # creating the specific interaction matrix
     interactions = np.abs(converted - converted.reshape(len(converted), -1))
     # calculating the interaction values and resizing them to be in range [0,1]
@@ -205,16 +205,16 @@ def hydrophobicity_matrix(converted, norm):
 
 def hbond_matrix(converted, valid_vals):
     """matrix that represents whether pairs can form H bonds (True) or not (False) only for pairs that are true in
-    res_bool_matrix\n
+    res_bool_matrix
      :parameter
-         - valid_vals: ndarray of int or float\n
+         - valid_vals: ndarray of int or float
            which values of the matrix are True (can form H bonds) after multiplying the encoded sequence against
-           itself\n
-         - converted: ndarray of int or floats\n
-           the sequence converted to the values of the corresponding dict\n
+           itself
+         - converted: ndarray of int or floats
+           the sequence converted to the values of the corresponding dict
      :return
-         - hb_matrix: 2d ndarray of floats\n
-           len(wt_seq) x len(wt_seq) matrix where pairs that can form h bonds are True\n"""
+         - hb_matrix: 2d ndarray of floats
+           len(wt_seq) x len(wt_seq) matrix where pairs that can form h bonds are True"""
     # creating the specific interaction matrix
     interactions = converted * converted.reshape(len(converted), -1)
     # checking which interactions are can form H bonds
@@ -224,14 +224,14 @@ def hbond_matrix(converted, valid_vals):
 
 def charge_matrix(converted):
     """matrix that represents whether pairs of amino acids are of the same charge (-1), of opposite charge
-    (1), or one charged one neutral/ both uncharged (0) only for pairs that are true in res_bool_matrix\n
+    (1), or one charged one neutral/ both uncharged (0) only for pairs that are true in res_bool_matrix
      :parameter
-         - converted: ndarray of int or floats\n
-           the sequence converted to the values of the corresponding dict\n
+         - converted: ndarray of int or floats
+           the sequence converted to the values of the corresponding dict
      :return
-         - interactions: 2d ndarray of floats\n
+         - interactions: 2d ndarray of floats
            len(wt_seq) x len(wt_seq) matrix containing the 'charge interaction quality value'
-           for all interacting residues\n"""
+           for all interacting residues"""
     # creating the specific interaction matrix
     interactions = converted * converted.reshape(len(converted), -1)
     interactions = interactions * -1
@@ -240,15 +240,15 @@ def charge_matrix(converted):
 
 def interaction_area(converted, norm):
     """matrix that represents the change in solvent accessible surface area (SASA) due to a mutation
-    only for pairs that are true in res_bool_matrix\n
+    only for pairs that are true in res_bool_matrix
      :parameter
-         - mut_converted: ndarray of float or int\n
-           mutated sequence converted with the corresponding dict\n
-         - norm: int or float\n
-           max value possible for interactions between two residues\n
+         - mut_converted: ndarray of float or int
+           mutated sequence converted with the corresponding dict
+         - norm: int or float
+           max value possible for interactions between two residues
      :return
          - interactions: len(wt_seq) x len(wt_seq) matrix with values corresponding to the
-           absolute magnitude of change in the SASA of a residue pair\n"""
+           absolute magnitude of change in the SASA of a residue pair"""
 
     # creating the specific interaction matrix
     interactions = converted + converted.reshape(len(converted), -1)
@@ -258,22 +258,22 @@ def interaction_area(converted, norm):
 
 
 def clashes(wt_converted, mut_converted, norm, dist_mat, dist_thr):
-    """matrix that represents whether clashes ore holes are occurring due to the given mutations\n
+    """matrix that represents whether clashes ore holes are occurring due to the given mutations
     :parameter
-        - wt_converted: ndarray of float or int\n
-          wild type sequence converted with the corresponding dict\n
-        - mut_converted: ndarray of float or int\n
-          mutated sequence converted with the corresponding dict\n
-        - norm: int or float\n
-          max value possible for interactions between two residues\n
-        - dist_mat: 2D ndarray of float\n
-          matrix with distances between all residues\n
-        - dist_thr: int or float\n
-          threshold for how close residues need to be to count as interacting\n
+        - wt_converted: ndarray of float or int
+          wild type sequence converted with the corresponding dict
+        - mut_converted: ndarray of float or int
+          mutated sequence converted with the corresponding dict
+        - norm: int or float
+          max value possible for interactions between two residues
+        - dist_mat: 2D ndarray of float
+          matrix with distances between all residues
+        - dist_thr: int or float
+          threshold for how close residues need to be to count as interacting
     :return
-        - dist_impact: 2D ndarray of float\n
+        - dist_impact: 2D ndarray of float
           len(wt_seq) x len(wt_seq) matrix with values corresponding to whether new mutations lead to potential
-          clashes or holes between interacting residues\n"""
+          clashes or holes between interacting residues"""
     # difference in side chain length between the wild type and the variant
     diff = wt_converted - mut_converted
     # creating the specific interaction matrix
@@ -284,21 +284,20 @@ def clashes(wt_converted, mut_converted, norm, dist_mat, dist_thr):
 
 
 def conservation_m(converted, conservation_table, row_ind, res_bool_matrix):
-    """matrix that represents how conserved residues at each sequence position are\n
+    """matrix that represents how conserved residues at each sequence position are
     :parameter
-        - converted: ndarray of int or floats\n
-          the sequence converted to the values of the corresponding dict\n
-        - conservation_table: nx20 ndarray of floats\n
+        - converted: ndarray of int or floats
+          the sequence converted to the values of the corresponding dict
+        - conservation_table: nx20 ndarray of floats
           each row specifies which amino acids are conserved at that
-          sequence position and how conserved they are\n
-        - row_ind: 1D ndarray of ints\n
-          indexing help with indices of each sequence position\n
-        - res_bool_matrix: 2D boolean ndarray\n
-          specifies which residues interact\n
+          sequence position and how conserved they are
+        - row_ind: 1D ndarray of ints
+          indexing help with indices of each sequence position
+        - res_bool_matrix: 2D boolean ndarray
+          specifies which residues interact
     :return
-        - compare: 2d ndarray of floats\n
-          len(wt_seq) x len(wt_seq) matrix of specifying the conservation
-          of residues\n"""
+        - compare: 2d ndarray of floats
+          len(wt_seq) x len(wt_seq) matrix of specifying the conservation of residues"""
     # how conserved the current amino acid at that position is
     con_vect = conservation_table[row_ind, converted]
     compare = con_vect * con_vect.reshape(len(converted), -1)
@@ -308,19 +307,19 @@ def conservation_m(converted, conservation_table, row_ind, res_bool_matrix):
 
 
 def mutate_sequences(wt_sequence, mutations, f_dict, first_ind):
-    """mutates the wild type sequence at positions defined in mutations and returns the mutated sequences\n
+    """mutates the wild type sequence at positions defined in mutations and returns the mutated sequences
     :parameter
-        wt_sequence: ndarray of float or int\n
-        the encoded wild type sequence as ndarray e.g. [0.3, 0.8, 0.1, 1.]\n
-        mutations: list of str\n
-        strings where the mutations take place e.g. 'F1K,K2G'\n
-        f_dict: dict\n
-        dictionary with values for encoding\n
-        first_ind: int\n
+        wt_sequence: ndarray of float or int
+        the encoded wild type sequence as ndarray e.g. [0.3, 0.8, 0.1, 1.]
+        mutations: list of str
+        strings where the mutations take place e.g. 'F1K,K2G'
+        f_dict: dict
+        dictionary with values for encoding
+        first_ind: int
         int that denotes the number of the first residue (e.g. if protein sequence starts with RES #3 first_ind=3)
     return:
-        mutated_sequences: list of float or int\n
-        mutated sequences as list\n"""
+        mutated_sequences: list of float or int
+        mutated sequences as list"""
     a_to_mut = wt_sequence.copy()
     # get each mutation
     muts = mutations.strip().split(",")
@@ -332,16 +331,16 @@ def mutate_sequences(wt_sequence, mutations, f_dict, first_ind):
 
 
 def check_structure(path_to_pdb_file, comb_bool_cs, wt_seq_cs, silent=False):
-    """checks whether the given wild type sequence matches the sequence in the pdb file\n
+    """checks whether the given wild type sequence matches the sequence in the pdb file
     :parameter
-        path_to_pdb_file: str\n
-        path to used pdb file\n
-        comb_bool_cs: 2D ndarray\n
-        interacting_residues of atom_interaction_matrix_d\n
-        wt_seq_cs: list\n
-        wild type sequence as list eg ['A', 'V', 'L']\n
-        silent: bool, (optional default False)\n
-        whether to print that the structure check is passed or not\n
+        path_to_pdb_file: str
+        path to used pdb file
+        comb_bool_cs: 2D ndarray
+        interacting_residues of atom_interaction_matrix_d
+        wt_seq_cs: list
+        wild type sequence as list eg ['A', 'V', 'L']
+        silent: bool, (optional default False)
+        whether to print that the structure check is passed or not
     :return
         None
     """
@@ -391,49 +390,49 @@ def model_interactions(
     cot,
     cor,
 ):
-    """creates the matrix that describes the changes of interactions between residues due to mutation\n
+    """creates the matrix that describes the changes of interactions between residues due to mutation
     :parameter
-        - feature_to_encode: str\n
-          the mutation that should be modeled e.g. 'S3A,K56L'\n
-        - interaction_matrix: 2D boolean ndarray\n
-          matrix where interacting residues are True\n
-        - index_matrix: 2D ndarray of ints\n
-          matrix that is symmetrical along the diagonal and describes the indices of the interactions\n
-        - factor_matrix: 2D ndarray of floats\n
-          describes the strength of the interaction based on the distance of interacting residues\n
-        - distance_matrix: 2D ndarray of floats\n
-          2D matrix with distances between all residues\n
-        - dist_thrh: int or float\n
-          maximum distance of residues to count as interacting\n
-        - first_ind: int\n
-          offset of the start of the sequence (when sequence doesn't start with residue 0)\n
-        - hb: dict\n
-          describing the hydrogen bonding capability of a residue\n
-        - hp: dict\n
-          describing the hydrophobicity of a residue\n
-        - c: dict\n
-          describing the charge of a residue\n
-        - sa: dict\n
-          describing the SASA of a residue\n
-        - scl: dict\n
-          describing the side chain length of a residue\n
-        - cp: dict\n
-          describing the aa position in look up table of alignemtn\n
-        for a detailed description please refer to the docstring of data_generator_vals in d4_generation.py\n
-        - hmc: hm_converted\n
-        - hm_pv: hm_pos_vals\n
-        - hpc: hp_converted\n
-        - hpn: hp_norm\n
-        - cmc: cm_converted\n
-        - iac: ia_converted\n
-        - ian: ia_norm\n
-        - clc: cl_converted\n
-        - cln: cl_norm\n
-        - coc: co_converted\n
-        - cot: co_table\n
-        - cor: co_rows\n
+        - feature_to_encode: str
+          the mutation that should be modeled e.g. 'S3A,K56L'
+        - interaction_matrix: 2D boolean ndarray
+          matrix where interacting residues are True
+        - index_matrix: 2D ndarray of ints
+          matrix that is symmetrical along the diagonal and describes the indices of the interactions
+        - factor_matrix: 2D ndarray of floats
+          describes the strength of the interaction based on the distance of interacting residues
+        - distance_matrix: 2D ndarray of floats
+          2D matrix with distances between all residues
+        - dist_thrh: int or float
+          maximum distance of residues to count as interacting
+        - first_ind: int
+          offset of the start of the sequence (when sequence doesn't start with residue 0)
+        - hb: dict
+          describing the hydrogen bonding capability of a residue
+        - hp: dict
+          describing the hydrophobicity of a residue
+        - c: dict
+          describing the charge of a residue
+        - sa: dict
+          describing the SASA of a residue
+        - scl: dict
+          describing the side chain length of a residue
+        - cp: dict
+          describing the aa position in look up table of alignemtn
+        for a detailed description please refer to the docstring of data_generator_vals in d4_generation.py
+        - hmc: hm_converted
+        - hm_pv: hm_pos_vals
+        - hpc: hp_converted
+        - hpn: hp_norm
+        - cmc: cm_converted
+        - iac: ia_converted
+        - ian: ia_norm
+        - clc: cl_converted
+        - cln: cl_norm
+        - coc: co_converted
+        - cot: co_table
+        - cor: co_rows
     :return
-        - n_channelxnxn ndarray of floats\n
+        - n_channelxnxn ndarray of floats
           encoded interactions"""
 
     # for all matrices *factor masks non-interacting residues and scales the strength based on their distance

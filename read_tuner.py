@@ -43,10 +43,14 @@ def read_tuner(tuner_dir):
     return score, settings, paths, order
 
 
-num = input("settings number:")
-sc, se, pa, o = read_tuner("./tuner/simple_tune_{}/".format(num))   
+runs = [50, 100, 250, 500, 1000, 6000]
+runs = [50]
+display_num = 5
 
-for i in range(10):
+num = input("settings number:")
+sc, se, pa, o = read_tuner("./tuner/dense_net2_tune_{}/".format(num))   
+
+for i in range(display_num):
     si = se[o][i]
     print(pa[o][i])
     print(sc[o][i])
@@ -58,12 +62,9 @@ scs = []
 ses = []
 pas = []
 oss = []
-runs = [50, 100, 250, 500, 1000, 6000]
-runs = [250]
-display_num = 10
 for i in runs:
     sc, se, pa, o = read_tuner(
-        "./tuner/simple_tune_{}/".format(i)
+        "./tuner/dense_net2_tune_{}/".format(i)
     )
     scs += [sc]
     ses += [se]
@@ -73,7 +74,7 @@ for i in runs:
 best_settings = []
 for i in range(len(runs)):
     best_settings += [[]]
-for i in range(10):
+for i in range(display_num):
     for s in range(len(runs)):
         best_settings[s] += [list(ses[s][oss[s]][i].values())]
 

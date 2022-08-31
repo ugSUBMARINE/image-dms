@@ -26,25 +26,25 @@ def validate(generator_v, model_v, history_v, name_v, save_fig_v=None, plot_fig=
 
 
 def pearson_spearman(model, generator, labels):
-    """calculating the pearson r and spearman r for predicted values\n
+    """calculating the pearson r and spearman r for predicted values
         :parameter
-            generator: DataGenerator object\n
-            Data generator to create data used to predict values (not shuffled)\n
-            labels: ndarray\n
-            the corresponding labels for the generator\n
+            generator: DataGenerator object
+            Data generator to create data used to predict values (not shuffled)
+            labels: ndarray
+            the corresponding labels for the generator
         :return
-            mae: float\n
+            mae: float
             mean absolute error
-            mse: float\n
+            mse: float
             mean squared error
-            pearson_r: float\n
-            Pearson’s correlation coefficient\n
-            pearson_r_p: float \n
-            Two-tailed p-value\n
-            spearman_r: float\n
-            Spearman correlation coefficient\n
-            spearman_r_p: float\n
-            p-value for a hypothesis test whose null hypothesis is that two sets of data are uncorrelated\n
+            pearson_r: float
+            Pearson’s correlation coefficient
+            pearson_r_p: float
+            Two-tailed p-value
+            spearman_r: float
+            Spearman correlation coefficient
+            spearman_r_p: float
+            p-value for a hypothesis test whose null hypothesis is that two sets of data are uncorrelated
             """
     # predicted values
     pred = model.predict(generator).flatten()
@@ -62,24 +62,24 @@ def pearson_spearman(model, generator, labels):
 
 def validation(model, generator, labels, v_mutations, p_name, test_num,
                save_fig=None, plot_fig=False, silent=True):
-    """plot validations\n
+    """plot validations
         :parameter
-            generator: DataGenerator object\n
-            data generator for predicting values\n
-            labels: ndarray\n
-            the corresponding real labels to the generator\n
-            v_mutations: ndarray\n
-            number of mutations per data sample in the generator\n
-            p_name: str\n
-            protein name\n
-            test_num: int\n
-            number of samples used for the test\n
-            save_fig: str or None, (optional - default None)\n
-            - None to not save figures\n
-            - str specifying the file path where the figures should be stored\n
-            plot_fig: bool, (optional - default False)\n
-            if True shows figures\n
-            silent: bool, (optional - default True)\n
+            generator: DataGenerator object
+            data generator for predicting values
+            labels: ndarray
+            the corresponding real labels to the generator
+            v_mutations: ndarray
+            number of mutations per data sample in the generator
+            p_name: str
+            protein name
+            test_num: int
+            number of samples used for the test
+            save_fig: str or None, (optional - default None)
+            - None to not save figures
+            - str specifying the file path where the figures should be stored
+            plot_fig: bool, (optional - default False)
+            if True shows figures
+            silent: bool, (optional - default True)
             if True doesn't write mean error in the terminal
         :return
             None

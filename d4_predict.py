@@ -170,7 +170,7 @@ def predict_score(
 
 
 def assess_performance(ground_truth, predicted_score):
-    """docstring
+    """calculates the error and correlation of predictions made by a trained model
     :parameter
         - ground_truth: ndarray or ints or floats
           true experiamentaly determined fitness scores

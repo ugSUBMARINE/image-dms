@@ -8,11 +8,11 @@ from d4_config import retrieve_args
 def arg_dict(p_dir=""):
     """creates a parameter dict for run_all with the use of argparse
     :parameter
-        - p_dir: str, (optional - default "")\n
-          directory where the dataset folder are stored and all the .py files are stored\n
+        - p_dir: str, (optional - default "")
+          directory where the dataset folder are stored and all the .py files are stored
     :return
-        - d: dict\n
-          dictionary specifying all parameters for run_all in d4_cmd_driver.py\n
+        - d: dict
+          dictionary specifying all parameters for run_all in d4_cmd_driver.py
     """
 
     parser = argparse.ArgumentParser(
@@ -536,11 +536,11 @@ def arg_dict(p_dir=""):
 def optimize_dict(p_dir=""):
     """creates a parameter dict for run_all with the use of argparse
     :parameter
-        - p_dir: str, (optional - default "")\n
-          directory where the datasets are stored\n
+        - p_dir: str, (optional - default "")
+          directory where the datasets are stored
     :return
-        - d: dict\n
-          dictionary specifying all parameters for optimize_protein in d4_prediction.py\n
+        - d: dict
+          dictionary specifying all parameters for optimize_protein in d4_prediction.py
     """
 
     parser = argparse.ArgumentParser(
@@ -834,11 +834,11 @@ def optimize_dict(p_dir=""):
 def predict_dict(p_dir=""):
     """creates a parameter dict for predictions with the use of argparse
     :parameter
-        - p_dir: str, (optional - default "")\n
-          directory where the datasets are stored\n
+        - p_dir: str, (optional - default "")
+          directory where the datasets are stored
     :return
-        - d: dict\n
-          dictionary specifying all parameters for predictions in d4_prediction.py\n
+        - d: dict
+          dictionary specifying all parameters for predictions in d4_prediction.py
     """
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter

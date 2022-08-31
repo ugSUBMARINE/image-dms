@@ -28,16 +28,16 @@ def protein_settings(
     protein_name,
     data_path="./datasets/protein_settings_ori.txt",
 ):
-    """gets different setting for the protein of interest from the protein_settings file\n
+    """gets different setting for the protein of interest from the protein_settings file
     :parameter
-        - protein_name: str\n
+        - protein_name: str
           name of the protein in the protein_settings file
-        - data_path: str\n
+        - data_path: str
           path to the protein_settings.txt file
     :return
-        - protein_settings_dict: dict\n
+        - protein_settings_dict: dict
           dictionary containing sequence, score, variants, number_mutations, offset column names
-          :key sequence, score, variants, number_mutations, offset\n"""
+          :key sequence, score, variants, number_mutations, offset"""
     # all data of the different proteins
     settings = pd.read_csv(data_path, delimiter=",")
     # for which name to look for in the file
@@ -52,17 +52,17 @@ def protein_settings(
 
 
 def create_folder(parent_dir, dir_name, add=""):
-    """creates directory for current experiment\n
+    """creates directory for current experiment
     :parameter
-        - parent_dir: str\n
-          path where the new directory should be created\n
-        - dir_name: str\n
-          name of the new directory\n
-        - add: str, (optional - default "")\n
-          add to the name of the new directory\n
+        - parent_dir: str
+          path where the new directory should be created
+        - dir_name: str
+          name of the new directory
+        - add: str, (optional - default "")
+          add to the name of the new directory
     :return
-        - path: str\n
-          path where the folder was created\n"""
+        - path: str
+          path where the folder was created"""
     # replace "/" in the directory name to avoid the creation of a deeper folder
     if "/" in dir_name:
         warnings.warn(
@@ -78,14 +78,14 @@ def create_folder(parent_dir, dir_name, add=""):
 
 
 def log_file(file_path, write_str, optional_header=""):
-    """reads previous contend and writes it and additional logs info's specified in write_str to log file\n
+    """reads previous contend and writes it and additional logs info's specified in write_str to log file
     :parameter
-        - file_path: str\n
-          path to log file\n
-        - write_str: str\n
-          string that should be written to the log file\n
-        - optional_header: str, (optional - default "")\n
-          optional header to indicate the column names (',' separated)\n
+        - file_path: str
+          path to log file
+        - write_str: str
+          string that should be written to the log file
+        - optional_header: str, (optional - default "")
+          optional header to indicate the column names (',' separated)
     :return
         None"""
     try:
@@ -118,22 +118,22 @@ def compare_get_settings(
     column_to_search2="name",
 ):
     """prints the settings/ results used in a certain run in an easy readable form or compares to different runs and
-    prints the differences\n
-    can also be used to display the differences in the results from results.csv of two runs\n
+    prints the differences
+    can also be used to display the differences in the results from results.csv of two runs
     :parameter
-        - run_name1: str\n
-          name of the row of interest\n
-        - run_name2: str or None, (optional - None)\n
-          name of the row to compare with\n
-        - file_path1: str, optional\n
-          path to the file that should be parsed\n
-        - file_path2: str, optional\n
+        - run_name1: str
+          name of the row of interest
+        - run_name2: str or None, (optional - None)
+          name of the row to compare with
+        - file_path1: str, optional
+          path to the file that should be parsed
+        - file_path2: str, optional
           path to the file that should be parsed for comparison (can be the same or a different one than
-          file_path1\n
-        - column_to_search1: str, (optional - default 'name')\n
-          specifies the column in which the run_name1 should be searched\n
-        - column_to_search2: str, (optional - default 'name')\n
-          specifies the column in which the run_name2 should be searched\n
+          file_path1
+        - column_to_search1: str, (optional - default 'name')
+          specifies the column in which the run_name1 should be searched
+        - column_to_search2: str, (optional - default 'name')
+          specifies the column in which the run_name2 should be searched
     :return
         None"""
     data1 = pd.read_csv(file_path1, delimiter=",")
@@ -172,12 +172,12 @@ def compare_get_settings(
 
 
 def get_func(name):
-    """creates a function from a string\n
+    """creates a function from a string
     :parameter
-        - name:str\n
-          name of the function of interest\n
+        - name:str
+          name of the function of interest
     :return
-        - method: function object\n
+        - method: function object
           the function object ot the function of interest"""
     possibles = globals().copy()
     possibles.update(locals())
@@ -190,18 +190,18 @@ def run_dict(
     column_to_search="name",
     data_path="./result_files/log_file.csv",
 ):
-    """creates a dictionary from data_path that can be used as input for the run_all at d4batch_driver.py\n
+    """creates a dictionary from data_path that can be used as input for the run_all at d4batch_driver.py
     :parameter
-        - run_name: str\n
-          name of the run whose parameters should be used\n
-        - column_to_search: str, (optional - "name")\n
-          specifies the column in which the run_name should be searched\n
-        - file_path: str, optional\n
-          path to the file that should be parsed\n
-        - opt: class object\n
-          optimizer to use\n
+        - run_name: str
+          name of the run whose parameters should be used
+        - column_to_search: str, (optional - "name")
+          specifies the column in which the run_name should be searched
+        - file_path: str, optional
+          path to the file that should be parsed
+        - opt: class object
+          optimizer to use
     :return
-        - pre_dict: dict\n
+        - pre_dict: dict
           dictionary containing run_all parameters"""
 
     # data for the dictionary
@@ -242,12 +242,12 @@ def run_dict(
 
 
 def clear_log(file_path, text=None):
-    """clears or creates log file\n
+    """clears or creates log file
     :parameter
-        - file_path: str\n
-          path ot log file\n
-        - text: str or None, (optional - default None)\n
-          text that should be written to the file if None nothing gets written to the file\n"""
+        - file_path: str
+          path ot log file
+        - text: str or None, (optional - default None)
+          text that should be written to the file if None nothing gets written to the file"""
     a = open(file_path, "w+")
     if text is not None:
         a.write(text)
@@ -255,12 +255,12 @@ def clear_log(file_path, text=None):
 
 
 def remove_csv_column(file_path, col_name=None):
-    """removes one or more columns of a csv file\n
+    """removes one or more columns of a csv file
     :parameter
-        - file_path: str\n
-          path to csv file where columns should be removed\n
-        - col_name: tuple of one or multiple strings\n
-          column header(s) that should be removed\n
+        - file_path: str
+          path to csv file where columns should be removed
+        - col_name: tuple of one or multiple strings
+          column header(s) that should be removed
     :return
         None
     """
@@ -273,13 +273,13 @@ def remove_csv_column(file_path, col_name=None):
 
 
 def read_blosum():
-    """read blosum matrix file from https://www.ncbi.nlm.nih.gov/Class/FieldGuide/BLOSUM62.txt and modify it\n
+    """read blosum matrix file from https://www.ncbi.nlm.nih.gov/Class/FieldGuide/BLOSUM62.txt and modify it
     :parameter
         None
     :returns
-        - blosum_matrix: 2D ndarray of ints\n
+        - blosum_matrix: 2D ndarray of ints
           blosum matrix with 0 filled diagonal
-        - blosum_keys: list of str\n
+        - blosum_keys: list of str
           which row/ column in the matrix corresponds to which amino acid
     """
     # read the file
@@ -314,12 +314,12 @@ def read_blosum():
 
 
 def present_matrix(matrix, col_row):
-    """prints a given square matrix where columns and rows have the same one letter head in an easy readable way\n
+    """prints a given square matrix where columns and rows have the same one letter head in an easy readable way
     :parameter
-        - matrix: 2D ndarray of ints or floats\n
-          substitution matrix\n
-        - col_row: list of str\n
-          name of the columns/ rows (usually the amino acid one-letter code)\n
+        - matrix: 2D ndarray of ints or floats
+          substitution matrix
+        - col_row: list of str
+          name of the columns/ rows (usually the amino acid one-letter code)
     :return
         None"""
 

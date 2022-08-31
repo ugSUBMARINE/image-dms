@@ -7,15 +7,15 @@ import tensorflow as tf
 
 
 def retrieve_args(ini_filepath):
-    """reads the supplied ini file, checks for data types and returns args as"\
-            "dict for run_all\n
-        :parameter
-        - ini_filepath: str\n
-          file path to the ini file\n
-        :return
-        - converted_args: dict\n
-          dict with all args from the ini file converted to their data type\n
-        """
+    """reads the supplied ini file, checks for data types and returns args as
+        dict for run_all
+    :parameter
+    - ini_filepath: str
+      file path to the ini file
+    :return
+    - converted_args: dict
+      dict with all args from the ini file converted to their data type
+    """
 
     config = configparser.ConfigParser()
     config.read(ini_filepath)

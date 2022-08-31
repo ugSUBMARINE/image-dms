@@ -7,17 +7,17 @@ np.set_printoptions(threshold=sys.maxsize)
 
 
 def clustalw(file_content, query_name):
-    """reads clustalw files and returns the sequences and the query sequence position\n
+    """reads clustalw files and returns the sequences and the query sequence position
     :parameter
-        - file_content: str\n
-          read lines from the CLUSTALW file\n
-        - query_name: str\n
-          name of the wild type protein sequence in the alignment\n
+        - file_content: str
+          read lines from the CLUSTALW file
+        - query_name: str
+          name of the wild type protein sequence in the alignment
     :return
-        - sequences: 2d ndarray of str\n
-          sequences split into all residues and "-"\n
-        - query_pos: nd array of int\n
-          array with the position of the query sequence in sequences\n
+        - sequences: 2d ndarray of str
+          sequences split into all residues and "-"
+        - query_pos: nd array of int
+          array with the position of the query sequence in sequences
     """
     # protein names and sequences
     # "----" to enabel the occ_test
@@ -71,16 +71,16 @@ def clustalw(file_content, query_name):
 
 def athreem_fasta(data, query_name):
     """reads a3m and fasta formated alignment files and returns the sequences and the query
-    sequence position\n
+    sequence position
     :parameter
-        - data: str\n
-          read lines from the A3M file\n
-        - query_name: str\n
-          name of the wild type protein sequence in the alignment\n
+        - data: str
+          read lines from the A3M file
+        - query_name: str
+          name of the wild type protein sequence in the alignment
     :return
-        - seq_arr: 2d ndarray of str\n
-          sequences of the alignment with the maximumn length of the query\n
-        - query_pos: ndarray of int\n
+        - seq_arr: 2d ndarray of str
+          sequences of the alignment with the maximumn length of the query
+        - query_pos: ndarray of int
           where the query sequence is located in the seq_arr"""
 
     # all sequences as list
@@ -129,19 +129,19 @@ def athreem_fasta(data, query_name):
 
 
 def calc_conservation(sequences, query_pos):
-    """docstring\n
+    """calculates the conservation of each amino acid at each sequence position
     :parameter
-        - sequences: ndarray of str\n
-          sequences with all the same length and removed gaps and insertions\n
-        - query_pos: ndarray of int\n
-          where the wild type sequence is located in the alignment\n
+        - sequences: ndarray of str
+          sequences with all the same length and removed gaps and insertions
+        - query_pos: ndarray of int
+          where the wild type sequence is located in the alignment
 
     :return
-        - conservation_arr: nx20 2D ndarray of floats\n
+        - conservation_arr: nx20 2D ndarray of floats
           each row specifies which amino acids are conserved at that
-          sequence position and how conserved they are\n
-        - rows: 1D ndarray of ints\n
-          indexing help with indices of each sequence position\n"""
+          sequence position and how conserved they are
+        - rows: 1D ndarray of ints
+          indexing help with indices of each sequence position"""
 
     # oringinal number of sequences in the alignment
     ori_seq_num = sequences.shape[0]
@@ -209,14 +209,14 @@ def calc_conservation(sequences, query_pos):
 
 
 def alignment_table(alignment_path, query_name):
-    """docstring\n
+    """function to call the right reading functino based on the input
     :parameter
-        - alignment_path: str\n
-          file path to the multiple sequence alignment file\n
-        - query_name: str\n
-          name of the wild type sequence in the alignment file\n
+        - alignment_path: str
+          file path to the multiple sequence alignment file
+        - query_name: str
+          name of the wild type sequence in the alignment file
     :return
-        - c_arr, rows: returns from the calc_conservation function\n
+        - c_arr, rows: returns from the calc_conservation function
     """
     # read file content
     file_content = open(alignment_path, "r")

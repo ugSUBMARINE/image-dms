@@ -39,25 +39,25 @@ np.set_printoptions(threshold=sys.maxsize)
 
 
 def augment(data, labels, mutations, runs=3, un=False):
-    """creates pseudo data from original data by adding it randomly\n
+    """creates pseudo data from original data by adding it randomly
     :parameter
-        - data: ndarray of strings\n
-          array of variants like ['S1A', 'D35T,V20R', ...]\n
-        - labels: ndarray of floats or ints\n
-          array with the corresponding scores of the provided data\n
-        - mutations: ndarray of ints\n
-          array with number of mutations of each variant\n
-        - runs: int (optional - default 3)\n
-          how often the augmentation should be performed\n
-        - un: bool (optional - default False)\n
-          whether duplicated "new" variants should be removed\n
+        - data: ndarray of strings
+          array of variants like ['S1A', 'D35T,V20R', ...]
+        - labels: ndarray of floats or ints
+          array with the corresponding scores of the provided data
+        - mutations: ndarray of ints
+          array with number of mutations of each variant
+        - runs: int (optional - default 3)
+          how often the augmentation should be performed
+        - un: bool (optional - default False)
+          whether duplicated "new" variants should be removed
     :return
-        - nd: ndarray of strings\n
-          augmented version of data\n
-        - nl: ndarray of floats or ints\n
-          augmented version of labels\n
-        - nm: ndarray of ints\n
-          augmented version of mutations\n
+        - nd: ndarray of strings
+          augmented version of data
+        - nl: ndarray of floats or ints
+          augmented version of labels
+        - nm: ndarray of ints
+          augmented version of mutations
     """
 
     # all possible indices of the data
@@ -106,38 +106,38 @@ def augment(data, labels, mutations, runs=3, un=False):
 
 
 def data_generator_vals(wt_seq, alignment_path, alignment_base):
-    """returns values/ numpy arrays based on the wt_seq for the DataGenerator\n
+    """returns values/ numpy arrays based on the wt_seq for the DataGenerator
     :parameter
-        - wt_seq: str\n
-          wild type sequence as str eg 'AVLI'\n
+        - wt_seq: str
+          wild type sequence as str eg 'AVLI'
     :returns
-        - hm_pos_vals: ndarray of int\n
-          values for interactions with valid hydrogen bonding partners\n
-        - hp_norm: float\n
-          max value possible for hydrophobicity interactions\n
-        - ia_norm: float\n
-          max value possible for interaction ares interactions\n
-        - hm_converted: ndarray of float\n
-          wt_seq converted into hydrogen bonding values\n
-        - hp_converted: ndarray of float\n
-          wt_seq converted into hydrophobicity values\n
-        - cm_converted: ndarray of float\n
-          wt_seq converted into charge values\n
-        - ia_converted: ndarray of float\n
-          wt_seq converted into SASA values\n
-        - mat_index: 2D ndarray of float\n
-          symmetrical index matrix\n
-        - cl_converted: ndarray of float\n
-          wt_seq converted into side chain length values\n
-        - cl_norm: float\n
-          max value possible for interaction ares interactions\n
-        - co_converted: ndarray of int\n
-          wt_seq converted to amino acid positions in the alignment table\n
-        -co_table: nx20 ndarray of floats\n
+        - hm_pos_vals: ndarray of int
+          values for interactions with valid hydrogen bonding partners
+        - hp_norm: float
+          max value possible for hydrophobicity interactions
+        - ia_norm: float
+          max value possible for interaction ares interactions
+        - hm_converted: ndarray of float
+          wt_seq converted into hydrogen bonding values
+        - hp_converted: ndarray of float
+          wt_seq converted into hydrophobicity values
+        - cm_converted: ndarray of float
+          wt_seq converted into charge values
+        - ia_converted: ndarray of float
+          wt_seq converted into SASA values
+        - mat_index: 2D ndarray of float
+          symmetrical index matrix
+        - cl_converted: ndarray of float
+          wt_seq converted into side chain length values
+        - cl_norm: float
+          max value possible for interaction ares interactions
+        - co_converted: ndarray of int
+          wt_seq converted to amino acid positions in the alignment table
+        -co_table: nx20 ndarray of floats
           each row specifies which amino acids are conserved at that
-          sequence position and how conserved they are\n
-        -co_rows: 1D ndarray of ints\n
-          inde help with indices of each sequence position\n"""
+          sequence position and how conserved they are
+        -co_rows: 1D ndarray of ints
+          inde help with indices of each sequence position"""
 
     hm_pos_vals = np.asarray([2, 3, 6, 9])
 
@@ -180,18 +180,17 @@ def data_generator_vals(wt_seq, alignment_path, alignment_base):
 
 
 def progress_bar(num_batches, bar_len, batch):
-    """prints progress bar with percentage that can be overwritten with a "\
-            "subsequent print statement - should be implemented with "\
-            "on_train_batch_end\n
-        :parameter
-            - num_batches: int\n
-              number of batches per epoch
-            - bar_len: int\n
-              length of the progress bar\b
-            - batch: int\n
-              number of the current batch
-        :return
-            None\n"""
+    """prints progress bar with percentage that can be overwritten with a "subsequent print statement
+    - should be implemented with "on_train_batch_end
+    :parameter
+        - num_batches: int
+          number of batches per epoch
+        - bar_len: int
+          length of the progress bar
+        - batch: int
+          number of the current batch
+    :return
+        None"""
     try:
         # current bar length - how many '=' the bar needs to have at current batch
         cur_bar = int(bar_len * (bar_len * (batch / bar_len) / num_batches))
@@ -217,64 +216,64 @@ def progress_bar(num_batches, bar_len, batch):
 
 class DataGenerator(keras.utils.Sequence):
     """
-    Generates n_channel x n x n matrices to feed them as batches to a network"\
-            "where n denotes len(wild type sequence)\n
-    modified after 'https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly'\n
-    ...\n
-    Attributes:\n
-    - features: list of str\n
-      features that should be encoded eg ['A2S,E3R' 'T6W']\n
-    - labels: list of int / float\n
-      the corresponding labels to the features\n
-    - interaction_matrix: 2D ndarray of bool\n
-      boolean matrix whether residues interact or not\n
-    - dim: tuple\n
-      dimensions of the matrices (len(wt_seq) x len(wt_seq))\n
-    - n_channels: int\n
-      number of matrices used\n
-    - batch_size: int\n
-      Batch size (if 1 gradient gets updated after every sample in training)\n
-    - first_ind: int\n
-      index of the start of the protein sequence\n
-    - hm_converted: ndarray of floats\n
-      wt sequence h-bonding encoded\n
-    - hm_pos_vals: ndarray of ints\n
-      valid values for h-bonding residues\n
-    - factor: 2D ndarray of floats\n
-      1 - norm(distance) for all residues in the interaction matrix\n
-    - hp_converted: ndarray of floats\n
-      wt sequence hydrophobicity encoded\n
-    - hp_norm: int or float\n
-      max possible value for hydrophobicity change\n
-    - cm_converted: ndarray of floats\n
-      wt sequence charge encoded\n
-    - ia_converted: ndarray of floats\n
-      wt sequence interaction area encoded\n
-    - ia_norm: float\n
-      max value for interaction area change\n
-    - mat_index: 2D ndarray of ints\n
-      symmetrical index matrix (for adjacency matrix) that represents the "\
-              "position of each interaction in the matrices
-    - cl_converted: ndarray of floats\n
+    Generates n_channel x n x n matrices to feed them as batches to a network
+            where n denotes len(wild type sequence)
+    modified after 'https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly'
+    ...
+    Attributes:
+    - features: list of str
+      features that should be encoded eg ['A2S,E3R' 'T6W']
+    - labels: list of int / float
+      the corresponding labels to the features
+    - interaction_matrix: 2D ndarray of bool
+      boolean matrix whether residues interact or not
+    - dim: tuple
+      dimensions of the matrices (len(wt_seq) x len(wt_seq))
+    - n_channels: int
+      number of matrices used
+    - batch_size: int
+      Batch size (if 1 gradient gets updated after every sample in training)
+    - first_ind: int
+      index of the start of the protein sequence
+    - hm_converted: ndarray of floats
+      wt sequence h-bonding encoded
+    - hm_pos_vals: ndarray of ints
+      valid values for h-bonding residues
+    - factor: 2D ndarray of floats
+      1 - norm(distance) for all residues in the interaction matrix
+    - hp_converted: ndarray of floats
+      wt sequence hydrophobicity encoded
+    - hp_norm: int or float
+      max possible value for hydrophobicity change
+    - cm_converted: ndarray of floats
+      wt sequence charge encoded
+    - ia_converted: ndarray of floats
+      wt sequence interaction area encoded
+    - ia_norm: float
+      max value for interaction area change
+    - mat_index: 2D ndarray of ints
+      symmetrical index matrix (for adjacency matrix) that represents the position of 
+      each interaction in the matrices
+    - cl_converted: ndarray of floats
       wild type sequence clash encoded
-    - cl_norm: float\n
+    - cl_norm: float
       normalization value for the clash matrix
-    - dist_mat 2D ndarray of floats\n
+    - dist_mat 2D ndarray of floats
       ture distances between all residues
     - dist_th
       maximum distance for residues to be counted as interaction
-    - co_converted ndarray of int or floats:\n
-      wild type sequence position in alignment_table encoded\n
-    - co_table: ndarray or floats\n
-      nx20 array- which amino acids are how conserved at which sequence "\
-                 "position\n
-    - co_rows: ndarray of ints\n
-      indexing help for alignment_table\n      
-    - shuffle: bool, (optional - default True)\n
-      if True data gets shuffled after every epoch\n
-    - train: bool, (optional - default True)\n
-      if True Generator returns features and labels (use turing training) "\
-             "else only features\n
+    - co_converted ndarray of int or floats:
+      wild type sequence position in alignment_table encoded
+    - co_table: ndarray or floats
+      nx20 array- which amino acids are how conserved at which sequence
+                 position
+    - co_rows: ndarray of ints
+      indexing help for alignment_table
+    - shuffle: bool, (optional - default True)
+      if True data gets shuffled after every epoch
+    - train: bool, (optional - default True)
+      if True Generator returns features and labels (use turing training) 
+      else only features
     """
 
     def __init__(
@@ -396,9 +395,9 @@ class DataGenerator(keras.utils.Sequence):
 
 class SaveToFile(keras.callbacks.Callback):
     """writes training stats in a temp file
-     ...\n
-    Attributes:\n
-    - features: str\n
+     ...
+    Attributes:
+    - features: str
       path where the temp.csv file should be saved
     """
 
@@ -428,25 +427,25 @@ class SaveToFile(keras.callbacks.Callback):
 
 
 class CustomPrint(keras.callbacks.Callback):
-    """prints custom stats during training\n
-    ...\n
-    Attributes:\n
-    - num_batches: int\n
-      number of batches per epoch\n
-    - epoch_print: int, (optional - default 1)\n
-      interval at which loss and the change in loss should be printed\n
-    - epoch_stat_print: int, (optional - default 10)\n
-      interval at which best train epoch, the best validation epoch and the "\
-              "difference in the loss between them
-      should be printed\n
-    - pb_len: int, (optional - default 60)\n
-      length of the progress bar\n
-    - model_d: str, (optional - default '')\n
-      filepath where the models should be saved\n
-    - model_save_interval: int, (optional - default 5)\n
-      minimum nuber of epochs to pass to save the model - only gets saved "\
-              "when the validation loss has improved 
-      since the last time the model was saved\n
+    """prints custom stats during training
+    ...
+    Attributes:
+    - num_batches: int
+      number of batches per epoch
+    - epoch_print: int, (optional - default 1)
+      interval at which loss and the change in loss should be printed
+    - epoch_stat_print: int, (optional - default 10)
+      interval at which best train epoch, the best validation epoch and the 
+              difference in the loss between them
+      should be printed
+    - pb_len: int, (optional - default 60)
+      length of the progress bar
+    - model_d: str, (optional - default '')
+      filepath where the models should be saved
+    - model_save_interval: int, (optional - default 5)
+      minimum nuber of epochs to pass to save the model - only gets saved 
+      when the validation loss has improved 
+      since the last time the model was saved
     """
 
     def __init__(
@@ -560,10 +559,10 @@ class CustomPrint(keras.callbacks.Callback):
 
 
 class ClearMemory(keras.callbacks.Callback):
-    """clears garbage collection and clears session after each epoch\n
-    ...\n
-    Attributes:\n
-    None\n
+    """clears garbage collection and clears session after each epoch
+    ...
+    Attributes:
+    None
     """
 
     def on_epoch_end(self, epoch, logs=None):
@@ -618,115 +617,115 @@ def run_all(
     daug=False,
     clear_el=False,
 ):
-    """runs all functions to train a neural network\n
-    :parameter\n
-    - model_to_use: function object\n
-      function that returns the model\n
-    - optimizer: Optimizer object\n
-      keras optimizer to be used\n
-    - tsv_file: str\n
-      path to tsv file containing dms data of the protein of interest\n
-    - pdb_file: str\n
-      path to pdb file containing the structure\n
-    - wt_seq: str\n
-      wt sequence of the protein of interest eg. 'AVL...'\n
-    - number_mutations: str\n
-      how the number of mutations column is named\n
-    - variants:str\n
-      name of the variant column\n
-    - score: str\n
-      name of the score column\n
-    - dist_thr: int or float\n
-      threshold distances between any side chain atom to count as interacting\n
-    - channel_num: int\n
-      number of channels\n
-    - max_train_mutations: int or None\n
-      - int specifying maximum number of mutations per sequence to be used for training\n
-      - None to use all mutations for training\n
-    - training_epochs: int\n
-      number of epochs used for training the model\n
-    - test_num: int\n
-      number of samples for the test after the model was trained\n
-    - first_ind: int\n
+    """runs all functions to train a neural network
+    :parameter
+    - model_to_use: str
+      function that returns the model
+    - optimizer: str
+      keras optimizer to be used
+    - tsv_file: str
+      path to tsv file containing dms data of the protein of interest
+    - pdb_file: str
+      path to pdb file containing the structure
+    - wt_seq: str
+      wt sequence of the protein of interest eg. 'AVL...'
+    - number_mutations: str
+      how the number of mutations column is named
+    - variants:str
+      name of the variant column
+    - score: str
+      name of the score column
+    - dist_thr: int or float
+      threshold distances between any side chain atom to count as interacting
+    - channel_num: int
+      number of channels
+    - max_train_mutations: int or None
+      - int specifying maximum number of mutations per sequence to be used for training
+      - None to use all mutations for training
+    - training_epochs: int
+      number of epochs used for training the model
+    - test_num: int
+      number of samples for the test after the model was trained
+    - first_ind: int
       offset of the start of the sequence (when sequence doesn't start with residue 0)
-    - algn_path: str\n
-      path to the multiple sequence alignment in clustalw format\n
-    - algn_bl: str\n
-      name of the wild type sequence in the alignment file\n
-    - r_seed: None, int, (optional - default None)\n
-      numpy and tensorflow random seed\n
-    - deploy_early_stop: bool, (optional - default True)\n
-      whether early stop during training should be enabled (Ture) or not (False)\n
-            - es_monitor: str, (optional - default 'val_loss')\n
-              what to monitor to determine whether to stop the training or not\n
-            - es_min_d: float, (optional - default 0.01)\n
-              min_delta - min difference in es_monitor to not stop training\n
-            - es_patience: int, (optional - default 20)\n
+    - algn_path: str
+      path to the multiple sequence alignment in clustalw format
+    - algn_bl: str
+      name of the wild type sequence in the alignment file
+    - r_seed: None, int, (optional - default None)
+      numpy and tensorflow random seed
+    - deploy_early_stop: bool, (optional - default True)
+      whether early stop during training should be enabled (Ture) or not (False)
+            - es_monitor: str, (optional - default 'val_loss')
+              what to monitor to determine whether to stop the training or not
+            - es_min_d: float, (optional - default 0.01)
+              min_delta - min difference in es_monitor to not stop training
+            - es_patience: int, (optional - default 20)
               number of epochs the model can try to decrease its es_monitor value for at least min_delta before
-              stopping\n
-            - es_mode: str, (optional - default 'auto')\n
-              direction of quantity monitored in es_monitor\n
-            - es_restore_bw: bool, (optional - default True)\n
-              True stores the best weights of the training - False stores the last\n
-    - batch_size: int, (optional - default 64)\n
-      after how many samples the gradient gets updated\n
-    - load_trained_model: str or None, (optional - default None)\n
-      path to an already trained model or None to not load a model\n
-    - save_fig: str or None, (optional - default None)\n
-            - None to not save figures\n
-            - str specifying the file path where the figures should be stored\n
-    - show_fig: bool, (optional - default False)\n
-      True to show figures\n
-    - write_to_log: bool, (optional - default True)\n
-      if True writes all parameters used in the log file - **should be always enabled**\n
-    - silent: bool, (optional - default False)\n
-      True to print stats in the terminal\n
-    - extensive_test: bool, (optional - default False)\n
-      if True more test are done and more detailed plots are created\n
-    - save_model: bool, (optional - default False)\n
-      True to save the model after training\n
-    - load_trained_weights: str or None, (optional - default None)\n
-      path to model of who's weights should be used None if it shouldn't be used\n
-    - no_nan: bool, (optional - default True)\n
-      True terminates training on nan\n
-    - settings_test: bool, (optional - default False)\n
+              stopping
+            - es_mode: str, (optional - default 'auto')
+              direction of quantity monitored in es_monitor
+            - es_restore_bw: bool, (optional - default True)
+              True stores the best weights of the training - False stores the last
+    - batch_size: int, (optional - default 64)
+      after how many samples the gradient gets updated
+    - load_trained_model: str or None, (optional - default None)
+      path to an already trained model or None to not load a model
+    - save_fig: str or None, (optional - default None)
+            - None to not save figures
+            - str specifying the file path where the figures should be stored
+    - show_fig: bool, (optional - default False)
+      True to show figures
+    - write_to_log: bool, (optional - default True)
+      if True writes all parameters used in the log file - **should be always enabled**
+    - silent: bool, (optional - default False)
+      True to print stats in the terminal
+    - extensive_test: bool, (optional - default False)
+      if True more test are done and more detailed plots are created
+    - save_model: bool, (optional - default False)
+      True to save the model after training
+    - load_trained_weights: str or None, (optional - default None)
+      path to model of who's weights should be used None if it shouldn't be used
+    - no_nan: bool, (optional - default True)
+      True terminates training on nan
+    - settings_test: bool, (optional - default False)
       Ture doesn't train the model and only executes everything of the function that is before model.fit()
-    - p_dir: str, (optional - default '')\n
-      path to the projects content root\n
-    - split_def: list of int/float or None, (optional - default None)\n
-      specifies the split for train, tune, test indices\n
+    - p_dir: str, (optional - default '')
+      path to the projects content root
+    - split_def: list of int/float or None, (optional - default None)
+      specifies the split for train, tune, test indices
             - float specifies fractions of the whole dataset
               eg [0.25, 0.25, 0.5] creates a train and tune dataset with 50 entries each and a test dataset of 100
-              if the whole dataset contains 200 entries\n
+              if the whole dataset contains 200 entries
             - int specifies the different number of samples per dataset
               eg [50,50,100] leads to a train and a tune dataset with 50 entries each and a test dataset of 100
-              if the whole dataset contains 200 entries\n
-            - None uses [0.8, 0.15, 0.05] as split\n
-    - validate_training: bool, (optional - default False)\n
+              if the whole dataset contains 200 entries
+            - None uses [0.8, 0.15, 0.05] as split
+    - validate_training: bool, (optional - default False)
       if True validation of the training will be performed
-    - lr: float, (optional - default 0.001)\n
-      learning rate (how much the weights can change during an update)\n
-    - transfer_conv_weights: str or None, (optional - default None)\n
+    - lr: float, (optional - default 0.001)
+      learning rate (how much the weights can change during an update)
+    - transfer_conv_weights: str or None, (optional - default None)
       path to model who's weights of it's convolution layers should be used for transfer learning (needs to have the
       same architecture for the convolution part as the newly build model (model_to_use) or None to not transfer
-      weights\n
-    - train_conv_layers: bool, (optional - default False)\n
-      if True convolution layers are trainable - only applies when transfer_conv_weights is not None\n
-    - write_temp: bool, (optional - default False)\n
-      if True writes mae, loss and time per epoch of each epoch to the temp.csv in result_files\n
-    - split_file_creation: bool, (optional - default False)\n
+      weights
+    - train_conv_layers: bool, (optional - default False)
+      if True convolution layers are trainable - only applies when transfer_conv_weights is not None
+    - write_temp: bool, (optional - default False)
+      if True writes mae, loss and time per epoch of each epoch to the temp.csv in result_files
+    - split_file_creation: bool, (optional - default False)
       if True creates a directory containing train.txt, tune.txt and test.txt files that store the indices of the
-      rows used from the tsv file during training, validating and testing\n
-    - use_split_file: None or str, (optional - default None)\n
+      rows used from the tsv file during training, validating and testing
+    - use_split_file: None or str, (optional - default None)
       if not None this needs the file_path to a directory containing splits specifying
       the 'train', 'tune', 'test' indices - these files need to be named 'train.txt', 'tune.txt' and 'test.txt'
-      otherwise splits of the tsv file according to split_def will be used\n
-    - daug: bool (optional - default True)\n
-      True to use data augmentation\n
-    - clear_el: bool (optional - default False)\n
-      if True error log gets cleared before a run\n
-    :return\n
-        None\n
+      otherwise splits of the tsv file according to split_def will be used
+    - daug: bool (optional - default True)
+      True to use data augmentation
+    - clear_el: bool (optional - default False)
+      if True error log gets cleared before a run
+    :return
+        None
     """
     try:
         # dictionary with argument names as keys and the input as values
@@ -913,11 +912,15 @@ def run_all(
         tdr = int(len(data_dict["train_data"]) * 0.2)
         # !!! REMOVE the slicing for test_data !!!
         # ---
+        tdr = 5000
+        train_data = train_data[:50]
+        train_labels = train_labels[:50]
+        train_mutations = train_mutations[:50]
 
         # data to validate during training
-        test_data = data_dict["tune_data"]  # [:tdr]
-        test_labels = data_dict["tune_labels"]  # [:tdr]
-        test_mutations = data_dict["tune_mutations"]  # [:tdr]
+        test_data = data_dict["tune_data"][:tdr]
+        test_labels = data_dict["tune_labels"][:tdr]
+        test_mutations = data_dict["tune_mutations"][:tdr]
 
         # data the model has never seen
         unseen_data = data_dict["test_data"]
@@ -974,7 +977,10 @@ def run_all(
         check_structure(pdb_file, comb_bool, wt_seq)
 
         # neural network model function
-        model = model_to_use(wt_seq, channel_num)
+        model = model_to_use(
+            wt_seq,
+            channel_num,
+        )  # , filter_num=0, block_num=6, block_depth=4, filter_size=3, e_pool="avg", l_pool="max", classif_l=3)
 
         # load weights to model
         if load_trained_weights is not None:
@@ -1117,187 +1123,66 @@ def run_all(
         test_generator = DataGenerator(t_data, np.zeros(len(t_labels)), **test_params)
 
         # ---
-        
+
         import keras_tuner
+
         def build_model(hp):
             filter_num = hp.Int(
-                                "filter_num", 
-                                min_value=0, 
-                                max_value=256, 
-                                step=32, 
-                                default=12
-                                )
-            block_num = hp.Int(
-                              "block_num", 
-                              min_value=1, 
-                              max_value=6, 
-                              step=1, 
-                              default=4
-                              )
+                "filter_num", min_value=0, max_value=256, step=32, default=12
+            )
+            block_num = hp.Int("block_num", min_value=1, max_value=6, step=1, default=4)
             block_depth = hp.Int(
-                                 "block_depth", 
-                                 min_value=2, 
-                                 max_value=6, 
-                                 step=1, 
-                                 default=4
-                                 ) 
-            filter_size = hp.Choice(
-                                    "filter_size", 
-                                    [3, 5, 7, 9]
-                                    )
-            e_pool = hp.Choice(
-                               "e_pool", 
-                               ["avg", "max"]
-                               )
-            l_pool = hp.Choice(
-                               "l_pool", 
-                               ["avg", "max"]
-                               )
-            classif_l = hp.Int(
-                               "classif_l", 
-                               min_value=0, 
-                               max_value=3, 
-                               step=1
-                               )
+                "block_depth", min_value=2, max_value=6, step=1, default=4
+            )
+            filter_size = hp.Choice("filter_size", [3, 5, 7, 9])
+            e_pool = hp.Choice("e_pool", ["avg", "max"])
+            l_pool = hp.Choice("l_pool", ["avg", "max"])
+            classif_l = hp.Int("classif_l", min_value=0, max_value=3, step=1)
             model = model_to_use(
-                                 wt_seq, 
-                                 channel_num, 
-                                 filter_num=filter_num, 
-                                 block_num=block_num, 
-                                 block_depth=block_depth, 
-                                 classif_l=classif_l, 
-                                 e_pool=e_pool, 
-                                 l_pool=l_pool,
-                                 filter_size=filter_size, 
-                                 bn=False
-                                 )
+                wt_seq,
+                channel_num,
+                filter_num=filter_num,
+                block_num=block_num,
+                block_depth=block_depth,
+                classif_l=classif_l,
+                e_pool=e_pool,
+                l_pool=l_pool,
+                filter_size=filter_size,
+                bn=False,
+            )
             model.compile(
-                          optimizer(learning_rate=lr), 
-                          loss="mean_absolute_error", 
-                          metrics="mae"
-                          )
+                optimizer(learning_rate=lr), loss="mean_absolute_error", metrics="mae"
+            )
             return model
-        
+
         tuner_dir = os.path.join(p_dir, "tuner")
-        print("Tuning results will be saved in", tuner_dir)
+        proj_name = "dense_net2_tune_{}".format(len(train_data))
+        print(
+            "Tuning results will be saved in {} in directory {}".format(
+                tuner_dir, proj_name
+            )
+        )
         tuner = keras_tuner.BayesianOptimization(
-                                                 hypermodel=build_model,
-                                                 objective="val_loss",
-                                                 max_trials=45,
-                                                 executions_per_trial=2,
-                                                 overwrite=True,
-                                                 directory=tuner_dir,
-                                                 project_name=\
-                                                         "dense_net2_tune_{}"\
-                                                         .format(
-                                                                 len(train_data)
-                                                                 ))
+            hypermodel=build_model,
+            objective="val_loss",
+            max_trials=30,
+            executions_per_trial=1,
+            overwrite=True,
+            directory=tuner_dir,
+            project_name=proj_name,
+        )
         tuner.search_space_summary()
 
         tuner.search(
-                     training_generator, 
-                     validation_data=validation_generator,
-                     epochs=60, 
-                     callbacks=[all_callbacks]
-                     ) 
+            training_generator,
+            validation_data=validation_generator,
+            epochs=60,
+            callbacks=[all_callbacks],
+        )
         tuner.results_summary()
         best_hps = tuner.get_best_hyperparameters(5)
         model = build_model(best_hps[0])
-     
-        """ 
-        import keras_tuner
-        def build_model(hp):
-            times = hp.Int(
-                              "times", 
-                              min_value=1, 
-                              max_value=6, 
-                              step=1, 
-                              default=2
-                              )
-            num_blocks = hp.Int(
-                                 "num_blocks", 
-                                 min_value=1, 
-                                 max_value=4, 
-                                 step=1, 
-                                 default=3
-                                 ) 
-            filter_s = hp.Choice(
-                                    "filter_s", 
-                                    [3, 5, 7, 9]
-                                    )
-            l_pool = hp.Choice(
-                               "l_pool", 
-                               ["avg", "max"]
-                               )
-            layer_base_size = hp.Int(
-                                "layer_base_size", 
-                                min_value=16, 
-                                max_value=256, 
-                                step=16, 
-                                default=16
-                                )
-            num_dense = hp.Int(
-                               "num_dense", 
-                               min_value=0, 
-                               max_value=5, 
-                               step=1
-                               )
-            dense_size = hp.Int(
-                                "dense_size",
-                                min_value=32,
-                                max_value=512,
-                                step= 32
-                                )
-            f_b = hp.Choice(
-                               "f_b", 
-                               ["flat", "global"]
-                               )
 
-            model = model_to_use(
-                                 wt_seq, 
-                                 channel_num, 
-                                 times=times,
-                                 num_blocks=num_blocks,
-                                 filter_s=filter_s,
-                                 l_pool=l_pool,
-                                 layer_base_size=layer_base_size,
-                                 num_dense=num_dense,
-                                 dense_size=dense_size,
-                                 f_b=f_b
-                                 )
-            model.compile(
-                          optimizer(learning_rate=lr), 
-                          loss="mean_absolute_error", 
-                          metrics="mae"
-                          )
-            return model
-        
-        tuner_dir = os.path.join(p_dir, "tuner")
-        print("Tuning results will be saved in", tuner_dir)
-        tuner = keras_tuner.BayesianOptimization(
-                                                 hypermodel=build_model,
-                                                 objective="val_loss",
-                                                 max_trials=40,
-                                                 executions_per_trial=1,
-                                                 overwrite=True,
-                                                 directory=tuner_dir,
-                                                 project_name=\
-                                                         "simple_tune_{}"\
-                                                         .format(
-                                                                 len(train_data)
-                                                                 ))
-        tuner.search_space_summary()
-
-        tuner.search(
-                     training_generator, 
-                     validation_data=validation_generator,
-                     epochs=70, 
-                     callbacks=[all_callbacks]
-                     ) 
-        tuner.results_summary()
-        best_hps = tuner.get_best_hyperparameters(5)
-        model = build_model(best_hps[0])
-        """ 
         # ---
 
         if not settings_test:

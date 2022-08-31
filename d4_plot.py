@@ -5,16 +5,16 @@ from matplotlib import pyplot as plt
 
 def read_res_files(names=None, set_sizes=None, res_paths=None, protein_name=None):
     """plots MeanSquaredError, Pearsons' R, Spearman R and the relative performance compared to Gelman et al.
-    'Neural networks to learn protein sequence–function relationships from deep mutational scanning data'\n
+    'Neural networks to learn protein sequence–function relationships from deep mutational scanning data'
     :parameter
-        - names: list of strings or None, (optional - default None)\n
-          how the different trainings are names\n
-        - set_sizes: list of ints or None, (optional - default None)\n
-          training set sizes\n
-        - res_paths list of string or None, (optional - default None)\n
-          list of file paths to the different training runs\n
-        - protein_name: str (default None)\n
-          how the protein is named in the result and test files\n
+        - names: list of strings or None, (optional - default None)
+          how the different trainings are names
+        - set_sizes: list of ints or None, (optional - default None)
+          training set sizes
+        - res_paths list of string or None, (optional - default None)
+          list of file paths to the different training runs
+        - protein_name: str (default None)
+          how the protein is named in the result and test files
     :return
         None"""
     # name of the different training settings for the legend
@@ -357,12 +357,12 @@ def easy_compare(file_path, data_plot="sp"):
 
 def plot_reruns(protein_name, result_path=None):
     """plots MeanSquaredError, Pearsons' R, Spearman R and the relative performance compared to Gelman et al.
-    'Neural networks to learn protein sequence–function relationships from deep mutational scanning data'\n
+    'Neural networks to learn protein sequence–function relationships from deep mutational scanning data'
     :parameter
-        - protein_name: str\n
-          how the protein is named in the result and test files\n
-        - result_path: list of string or None, (optional - default None)\n
-          list of file paths to the different training runs\n
+        - protein_name: str
+          how the protein is named in the result and test files
+        - result_path: list of string or None, (optional - default None)
+          list of file paths to the different training runs
     :return
         None"""
     if result_path is None:
