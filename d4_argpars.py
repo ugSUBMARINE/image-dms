@@ -452,7 +452,9 @@ def arg_dict(p_dir: str = "") -> dict:
         score_ex = args.score
         first_ind_ex = args.first_ind
     else:
-        protein_attributes = protein_settings(protein_name)
+        protein_attributes = protein_settings(
+            protein_name, os.path.join(p_dir, "datasets/protein_settings_ori.txt")
+        )
         number_mutations_ex = protein_attributes["number_mutations"]
         variants_ex = protein_attributes["variants"]
         score_ex = protein_attributes["score"]
