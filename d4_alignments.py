@@ -6,17 +6,21 @@ from d4_utils import aa_dict, aa_dict_pos, protein_settings
 np.set_printoptions(threshold=sys.maxsize)
 
 
-def clustalw(file_content, query_name):
+def clustalw(
+    file_content: str, query_name: str
+) -> tuple[
+    np.ndarray[tuple[int, int], np.dtype[str]], np.ndarray[tuple[int], np.dtype[int]]
+]:
     """reads clustalw files and returns the sequences and the query sequence position
     :parameter
-        - file_content: str
+        - file_content:
           read lines from the CLUSTALW file
-        - query_name: str
+        - query_name:
           name of the wild type protein sequence in the alignment
     :return
-        - sequences: 2d ndarray of str
+        - sequences:
           sequences split into all residues and "-"
-        - query_pos: nd array of int
+        - query_pos:
           array with the position of the query sequence in sequences
     """
     # protein names and sequences
@@ -69,18 +73,22 @@ def clustalw(file_content, query_name):
     return sequences, query_pos
 
 
-def athreem_fasta(data, query_name):
-    """reads a3m and fasta formated alignment files and returns the sequences and the query
-    sequence position
+def athreem_fasta(
+    data: str, query_name: str
+) -> tuple[
+    np.ndarray[tuple[int, int], np.dtype[str]], np.ndarray[tuple[int], np.dtype[int]]
+]:
+    """reads a3m and fasta formated alignment files and returns the sequences and
+    the query sequence position
     :parameter
-        - data: str
+        - data:
           read lines from the A3M file
-        - query_name: str
+        - query_name:
           name of the wild type protein sequence in the alignment
     :return
-        - seq_arr: 2d ndarray of str
+        - seq_arr:
           sequences of the alignment with the maximumn length of the query
-        - query_pos: ndarray of int
+        - query_pos:
           where the query sequence is located in the seq_arr"""
 
     # all sequences as list
@@ -128,19 +136,24 @@ def athreem_fasta(data, query_name):
     return np.asarray(seq_arr), np.asarray([query_pos])
 
 
-def calc_conservation(sequences, query_pos):
+def calc_conservation(
+    sequences: np.ndarray[tuple[int, int], np.dtype[str]],
+    query_pos: np.ndarray[tuple[int], np.dtype[int]],
+) -> tuple[
+    np.ndarray[tuple[int, 20], np.dtype[float]], np.ndarray[tuple[int], np.dtype[int]]
+]:
     """calculates the conservation of each amino acid at each sequence position
     :parameter
-        - sequences: ndarray of str
+        - sequences:
           sequences with all the same length and removed gaps and insertions
-        - query_pos: ndarray of int
+        - query_pos:
           where the wild type sequence is located in the alignment
 
     :return
-        - conservation_arr: nx20 2D ndarray of floats
+        - conservation_arr:
           each row specifies which amino acids are conserved at that
           sequence position and how conserved they are
-        - rows: 1D ndarray of ints
+        - rows:
           indexing help with indices of each sequence position"""
 
     # oringinal number of sequences in the alignment
@@ -195,8 +208,8 @@ def calc_conservation(sequences, query_pos):
     # filled look-up table with values from 0-1
     conservation_arr = conservation_arr / len(sequences)
     print(
-        "Reduced size from {} to {} unique sequences for conservation "
-        "table creation".format(ori_seq_num, sequences.shape[0])
+        f"Reduced size from {ori_seq_num} to {sequences.shape[0]} unique sequences "
+        "for conservation table creation"
     )
     # plt.imshow(conservation_arr)
     # plt.colorbar()
@@ -208,12 +221,16 @@ def calc_conservation(sequences, query_pos):
     return conservation_arr, rows
 
 
-def alignment_table(alignment_path, query_name):
+def alignment_table(
+    alignment_path: str, query_name: str
+) -> tuple[
+    np.ndarray[tuple[int, 20], np.dtype[float]], np.ndarray[tuple[int], np.dtype[int]]
+]:
     """function to call the right reading functino based on the input
     :parameter
-        - alignment_path: str
+        - alignment_path:
           file path to the multiple sequence alignment file
-        - query_name: str
+        - query_name:
           name of the wild type sequence in the alignment file
     :return
         - c_arr, rows: returns from the calc_conservation function

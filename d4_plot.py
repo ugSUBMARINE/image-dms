@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+from scipy import stats
 
-plt.style.use("seaborn-whitegrid")
+plt.style.use("bmh")
 
 
 def plot_reruns(protein_name: str, result_path: list[str] | None = None) -> None:
@@ -20,6 +21,9 @@ def plot_reruns(protein_name: str, result_path: list[str] | None = None) -> None
         result_path = "result_files/rr3_results/{}_results.csv".format(
             protein_name.lower()
         )
+    LINES_TO_PLOT = 7
+    ERROR_ALPHA = 0.2
+    COLORS = ["blue", "orange", "green", "red", "violet", "brown", "black"]
 
     # get the sequence convolution data to compare the runs to
     g_data = pd.read_csv(
@@ -30,9 +34,19 @@ def plot_reruns(protein_name: str, result_path: list[str] | None = None) -> None
     g_spearmans = g_data["spearmanr"].values
 
     # split them into their respective runs
-    g_split_mses = np.median(np.split(g_mses, 3), axis=0)
-    g_split_pearsons = np.median(np.split(g_pearsons, 3), axis=0)
-    g_split_spearmans = np.median(np.split(g_spearmans, 3), axis=0)
+    g_mses_split = np.asarray(np.split(g_mses, 3))
+    g_pearsons_split = np.asarray(np.split(g_pearsons, 3))
+    g_spearmans_split = np.asarray(np.split(g_spearmans, 3))
+
+    # mean per training set size
+    g_split_mses = np.median(g_mses_split, axis=0)
+    g_split_pearsons = np.median(g_pearsons_split, axis=0)
+    g_split_spearmans = np.median(g_spearmans_split, axis=0)
+
+    # errors per training set size
+    g_mses_err = stats.sem(g_mses_split, axis=0)
+    g_pearsons_err = stats.sem(g_pearsons_split, axis=0)
+    g_spearmans_err = stats.sem(g_spearmans_split, axis=0)
 
     # read data and convert it to ndarrays
     data = pd.read_csv(result_path, delimiter=",")
@@ -47,6 +61,11 @@ def plot_reruns(protein_name: str, result_path: list[str] | None = None) -> None
     ana_spearman = np.asarray(np.split(spearman, 2))
 
     fig, axs = plt.subplots(2, 3)
+    sep_fig_mse, sep_axs_mse = plt.subplots(LINES_TO_PLOT, 1)
+    sep_fig_pearson, sep_axs_pearson = plt.subplots(LINES_TO_PLOT, 1)
+    sep_fig_spearman, sep_axs_spearman = plt.subplots(LINES_TO_PLOT, 1)
+    sep_count = 0
+
     # different training set sizes
     set_sizes = [50, 100, 250, 500, 1000, 2000, 6000]
     # iterates over not augmented and augmented data separately
@@ -65,10 +84,19 @@ def plot_reruns(protein_name: str, result_path: list[str] | None = None) -> None
             rs_pearson_m += [rs_pearson[i]]
             rs_spearman_m += [rs_spearman[i]]
 
+        rs_mse_m = np.asarray(rs_mse_m)
+        rs_pearson_m = np.asarray(rs_pearson_m)
+        rs_spearman_m = np.asarray(rs_spearman_m)
+
         # all medians
-        mse_medians = np.median(np.asarray(rs_mse_m), axis=0)
-        pearson_medians = np.median(np.asarray(rs_pearson_m), axis=0)
-        spearman_medians = np.median(np.asarray(rs_spearman_m), axis=0)
+        mse_medians = np.median(rs_mse_m, axis=0)
+        pearson_medians = np.median(rs_pearson_m, axis=0)
+        spearman_medians = np.median(rs_spearman_m, axis=0)
+
+        # all errors
+        mse_err = stats.sem(rs_mse_m, axis=0)
+        pearson_err = stats.sem(rs_pearson_m, axis=0)
+        spearman_err = stats.sem(rs_spearman_m, axis=0)
 
         # split medians in their different settings
         s_mse_medians = np.asarray(np.split(mse_medians, 3))
@@ -93,54 +121,154 @@ def plot_reruns(protein_name: str, result_path: list[str] | None = None) -> None
                 s_mse_medians[j],
                 label=label_str,
                 marker="x",
+                color=COLORS[sep_count],
             )
             axs[0, 1].plot(
                 set_sizes,
                 s_pearson_medians[j],
                 label=label_str,
                 marker="x",
+                color=COLORS[sep_count],
             )
             axs[0, 2].plot(
                 set_sizes,
                 s_spearman_medians[j],
                 label=label_str,
                 marker="x",
+                color=COLORS[sep_count],
             )
             axs[1, 0].plot(
                 set_sizes,
                 r_mse[j],
                 label=label_str,
                 marker="x",
+                color=COLORS[sep_count],
             )
             axs[1, 1].plot(
                 set_sizes,
                 r_pearson[j],
                 label=label_str,
                 marker="x",
+                color=COLORS[sep_count],
             )
             axs[1, 2].plot(
                 set_sizes,
                 r_spearman[j],
                 label=label_str,
                 marker="x",
+                color=COLORS[sep_count],
             )
 
+            sep_axs_mse[sep_count].plot(
+                set_sizes,
+                s_mse_medians[j],
+                label=label_str,
+                marker="x",
+                color=COLORS[sep_count],
+            )
+            sep_axs_mse[sep_count].fill_between(
+                set_sizes,
+                s_mse_medians[j] - mse_err[j],
+                s_mse_medians[j] + mse_err[j],
+                alpha=ERROR_ALPHA,
+                color=COLORS[sep_count],
+            )
+
+            sep_axs_pearson[sep_count].plot(
+                set_sizes,
+                s_pearson_medians[j],
+                label=label_str,
+                marker="x",
+                color=COLORS[sep_count],
+            )
+            sep_axs_pearson[sep_count].fill_between(
+                set_sizes,
+                s_pearson_medians[j] - pearson_err[j],
+                s_pearson_medians[j] + pearson_err[j],
+                alpha=ERROR_ALPHA,
+                color=COLORS[sep_count],
+            )
+
+            sep_axs_spearman[sep_count].plot(
+                set_sizes,
+                s_spearman_medians[j],
+                label=label_str,
+                marker="x",
+                color=COLORS[sep_count],
+            )
+            sep_axs_spearman[sep_count].fill_between(
+                set_sizes,
+                s_spearman_medians[j] - spearman_err[j],
+                s_spearman_medians[j] + spearman_err[j],
+                alpha=ERROR_ALPHA,
+                color=COLORS[sep_count],
+            )
+            sep_count += 1
+
     # plot the data that the trainings should be compared to
+    g_label = "sequence convolution"
     axs[0, 0].plot(
-        set_sizes, g_split_mses, label="sequence convolution", marker="o", color="black"
+        set_sizes,
+        g_split_mses,
+        label=g_label,
+        marker="o",
+        color="black",
     )
     axs[0, 1].plot(
         set_sizes,
         g_split_pearsons,
-        label="sequence convolution",
+        label=g_label,
         marker="o",
         color="black",
     )
     axs[0, 2].plot(
         set_sizes,
         g_split_spearmans,
-        label="sequence convolution",
+        label=g_label,
         marker="o",
+        color="black",
+    )
+
+    sep_axs_mse[-1].plot(
+        set_sizes,
+        g_split_mses,
+        label=g_label,
+        marker="o",
+        color="black",
+    )
+    sep_axs_mse[-1].fill_between(
+        set_sizes,
+        g_split_mses - g_mses_err,
+        g_split_mses + g_mses_err,
+        alpha=ERROR_ALPHA,
+        color="black",
+    )
+    sep_axs_pearson[-1].plot(
+        set_sizes,
+        g_split_pearsons,
+        label=g_label,
+        marker="o",
+        color="black",
+    )
+    sep_axs_pearson[-1].fill_between(
+        set_sizes,
+        g_split_pearsons - g_pearsons_err,
+        g_split_pearsons + g_pearsons_err,
+        alpha=ERROR_ALPHA,
+        color="black",
+    )
+    sep_axs_spearman[-1].plot(
+        set_sizes,
+        g_split_spearmans,
+        label=g_label,
+        marker="o",
+        color="black",
+    )
+    sep_axs_spearman[-1].fill_between(
+        set_sizes,
+        g_split_spearmans - g_spearmans_err,
+        g_split_spearmans + g_spearmans_err,
+        alpha=ERROR_ALPHA,
         color="black",
     )
 
@@ -217,11 +345,22 @@ def plot_reruns(protein_name: str, result_path: list[str] | None = None) -> None
         title="Relative Performance SpearmanR",
     )
 
+    for i in range(LINES_TO_PLOT):
+        sep_axs_mse[i].set(xscale="log")
+        sep_axs_mse[i].legend(loc="upper right")
+        sep_axs_pearson[i].set(xscale="log")
+        sep_axs_pearson[i].legend(loc="lower right")
+        sep_axs_spearman[i].set(xscale="log")
+        sep_axs_spearman[i].legend(loc="lower right")
+    sep_axs_mse[0].set(title="MeanSquaredError")
+    sep_axs_pearson[0].set(title="Pearson Correlation Coefficient")
+    sep_axs_spearman[0].set(title="Spearman Correlation Coefficient")
+
     plt.show()
 
 
 if __name__ == "__main__":
-    prot = "pab1"
+    prot = "gb1"
     """
     plot_reruns(prot,
             result_path="./result_files/"
@@ -229,5 +368,5 @@ if __name__ == "__main__":
     """
     plot_reruns(
         prot,
-        result_path=f"./result_files/rr5/{prot}_results.csv",
+        result_path=f"./result_files/rr5/dense_net2/{prot}_results.csv",
     )

@@ -26,46 +26,46 @@ from d4_utils import (
 
 
 def predict_score(
-    protein_pdb,
-    protein_seq,
-    variant_s,
-    model_filepath,
-    dist_th,
-    algn_path,
-    algn_base,
-    batch_size=32,
-    channel_num=7,
-    first_ind=0,
-):
+    protein_pdb: str,
+    protein_seq: list[str],
+    variant_s: list[str],
+    model_filepath: str,
+    dist_th: int | float,
+    algn_path: str,
+    algn_base: str,
+    batch_size: int = 32,
+    channel_num: int = 7,
+    first_ind: int = 0,
+) -> np.ndarray[tuple[int], np.dtype[float]]:
     """predicts scores of variants with provided trained model
     :parameter
-        - protein_pdb: str
+        - protein_pdb:
           filepath to the proteins pdb file containing its structure
-        - protein_seq: list of str
+        - protein_seq:
           amino acid sequence of the protein ['A', 'V', 'L', 'I']
-        - variant_s: list of str
+        - variant_s:
           variants for which the score should be predicted e.g.
           ['A1S', 'K3F,I9L']
-        - model_filepath: str
+        - model_filepath:
           file path to the trained model that should be loaded
           to be used for the predictions
-        - dist_th: int or float
+        - dist_th:
           distance threshold used when training the model
-        - algn_path: str
+        - algn_path:
           path to the multiple sequence alignment in clustalw format
-        - algn_base: str
+        - algn_base:
           name of the wild type sequence in the alignment file
-        - first_ind: int
+        - first_ind:
           index of the start of the protein sequence
-        - batch_size: int, (optional - default 32)
+        - batch_size:
           how many variants get predicted at once
-        - channel_num: int, (optional - default 6)
+        - channel_num:
           number of (interaction) matrices that encode a variant
-        - first_ind: int
+        - first_ind:
           offset of the start of the sequence
           (when sequence doesn't start with residue 0)
     :return
-        - pred: ndarray of float
+        - pred:
           predicted scores for the variants"""
     # values needed as input for the DataGenerator
     (
@@ -169,7 +169,11 @@ def predict_score(
     return pred
 
 
-def assess_performance(ground_truth, predicted_score):
+def assess_performance(
+    ground_truth: np.ndarray[tuple[int], np.dtype[int | float]],
+    predicted_score: np.ndarray[tuple[int], np.dtype[int | float]],
+    scatter_plot: bool = False,
+):
     """calculates the error and correlation of predictions made by a trained model
     :parameter
         - ground_truth: ndarray or ints or floats
@@ -191,6 +195,12 @@ def assess_performance(ground_truth, predicted_score):
         "MeanSquarredError: {:0.4f}".format(pr, pp, sr, sp, mae, mse)
     )
 
+    if scatter_plot:
+        plt.scatter(ground_truth, predict_score, color="forestgreen")
+        plt.xlabel("ground truth")
+        plt.ylabel("predicted score")
+        plt.show()
+
 
 if __name__ == "__main__":
     protein = "pab1"
@@ -206,12 +216,12 @@ if __name__ == "__main__":
     dms_scores = np.asarray(dms_data[ps["score"]])[:2000]
 
     score = predict_score(
-        "./datasets/{}.pdb".format(protein),
+        f"./datasets/{protein}.pdb",
         list(ps["sequence"]),
         dms_variants,
         "./result_files/saved_models/pab1_fr_50_27_08_2022_100124/",
         20,
-        "./datasets/alignment_files/" "{}_1000_experimental.clustal".format(protein),
+        f"./datasets/alignment_files/{protein}_1000_experimental.clustal",
         protein,
         first_ind=int(ps["offset"]),
     )
@@ -223,14 +233,14 @@ if __name__ == "__main__":
 
     voi = ["A128K", "R145L,K160T"]
     score = predict_score(
-        "./datasets/{}.pdb".format(protein),
+        f"./datasets/{protein}.pdb",
         list(ps["sequence"]),
         voi,
         "./result_files/saved_models/pab1_fr_50_27_08_2022_100124/",
         20,
-        "./datasets/alignment_files/" "{}_1000_experimental.clustal".format(protein),
+        f"./datasets/alignment_files/{protein}_1000_experimental.clustal",
         protein,
         first_ind=int(ps["offset"]),
     )
     for i, j in zip(voi, score):
-        print("{}: {}".format(i, j))
+        print(f"{i}: {j}")

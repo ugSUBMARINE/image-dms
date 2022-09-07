@@ -5,13 +5,13 @@ from d4_utils import protein_settings, dotdict
 from d4_config import retrieve_args
 
 
-def arg_dict(p_dir=""):
+def arg_dict(p_dir: str = "") -> dict:
     """creates a parameter dict for run_all with the use of argparse
     :parameter
-        - p_dir: str, (optional - default "")
+        - p_dir:
           directory where the dataset folder are stored and all the .py files are stored
     :return
-        - d: dict
+        - d:
           dictionary specifying all parameters for run_all in d4_cmd_driver.py
     """
 
@@ -24,7 +24,8 @@ def arg_dict(p_dir=""):
         type=str,
         required=False,
         default=None,
-        help="to use config file as arguments use the file path to the config file in this argument",
+        help="to use config file as arguments use the file path to the config file in"
+        "this argument",
     )
     parser.add_argument(
         "-pn",
@@ -56,14 +57,15 @@ def arg_dict(p_dir=""):
         type=str,
         required=False,
         default=None,
-        help="str: file path to a suitable trained network to transfer its convolution layer weights "
-        "to the new model",
+        help="str: file path to a suitable trained network to transfer its convolution"
+        "layer weights to the new model",
     )
     parser.add_argument(
         "-tl",
         "--train_conv_layers",
         action="store_true",
-        help="set flag to train the convolution layer else they are set to trainable=False",
+        help="set flag to train the convolution layer else they are set to "
+        "trainable=False",
     )
     parser.add_argument(
         "-te",
@@ -79,8 +81,8 @@ def arg_dict(p_dir=""):
         type=int,
         required=False,
         default=20,
-        help="number of epochs the model can try to decrease its es_monitor value for at least "
-        "min_delta before",
+        help="number of epochs the model can try to decrease its es_monitor value for "
+        "at least min_delta before",
     )
     parser.add_argument(
         "--es_monitor",
@@ -125,7 +127,8 @@ def arg_dict(p_dir=""):
         type=float,
         required=False,
         default=0.8,
-        help="size of the training data set - can be either a fraction or a number of samples",
+        help="size of the training data set - can be either a fraction or a number of"
+        "samples",
     )
     parser.add_argument(
         "-s1",
@@ -133,7 +136,8 @@ def arg_dict(p_dir=""):
         type=float,
         required=False,
         default=0.2,
-        help="size of the tune data set - can be either a fraction or a number of samples",
+        help="size of the tune data set - can be either a fraction or a number of"
+        "samples",
     )
     parser.add_argument(
         "-s2",
@@ -141,7 +145,8 @@ def arg_dict(p_dir=""):
         type=float,
         required=False,
         default=0.0,
-        help="size of the test data set - can be either a fraction or a number of samples",
+        help="size of the test data set - can be either a fraction or a number of"
+        "samples",
     )
     parser.add_argument(
         "-a",
@@ -161,8 +166,8 @@ def arg_dict(p_dir=""):
         "-st",
         "--settings_test",
         action="store_true",
-        help="set flag doesn't train the model and only executes everything of the function that is"
-        " before model.fit()",
+        help="set flag doesn't train the model and only executes everything of"
+        "the function that is before model.fit()",
     )
     parser.add_argument(
         "-dt",
@@ -186,7 +191,8 @@ def arg_dict(p_dir=""):
         type=str,
         required=False,
         default=None,
-        help="path to model of who's weights should be used None if it shouldn't be used",
+        help="path to model of who's weights should be used None if it "
+        "shouldn't be used",
     )
     parser.add_argument(
         "-lm",
@@ -202,8 +208,8 @@ def arg_dict(p_dir=""):
         type=int,
         required=False,
         default=None,
-        help="int specifying maximum number of mutations per sequence to be used for training -"
-        "None to use all mutations for training",
+        help="int specifying maximum number of mutations per sequence to be "
+        "used for training -None to use all mutations for training",
     )
     parser.add_argument(
         "-tn",
@@ -266,8 +272,8 @@ def arg_dict(p_dir=""):
         "-wf",
         "--write_temp",
         action="store_true",
-        help="set flag to write mae, loss and time per epoch of each epoch to the temp.csv in "
-        "result_files",
+        help="set flag to write mae, loss and time per epoch of each epoch to the "
+        "temp.csv in result_files",
     )
     parser.add_argument(
         "-o",
@@ -300,9 +306,9 @@ def arg_dict(p_dir=""):
         required=False,
         default=None,
         help="if not None this needs the file_path to a directory containing "
-        "splits specifying the 'train', 'tune', 'test' indices - these files need to be named"
-        " 'train.txt', 'tune.txt' and 'test.txt' otherwise splits of the tsv file according to "
-        "split_def will be used",
+        "splits specifying the 'train', 'tune', 'test' indices - these files need "
+        "to be named 'train.txt', 'tune.txt' and 'test.txt' otherwise splits of the "
+        "tsv file according to split_def will be used",
     )
     parser.add_argument(
         "-nm",
@@ -310,7 +316,8 @@ def arg_dict(p_dir=""):
         type=str,
         required=False,
         default=None,
-        help="how the number of mutations column is named - required when protein_name is not defined",
+        help="how the number of mutations column is named -"
+        "required when protein_name is not defined",
     )
     parser.add_argument(
         "-v",
@@ -335,7 +342,8 @@ def arg_dict(p_dir=""):
         required=False,
         default=None,
         help="wt sequence of the protein of interest eg. 'AVL...' - "
-        "required when protein_name is not defined - required when protein_name is not defined",
+        "required when protein_name is not defined - required when protein_name "
+        "is not defined",
     )
     parser.add_argument(
         "-fi",
@@ -343,8 +351,8 @@ def arg_dict(p_dir=""):
         type=str,
         required=False,
         default=None,
-        help="offset of the start of the sequence (when sequence doesn't start with residue 0) "
-        "- required when protein_name is not defined",
+        help="offset of the start of the sequence (when sequence doesn't start "
+        "with residue 0) - required when protein_name is not defined",
     )
     parser.add_argument(
         "-tp",
@@ -353,8 +361,8 @@ def arg_dict(p_dir=""):
         required=False,
         default=None,
         help="path to tsv file containing dms data of the protein of interest - "
-        "required when tsv file is not stored in /datasets or protein_name is not given or "
-        "the file is not named protein_name.tsv",
+        "required when tsv file is not stored in /datasets or protein_name is not "
+        "given or the file is not named protein_name.tsv",
     )
     parser.add_argument(
         "-pp",
@@ -362,28 +370,30 @@ def arg_dict(p_dir=""):
         type=str,
         required=False,
         default=None,
-        help="path to pdb file containing the structure data of the protein of interest - "
-        "required when pdb file is not stored in /datasets or protein_name is not given or"
-        " the file is not named protein_name.pdb",
+        help="path to pdb file containing the structure data of the protein "
+        "of interest - required when pdb file is not stored in ./datasets or "
+        "protein_name is not given or the file is not named protein_name.pdb",
     )
     parser.add_argument(
         "-vt",
         "--validate_training",
         action="store_true",
-        help="validates training and either shows the validation plot if show_figures flag is set or"
-        "saves them if save_figures flag is set",
+        help="validates training and either shows the validation plot if "
+        "show_figures flag is set or saves them if save_figures flag is set",
     )
     parser.add_argument(
         "-rb",
         "--restore_bw",
         action="store_false",
-        help="set flag to not store the best weights but the weights of the last training epoch",
+        help="set flag to not store the best weights but the weights of the last "
+        "training epoch",
     )
     parser.add_argument(
         "-wl",
         "--write_to_log",
         action="store_false",
-        help="set flag to not write settings usd for training to the log file - NOT recommended",
+        help="set flag to not write settings usd for training to the log file -"
+        "NOT recommended",
     )
     parser.add_argument(
         "-da",
@@ -433,8 +443,8 @@ def arg_dict(p_dir=""):
             ]
         ):
             raise ValueError(
-                "If protein_name is not given 'number_mutations', 'variants', 'score', 'wt_seq' and "
-                "'first_ind' must be given as input"
+                "If protein_name is not given 'number_mutations', 'variants', "
+                "'score', 'wt_seq' and 'first_ind' must be given as input"
             )
         wt_seq_ex = list(wt)
         number_mutations_ex = args.number_mutations
@@ -533,13 +543,13 @@ def arg_dict(p_dir=""):
     return d
 
 
-def optimize_dict(p_dir=""):
+def optimize_dict(p_dir: str = "") -> dict:
     """creates a parameter dict for run_all with the use of argparse
     :parameter
-        - p_dir: str, (optional - default "")
+        - p_dir:
           directory where the datasets are stored
     :return
-        - d: dict
+        - d:
           dictionary specifying all parameters for optimize_protein in d4_prediction.py
     """
 
@@ -553,9 +563,9 @@ def optimize_dict(p_dir=""):
         type=str,
         required=False,
         default="hill",
-        help="str: 'hill' for hill climb, 'blosum' for blosum search, 'blosum_prob' for blosum "
-        "probability search, 'q_learn' for Q- learning, 'genetic' for genetic algorithm and "
-        "'particle_swarm' for particle swarm search",
+        help="str: 'hill' for hill climb, 'blosum' for blosum search, 'blosum_prob'"
+        "for blosum probability search, 'q_learn' for Q- learning, 'genetic' for"
+        "genetic algorithm and 'particle_swarm' for particle swarm search",
     )
     parser.add_argument(
         "-s",
@@ -576,7 +586,8 @@ def optimize_dict(p_dir=""):
         "--model_filepath",
         type=str,
         required=True,
-        help="str: filepath to the model that was trained on data of the protein of interest",
+        help="str: filepath to the model that was trained on data of the protein of "
+        "interest",
     )
     parser.add_argument(
         "-qn",
@@ -647,11 +658,11 @@ def optimize_dict(p_dir=""):
         type=float,
         required=False,
         default=-1.0,
-        help="float: enter a number > 1. to get an absolute random search where the sequence gets "
-        "mutated regardless whether an improvement was found or not (but only the best sequence "
-        "ever gets stored) or -1. so the working sequence only gets updated to a new sequence when"
-        " the found one has a higher score than the previous one (start_temp needs to be 'None' to"
-        " work)",
+        help="float: enter a number > 1. to get an absolute random search where the "
+        "sequence gets mutated regardless whether an improvement was found or not"
+        "(but only the best sequence ever gets stored) or -1. so the working"
+        "sequence only gets updated to a new sequence when the found one has a "
+        "higher score than the previous one (start_temp needs to be 'None' to work)",
     )
     # genetic algorithm
     parser.add_argument(
@@ -725,8 +736,8 @@ def optimize_dict(p_dir=""):
         type=float,
         required=False,
         default=0.5,
-        help="float: fraction (<= 1.) of the global best solution should be transferred to all "
-        "particles per iteration",
+        help="float: fraction (<= 1.) of the global best solution should be "
+        "transferred to all particles per iteration",
     )
     parser.add_argument(
         "-di",
@@ -734,7 +745,8 @@ def optimize_dict(p_dir=""):
         type=int,
         required=False,
         default=2,
-        help="int: how many random mutations per particle should be introduced at the start",
+        help="int: how many random mutations per particle should be introduced "
+        "at the start",
     )
     # q- learning
     parser.add_argument(
@@ -743,8 +755,8 @@ def optimize_dict(p_dir=""):
         type=float,
         required=False,
         default=0.7,
-        help="float: exploration rate - probability of choosing a random action (decays with epsilon "
-        "* (1 / num_iteration))",
+        help="float: exploration rate - probability of choosing a random action "
+        "(decays with epsilon * (1 / num_iteration))",
     )
     parser.add_argument(
         "-lr",
@@ -752,8 +764,8 @@ def optimize_dict(p_dir=""):
         type=float,
         required=False,
         default=0.1,
-        help="float: how much influence new information an all previously found mutations on certain "
-        "position has",
+        help="float: how much influence new information an all previously found "
+        "mutations on certain position has",
     )
     parser.add_argument(
         "-g",
@@ -775,7 +787,8 @@ def optimize_dict(p_dir=""):
 
     args = parser.parse_args()
 
-    # dictionaries that serve as input for the different algorithms in the Optimization class
+    # dictionaries that serve as input for the different algorithms in the
+    # Optimization class
     main_d = {
         "seq": args.sequence,
         "pdb_filepath": os.path.join(p_dir, args.protein_pdb),
@@ -831,13 +844,13 @@ def optimize_dict(p_dir=""):
     )
 
 
-def predict_dict(p_dir=""):
+def predict_dict(p_dir: str = "") -> dict:
     """creates a parameter dict for predictions with the use of argparse
     :parameter
-        - p_dir: str, (optional - default "")
+        - p_dir:
           directory where the datasets are stored
     :return
-        - d: dict
+        - d:
           dictionary specifying all parameters for predictions in d4_prediction.py
     """
     parser = argparse.ArgumentParser(
@@ -863,14 +876,16 @@ def predict_dict(p_dir=""):
         "--variant_s",
         type=str,
         required=True,
-        help="str: variant(s) of interest like 'A1S,R3K' for one variant or 'A1S,R3K_F9I' for multiple variants",
+        help="str: variant(s) of interest like 'A1S,R3K' for one variant or "
+        "'A1S,R3K_F9I' for multiple variants",
     )
     parser.add_argument(
         "-mf",
         "--model_filepath",
         type=str,
         required=True,
-        help="str: filepath to the model that was trained on data of the protein of interest",
+        help="str: filepath to the model that was trained on data of the protein of "
+        "interest",
     )
     parser.add_argument(
         "-af",
@@ -893,7 +908,8 @@ def predict_dict(p_dir=""):
         type=float,
         required=False,
         default=20,
-        help="float: threshold distances between any side chain atom to count as interacting",
+        help="float: threshold distances between any side chain atom to count as "
+        "interacting",
     )
     parser.add_argument(
         "-bs",
@@ -917,7 +933,8 @@ def predict_dict(p_dir=""):
         type=str,
         required=False,
         default=None,
-        help="int: offset of the start of the sequence (when sequence doesn't start with residue 0)",
+        help="int: offset of the start of the sequence (when sequence doesn't start "
+        "with residue 0)",
     )
     args = parser.parse_args()
     # checking whether the files exist

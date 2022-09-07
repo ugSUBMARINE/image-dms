@@ -9,6 +9,8 @@ import gc
 import random
 
 import numpy as np
+import numpy.typing as npt
+from typing import Union
 import tensorflow as tf
 from tensorflow import keras
 
@@ -38,25 +40,35 @@ os.environ["PYTHONHASHSEES"] = str(0)
 np.set_printoptions(threshold=sys.maxsize)
 
 
-def augment(data, labels, mutations, runs=3, un=False):
+def augment(
+    data: np.ndarray[tuple[int], np.dtype[str]],
+    labels: np.ndarray[tuple[int], np.dtype[int | float]],
+    mutations: np.ndarray[tuple[int], np.dtype[int]],
+    runs: int = 3,
+    un: bool = False,
+) -> tuple[
+    np.ndarray[tuple[int], np.dtype[str]],
+    np.ndarray[tuple[int], np.dtype[int | float]],
+    np.ndarray[tuple[int], np.dtype[int]],
+]:
     """creates pseudo data from original data by adding it randomly
     :parameter
-        - data: ndarray of strings
+        - data:
           array of variants like ['S1A', 'D35T,V20R', ...]
-        - labels: ndarray of floats or ints
+        - labels:
           array with the corresponding scores of the provided data
-        - mutations: ndarray of ints
+        - mutations:
           array with number of mutations of each variant
-        - runs: int (optional - default 3)
+        - runs:
           how often the augmentation should be performed
-        - un: bool (optional - default False)
+        - un:
           whether duplicated "new" variants should be removed
     :return
-        - nd: ndarray of strings
+        - nd:
           augmented version of data
-        - nl: ndarray of floats or ints
+        - nl:
           augmented version of labels
-        - nm: ndarray of ints
+        - nm:
           augmented version of mutations
     """
 
@@ -105,38 +117,58 @@ def augment(data, labels, mutations, runs=3, un=False):
     return np.asarray(nd), np.asarray(nl), np.asarray(nm)
 
 
-def data_generator_vals(wt_seq, alignment_path, alignment_base):
+def data_generator_vals(
+    wt_seq: str, alignment_path: str, alignment_base: str
+) -> tuple[
+    np.ndarray[tuple[int], np.dtype[int]],
+    float,
+    int,
+    np.ndarray[tuple[int], np.dtype[int]],
+    np.ndarray[tuple[int], np.dtype[float]],
+    np.ndarray[tuple[int], np.dtype[int]],
+    np.ndarray[tuple[int], np.dtype[int]],
+    np.ndarray[tuple[int, int], np.dtype[int]],
+    np.ndarray[tuple[int], np.dtype[float]],
+    float,
+    np.ndarray[tuple[int], np.dtype[int]],
+    np.ndarray[tuple[int, 20], np.dtype[float]],
+    np.ndarray[tuple[int], np.dtype[int]],
+]:
     """returns values/ numpy arrays based on the wt_seq for the DataGenerator
     :parameter
-        - wt_seq: str
+        - wt_seq:
           wild type sequence as str eg 'AVLI'
+        - alignment_path:
+          path to the alignment file
+        - alignment_base:
+          name of the protein in the alignment file
     :returns
-        - hm_pos_vals: ndarray of int
+        - hm_pos_vals:
           values for interactions with valid hydrogen bonding partners
-        - hp_norm: float
+        - hp_norm:
           max value possible for hydrophobicity interactions
-        - ia_norm: float
+        - ia_norm:
           max value possible for interaction ares interactions
-        - hm_converted: ndarray of float
+        - hm_converted:
           wt_seq converted into hydrogen bonding values
-        - hp_converted: ndarray of float
+        - hp_converted:
           wt_seq converted into hydrophobicity values
-        - cm_converted: ndarray of float
+        - cm_converted:
           wt_seq converted into charge values
-        - ia_converted: ndarray of float
+        - ia_converted:
           wt_seq converted into SASA values
         - mat_index: 2D ndarray of float
           symmetrical index matrix
-        - cl_converted: ndarray of float
+        - cl_converted:
           wt_seq converted into side chain length values
-        - cl_norm: float
-          max value possible for interaction ares interactions
-        - co_converted: ndarray of int
+        - cl_norm:
+          max value possible for two side chains
+        - co_converted:
           wt_seq converted to amino acid positions in the alignment table
-        -co_table: nx20 ndarray of floats
+        - co_table:
           each row specifies which amino acids are conserved at that
           sequence position and how conserved they are
-        -co_rows: 1D ndarray of ints
+        - co_rows:
           inde help with indices of each sequence position"""
 
     hm_pos_vals = np.asarray([2, 3, 6, 9])
@@ -179,15 +211,15 @@ def data_generator_vals(wt_seq, alignment_path, alignment_base):
     )
 
 
-def progress_bar(num_batches, bar_len, batch):
-    """prints progress bar with percentage that can be overwritten with a "subsequent print statement
-    - should be implemented with "on_train_batch_end
+def progress_bar(num_batches: int, bar_len: int, batch: int) -> None:
+    """prints progress bar with percentage that can be overwritten with a
+    subsequent print statement - should be implemented with on_train_batch_end
     :parameter
-        - num_batches: int
+        - num_batches:
           number of batches per epoch
-        - bar_len: int
+        - bar_len:
           length of the progress bar
-        - batch: int
+        - batch:
           number of the current batch
     :return
         None"""
@@ -221,89 +253,89 @@ class DataGenerator(keras.utils.Sequence):
     modified after 'https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly'
     ...
     Attributes:
-    - features: list of str
+    - features:
       features that should be encoded eg ['A2S,E3R' 'T6W']
-    - labels: list of int / float
+    - labels:
       the corresponding labels to the features
-    - interaction_matrix: 2D ndarray of bool
+    - interaction_matrix:
       boolean matrix whether residues interact or not
-    - dim: tuple
+    - dim:
       dimensions of the matrices (len(wt_seq) x len(wt_seq))
-    - n_channels: int
+    - n_channels:
       number of matrices used
-    - batch_size: int
+    - batch_size:
       Batch size (if 1 gradient gets updated after every sample in training)
-    - first_ind: int
+    - first_ind:
       index of the start of the protein sequence
-    - hm_converted: ndarray of floats
+    - hm_converted:
       wt sequence h-bonding encoded
-    - hm_pos_vals: ndarray of ints
+    - hm_pos_vals:
       valid values for h-bonding residues
-    - factor: 2D ndarray of floats
+    - factor:
       1 - norm(distance) for all residues in the interaction matrix
-    - hp_converted: ndarray of floats
+    - hp_converted:
       wt sequence hydrophobicity encoded
-    - hp_norm: int or float
+    - hp_norm:
       max possible value for hydrophobicity change
-    - cm_converted: ndarray of floats
+    - cm_converted:
       wt sequence charge encoded
-    - ia_converted: ndarray of floats
+    - ia_converted:
       wt sequence interaction area encoded
-    - ia_norm: float
+    - ia_norm:
       max value for interaction area change
-    - mat_index: 2D ndarray of ints
-      symmetrical index matrix (for adjacency matrix) that represents the position of 
+    - mat_index:
+      symmetrical index matrix (for adjacency matrix) that represents the position of
       each interaction in the matrices
-    - cl_converted: ndarray of floats
+    - cl_converted:
       wild type sequence clash encoded
-    - cl_norm: float
+    - cl_norm:
       normalization value for the clash matrix
-    - dist_mat 2D ndarray of floats
+    - dist_mat:
       ture distances between all residues
     - dist_th
       maximum distance for residues to be counted as interaction
-    - co_converted ndarray of int or floats:
+    - co_converted:
       wild type sequence position in alignment_table encoded
-    - co_table: ndarray or floats
+    - co_table:
       nx20 array- which amino acids are how conserved at which sequence
                  position
-    - co_rows: ndarray of ints
+    - co_rows:
       indexing help for alignment_table
-    - shuffle: bool, (optional - default True)
+    - shuffle:
       if True data gets shuffled after every epoch
-    - train: bool, (optional - default True)
-      if True Generator returns features and labels (use turing training) 
+    - train:
+      if True Generator returns features and labels (use turing training)
       else only features
     """
 
     def __init__(
         self,
-        features,
-        labels,
-        interaction_matrix,
-        dim,
-        n_channels,
-        batch_size,
-        first_ind,
-        hm_converted,
-        hm_pos_vals,
-        factor,
-        hp_converted,
-        hp_norm,
-        cm_converted,
-        ia_converted,
-        ia_norm,
-        mat_index,
-        cl_converted,
-        cl_norm,
-        dist_mat,
-        dist_th,
-        co_converted,
-        co_table,
-        co_rows,
-        shuffle=True,
-        train=True,
-    ):
+        features: np.ndarray[tuple[int], np.dtype[str]],
+        labels: np.ndarray[tuple[int], np.dtype[int | float]],
+        interaction_matrix: np.ndarray[tuple[int, int], np.dtype[bool]],
+        dim: tuple[int, int],
+        n_channels: int,
+        batch_size: int,
+        first_ind: int,
+        hm_converted: np.ndarray[tuple[int], np.dtype[int]],
+        hm_pos_vals: np.ndarray[tuple[int], np.dtype[int]],
+        factor: np.ndarray[tuple[int, int], np.dtype[float]],
+        hp_converted: np.ndarray[tuple[int], np.dtype[float]],
+        hp_norm: float,
+        cm_converted: np.ndarray[tuple[int], np.dtype[int]],
+        ia_converted: np.ndarray[tuple[int], np.dtype[int]],
+        ia_norm: int,
+        mat_index: np.ndarray[tuple[int, int], np.dtype[int]],
+        cl_converted: np.ndarray[tuple[int], np.dtype[float]],
+        cl_norm: float,
+        dist_mat: np.ndarray[tuple[int, int], np.dtype[float]],
+        dist_th: int | float,
+        co_converted: np.ndarray[tuple[int], np.dtype[int]],
+        co_table: np.ndarray[tuple[int, 20], np.dtype[float]],
+        co_rows: np.ndarray[tuple[int], np.dtype[int]],
+        shuffle: bool = True,
+        train: bool = True,
+    ) -> None:
         self.features, self.labels = features, labels
         self.interaction_matrix = interaction_matrix
         self.dim = dim
@@ -333,7 +365,7 @@ class DataGenerator(keras.utils.Sequence):
         """number of batches per epoch"""
         return int(np.ceil(len(self.features) / self.batch_size))
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
         """Generate one batch of data"""
         features_batch = self.features[
             idx * self.batch_size : (idx + 1) * self.batch_size
@@ -352,7 +384,11 @@ class DataGenerator(keras.utils.Sequence):
         if self.shuffle:
             np.random.shuffle(self.idx)
 
-    def __batch_variants(self, features_to_encode, corresponding_labels):
+    def __batch_variants(
+        self,
+        features_to_encode: np.ndarray[tuple[int], np.dtype[str]],
+        corresponding_labels: np.ndarray[tuple[int], np.dtype[int | float]],
+    ) -> np.ndarray[tuple[int, int, int], np.dtype[float]]:
         """creates interaction matrices of variants for a batch"""
         first_dim = corresponding_labels.shape[0]
         batch_features = np.empty((first_dim, *self.dim, self.n_channels))
@@ -419,7 +455,8 @@ class SaveToFile(keras.callbacks.Callback):
         log_file(
             self.filepath,
             write_str=log_string,
-            optional_header="epoch,loss,mae,val_loss,val_mae,sec_per_epoch,epoch_start_time",
+            optional_header="epoch,loss,mae,val_loss,val_mae,sec_per_epoch,"
+            "epoch_start_time",
         )
 
     def on_train_end(self, logs=None):
@@ -430,34 +467,36 @@ class CustomPrint(keras.callbacks.Callback):
     """prints custom stats during training
     ...
     Attributes:
-    - num_batches: int
+    - num_batches:
       number of batches per epoch
-    - epoch_print: int, (optional - default 1)
+    - epoch_print:
       interval at which loss and the change in loss should be printed
-    - epoch_stat_print: int, (optional - default 10)
-      interval at which best train epoch, the best validation epoch and the 
+    - epoch_stat_print:
+      interval at which best train epoch, the best validation epoch and the
               difference in the loss between them
       should be printed
-    - pb_len: int, (optional - default 60)
+    - pb_len:
       length of the progress bar
-    - model_d: str, (optional - default '')
+    - model_d:
       filepath where the models should be saved
-    - model_save_interval: int, (optional - default 5)
-      minimum nuber of epochs to pass to save the model - only gets saved 
-      when the validation loss has improved 
+    - model_save_interval:
+      minimum nuber of epochs to pass to save the model - only gets saved
+      when the validation loss has improved
       since the last time the model was saved
+    - save:
+      whether to save the model
     """
 
     def __init__(
         self,
-        num_batches,
-        epoch_print=1,
-        epoch_stat_print=10,
-        pb_len=60,
-        model_d="",
-        model_save_interval=5,
-        save=False,
-    ):
+        num_batches: int,
+        epoch_print: int = 1,
+        epoch_stat_print: int = 10,
+        pb_len: int = 60,
+        model_d: str = "",
+        model_save_interval: int = 5,
+        save: bool = False,
+    ) -> None:
         self.epoch_print = epoch_print
         self.best_loss = np.Inf
         self.bl_epoch = 0
@@ -493,7 +532,8 @@ class CustomPrint(keras.callbacks.Callback):
 
         if epoch % self.epoch_print == 0:
             print(
-                "E {} - loss: {:0.4f}  val_loss: {:0.4f} - loss change: {:0.4f}  val_loss change: {:0.4f} - "
+                "E {} - loss: {:0.4f}  val_loss: {:0.4f} - loss change: {:0.4f}  "
+                "val_loss change: {:0.4f} - "
                 "seconds per epoch: {:0.4f}\n".format(
                     str(epoch),
                     cur_loss,
@@ -571,158 +611,165 @@ class ClearMemory(keras.callbacks.Callback):
 
 
 def run_all(
-    model_to_use,
-    optimizer,
-    tsv_file,
-    pdb_file,
-    wt_seq,
-    number_mutations,
-    variants,
-    score,
-    dist_thr,
-    channel_num,
-    max_train_mutations,
-    training_epochs,
-    test_num,
-    first_ind,
-    algn_path,
-    algn_bl,
-    r_seed=None,
-    deploy_early_stop=True,
-    es_monitor="val_loss",
-    es_min_d=0.01,
-    es_patience=20,
-    es_mode="auto",
-    es_restore_bw=True,
-    load_trained_model=None,
-    batch_size=64,
-    save_fig=None,
-    show_fig=False,
-    write_to_log=True,
-    silent=False,
-    extensive_test=False,
-    save_model=False,
-    load_trained_weights=None,
-    no_nan=True,
-    settings_test=False,
-    p_dir="",
-    split_def=None,
-    validate_training=False,
-    lr=0.001,
-    transfer_conv_weights=None,
-    train_conv_layers=False,
-    write_temp=False,
-    split_file_creation=False,
-    use_split_file=None,
-    daug=False,
-    clear_el=False,
+    model_to_use: str,
+    optimizer: str,
+    tsv_file: str,
+    pdb_file: str,
+    wt_seq: str,
+    number_mutations: str,
+    variants: str,
+    score: str,
+    dist_thr: int | float,
+    channel_num: int,
+    max_train_mutations: int | None,
+    training_epochs: int,
+    test_num: int,
+    first_ind: int,
+    algn_path: str,
+    algn_bl: str,
+    r_seed: int | None = None,
+    deploy_early_stop: bool = True,
+    es_monitor: str = "val_loss",
+    es_min_d: int | float = 0.01,
+    es_patience: int = 20,
+    es_mode: str = "auto",
+    es_restore_bw: bool = True,
+    load_trained_model: str | None = None,
+    batch_size: int = 64,
+    save_fig: str | None = None,
+    show_fig: bool = False,
+    write_to_log: bool = True,
+    silent: bool = False,
+    extensive_test: bool = False,
+    save_model: bool = False,
+    load_trained_weights: str | None = None,
+    no_nan: bool = True,
+    settings_test: bool = False,
+    p_dir: str = "",
+    split_def: Union[list[int | float], None] = None,
+    validate_training: bool = False,
+    lr: float = 0.001,
+    transfer_conv_weights: str | None = None,
+    train_conv_layers: bool = False,
+    write_temp: bool = False,
+    split_file_creation: bool = False,
+    use_split_file: str | None = None,
+    daug: bool = False,
+    clear_el: bool = False,
 ):
     """runs all functions to train a neural network
     :parameter
-    - model_to_use: str
+    - model_to_use:
       function that returns the model
-    - optimizer: str
+    - optimizer:
       keras optimizer to be used
-    - tsv_file: str
+    - tsv_file:
       path to tsv file containing dms data of the protein of interest
-    - pdb_file: str
+    - pdb_file:
       path to pdb file containing the structure
-    - wt_seq: str
+    - wt_seq:
       wt sequence of the protein of interest eg. 'AVL...'
-    - number_mutations: str
+    - number_mutations:
       how the number of mutations column is named
-    - variants:str
+    - variants:
       name of the variant column
-    - score: str
+    - score:
       name of the score column
-    - dist_thr: int or float
+    - dist_thr:
       threshold distances between any side chain atom to count as interacting
-    - channel_num: int
+    - channel_num:
       number of channels
-    - max_train_mutations: int or None
+    - max_train_mutations:
       - int specifying maximum number of mutations per sequence to be used for training
       - None to use all mutations for training
-    - training_epochs: int
+    - training_epochs:
       number of epochs used for training the model
-    - test_num: int
+    - test_num:
       number of samples for the test after the model was trained
-    - first_ind: int
+    - first_ind:
       offset of the start of the sequence (when sequence doesn't start with residue 0)
-    - algn_path: str
+    - algn_path:
       path to the multiple sequence alignment in clustalw format
-    - algn_bl: str
+    - algn_bl:
       name of the wild type sequence in the alignment file
-    - r_seed: None, int, (optional - default None)
+    - r_seed:
       numpy and tensorflow random seed
-    - deploy_early_stop: bool, (optional - default True)
+    - deploy_early_stop:
       whether early stop during training should be enabled (Ture) or not (False)
-            - es_monitor: str, (optional - default 'val_loss')
+            - es_monitor:
               what to monitor to determine whether to stop the training or not
-            - es_min_d: float, (optional - default 0.01)
+            - es_min_d:
               min_delta - min difference in es_monitor to not stop training
-            - es_patience: int, (optional - default 20)
-              number of epochs the model can try to decrease its es_monitor value for at least min_delta before
-              stopping
-            - es_mode: str, (optional - default 'auto')
+            - es_patience:
+              number of epochs the model can try to decrease its es_monitor value for
+              at least min_delta before stopping
+            - es_mode:
               direction of quantity monitored in es_monitor
-            - es_restore_bw: bool, (optional - default True)
+            - es_restore_bw:
               True stores the best weights of the training - False stores the last
-    - batch_size: int, (optional - default 64)
+    - batch_size:
       after how many samples the gradient gets updated
-    - load_trained_model: str or None, (optional - default None)
+    - load_trained_model:
       path to an already trained model or None to not load a model
-    - save_fig: str or None, (optional - default None)
+    - save_fig:
             - None to not save figures
             - str specifying the file path where the figures should be stored
-    - show_fig: bool, (optional - default False)
+    - show_fig:
       True to show figures
-    - write_to_log: bool, (optional - default True)
+    - write_to_log:
       if True writes all parameters used in the log file - **should be always enabled**
-    - silent: bool, (optional - default False)
+    - silent:
       True to print stats in the terminal
-    - extensive_test: bool, (optional - default False)
+    - extensive_test:
       if True more test are done and more detailed plots are created
-    - save_model: bool, (optional - default False)
+    - save_model:
       True to save the model after training
-    - load_trained_weights: str or None, (optional - default None)
+    - load_trained_weights:
       path to model of who's weights should be used None if it shouldn't be used
-    - no_nan: bool, (optional - default True)
+    - no_nan:
       True terminates training on nan
-    - settings_test: bool, (optional - default False)
-      Ture doesn't train the model and only executes everything of the function that is before model.fit()
-    - p_dir: str, (optional - default '')
+    - settings_test:
+      Ture doesn't train the model and only executes everything of the function
+      that is before model.fit()
+    - p_dir:
       path to the projects content root
-    - split_def: list of int/float or None, (optional - default None)
+    - split_def:
       specifies the split for train, tune, test indices
             - float specifies fractions of the whole dataset
-              eg [0.25, 0.25, 0.5] creates a train and tune dataset with 50 entries each and a test dataset of 100
+              eg [0.25, 0.25, 0.5] creates a train and tune dataset with 50 entries
+              each and a test dataset of 100
               if the whole dataset contains 200 entries
             - int specifies the different number of samples per dataset
-              eg [50,50,100] leads to a train and a tune dataset with 50 entries each and a test dataset of 100
+              eg [50,50,100] leads to a train and a tune dataset with 50 entries
+              each and a test dataset of 100
               if the whole dataset contains 200 entries
             - None uses [0.8, 0.15, 0.05] as split
-    - validate_training: bool, (optional - default False)
+    - validate_training:
       if True validation of the training will be performed
-    - lr: float, (optional - default 0.001)
+    - lr:
       learning rate (how much the weights can change during an update)
-    - transfer_conv_weights: str or None, (optional - default None)
-      path to model who's weights of it's convolution layers should be used for transfer learning (needs to have the
-      same architecture for the convolution part as the newly build model (model_to_use) or None to not transfer
-      weights
-    - train_conv_layers: bool, (optional - default False)
-      if True convolution layers are trainable - only applies when transfer_conv_weights is not None
-    - write_temp: bool, (optional - default False)
-      if True writes mae, loss and time per epoch of each epoch to the temp.csv in result_files
-    - split_file_creation: bool, (optional - default False)
-      if True creates a directory containing train.txt, tune.txt and test.txt files that store the indices of the
-      rows used from the tsv file during training, validating and testing
-    - use_split_file: None or str, (optional - default None)
+    - transfer_conv_weights:
+      path to model who's weights of it's convolution layers should be used for
+      transfer learning - needs to have the same architecture for the convolution part
+      as the newly build model (model_to_use) or None to not transfer weights
+    - train_conv_layers:
+      if True convolution layers are trainable - only applies when
+      transfer_conv_weights is not None
+    - write_temp:
+      if True writes mae, loss and time per epoch of each epoch to the temp.csv in
+      result_files
+    - split_file_creation:
+      if True creates a directory containing train.txt, tune.txt and test.txt files
+      that store the indices of the rows used from the tsv file during
+      training, validating and testing
+    - use_split_file:
       if not None this needs the file_path to a directory containing splits specifying
-      the 'train', 'tune', 'test' indices - these files need to be named 'train.txt', 'tune.txt' and 'test.txt'
+      the 'train', 'tune', 'test' indices - these files need to be named
+      'train.txt', 'tune.txt' and 'test.txt'
       otherwise splits of the tsv file according to split_def will be used
-    - daug: bool (optional - default True)
+    - daug:
       True to use data augmentation
-    - clear_el: bool (optional - default False)
+    - clear_el:
       if True error log gets cleared before a run
     :return
         None
@@ -912,10 +959,10 @@ def run_all(
         tdr = int(len(data_dict["train_data"]) * 0.2)
         # !!! REMOVE the slicing for test_data !!!
         # ---
-        tdr = 5000
-        train_data = train_data[:50]
-        train_labels = train_labels[:50]
-        train_mutations = train_mutations[:50]
+        # tdr = 5000
+        # train_data = train_data[:24]
+        # train_labels = train_labels[:24]
+        # train_mutations = train_mutations[:24]
 
         # data to validate during training
         test_data = data_dict["tune_data"][:tdr]
@@ -980,7 +1027,7 @@ def run_all(
         model = model_to_use(
             wt_seq,
             channel_num,
-        )  # , filter_num=0, block_num=6, block_depth=4, filter_size=3, e_pool="avg", l_pool="max", classif_l=3)
+        )
 
         # load weights to model
         if load_trained_weights is not None:
@@ -1123,7 +1170,7 @@ def run_all(
         test_generator = DataGenerator(t_data, np.zeros(len(t_labels)), **test_params)
 
         # ---
-
+        """
         import keras_tuner
 
         def build_model(hp):
@@ -1182,7 +1229,7 @@ def run_all(
         tuner.results_summary()
         best_hps = tuner.get_best_hyperparameters(5)
         model = build_model(best_hps[0])
-
+        """
         # ---
 
         if not settings_test:

@@ -1144,4 +1144,4 @@ def simple_model_imp_tune(
 
 
 if __name__ == "__main__":
-    mod = simple_model_imp_tune(np.arange(237), 7, times=1)
+    mod = dense_test(np.arange(237), 7)

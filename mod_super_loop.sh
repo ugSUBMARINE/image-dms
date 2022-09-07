@@ -1,10 +1,10 @@
 #!/bin/bash
 
-names=("pab1")  # ("avgfp" "pab1" "gb1")
+names=("gb1")  # ("avgfp" "pab1" "gb1")
 split=("first" "second" "third") 
 train_sizes=(50 100 250 500 1000 2000 6000)
 batch_size=32
-architecture=dense_net2
+architecture=simple_model_imp
 epochs=100
 channels=7
 simple=1
@@ -25,11 +25,11 @@ for p_name in "${names[@]}"; do
   for k in "${split[@]}"; do
     path="nononsense/"$k"_split_run/"$p_name"_even_splits/split_"
       if [ $k == "first" ]; then
-        pre_weigths="result_files/saved_models/"$p_name"_fr_"
+        pre_weigths="result_files/saved_models/"$architecture"_pretrained_"$p_name"/"$p_name"_fr_"
       elif [ $k == "second" ]; then 
-        pre_weigths="result_files/saved_models/"$p_name"_sr_"
+        pre_weigths="result_files/saved_models/"$architecture"_pretrained_"$p_name"/"$p_name"_sr_"
       else
-        pre_weigths="result_files/saved_models/"$p_name"_tr_"
+        pre_weigths="result_files/saved_models/"$architecture"_pretrained_"$p_name"/"$p_name"_tr_"
       fi 
     if [ $simple == 1 ]; then
         for i in "${train_sizes[@]}"; do

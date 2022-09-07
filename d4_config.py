@@ -6,14 +6,14 @@ import d4_models
 import tensorflow as tf
 
 
-def retrieve_args(ini_filepath):
+def retrieve_args(ini_filepath: str) -> dict:
     """reads the supplied ini file, checks for data types and returns args as
         dict for run_all
     :parameter
-    - ini_filepath: str
+    - ini_filepath:
       file path to the ini file
     :return
-    - converted_args: dict
+    - converted_args:
       dict with all args from the ini file converted to their data type
     """
 

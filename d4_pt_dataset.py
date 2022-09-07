@@ -22,20 +22,25 @@ from d4_utils import (
 np.set_printoptions(threshold=sys.maxsize)
 
 
-def create_mutants(first_ind, seq, tsv_path=None, tsv_inds_path=None):
+def create_mutants(
+    first_ind: int,
+    seq: list[str],
+    tsv_path: str | None = None,
+    tsv_inds_path: str | None = None,
+) -> list[str]:
     """creates every single and double mutant of a given protein
     :parameter
-        - first_ind: int
+        - first_ind:
           index of the first residue in the protein
-        - seq: list of str
+        - seq:
           protein sequence as ['A', 'V', 'L', 'I']
-        - tsv_path: str (optional - default None)
+        - tsv_path:
           path to tsv file of which the mutations should be excluded
-        - tsv_inds_path: str (optional - default None)
+        - tsv_inds_path:
           path to file containing the indices of the used mutants in the
           tsv_path file
     :return
-        - var_true: list of str
+        - var_true:
           list with variants like ['A2V', 'R3E,K5D']
     """
     seq_len = len(seq)
@@ -128,25 +133,30 @@ def create_mutants(first_ind, seq, tsv_path=None, tsv_inds_path=None):
 
 
 def calc_pseudo_score(
-    sequence, first_ind, variants, pdb_filepath, alignment_path, dist_th
-):
+    sequence: list[str],
+    first_ind: int,
+    variants: list[str],
+    pdb_filepath: str,
+    alignment_path: str,
+    dist_th: int | float,
+) -> np.ndarray[tuple[int], np.dtype[float]]:
     """calculates the pseudo scores to create pretraining datasets
     :parameter
-        - sequence: list of str
+        - sequence:
           protein wild type sequence like ['A', 'V', 'L', 'I']
-        - first_ind: int
+        - first_ind:
           index of the first residue in the protein
-        - variants: list of str
+        - variants:
           variants for which the pseudo scores should be calculated
           ['A1S', 'R3K,L9T']
-        - pdb_filepath: str
+        - pdb_filepath:
           file path to the pdb file of the protein
-        - alignment_path: str
+        - alignment_path:
           path to the alignment file of the protein
-        - dist_th: int or float
+        - dist_th:
           distance threshold used for model_interactions
     :return
-        - pseudo_score: ndarray of floats
+        - pseudo_score:
           calculated pseudo scores for the given variants
     """
 
@@ -236,7 +246,7 @@ def calc_pseudo_score(
     return pseudo_score
 
 
-def create_pt_ds(file_path, variants, scores):
+def create_pt_ds(file_path: str, variants: list[str], scores: list[float]) -> None:
     """stores pseudo scores int the same formate as the original datasets
     :parameter
         - file_path: str
@@ -257,46 +267,54 @@ def create_pt_ds(file_path, variants, scores):
 
 
 if __name__ == "__main__":
-    protein = "pab1"
+    protein = "avgfp"
     p_data = protein_settings(protein)
     first_ind = int(p_data["offset"])
     seq = np.asarray(list(p_data["sequence"]))
-    size = 6000
-    """
-    for size in [50, 100, 250, 500, 1000, 2000, 6000]:
-        new_variants = create_mutants(
-                first_ind, 
-                seq, 
-                "./nononsense/nononsense_pab1.tsv", 
-                "./nononsense/third_split_run/"
-                "pab1_even_splits/split_{}/stest.txt".format(size)
-                )
+    size = 50
+    
+    runs = ["first", "second", "third"]
+    for r in runs:
+        if r == "first":
+            pre = "fr"
+        elif r == "second":
+            pre = "sr"
+        elif r == "third":
+            pre = "tr"
+        else:
+            r = None
+        for size in [50, 100, 250, 500, 1000, 2000, 6000]:
+            new_variants = create_mutants(
+                first_ind,
+                seq,
+                f"./nononsense/nononsense_{protein}.tsv",
+                f"./nononsense/{r}_split_run/{protein}_even_splits/split_{size}/stest.txt",
+            )
 
-        chosen_var = np.random.choice(np.arange(len(new_variants)), 
-                                      replace=False, 
-                                      size=40000)
+            chosen_var = np.random.choice(
+                np.arange(len(new_variants)), replace=False, size=40000
+            )
 
-        ns = calc_pseudo_score(
+            ns = calc_pseudo_score(
                 variants=new_variants[chosen_var],
                 sequence=seq,
-                pdb_filepath="datasets/{}.pdb".format(protein),
-                alignment_path="./datasets/"
-                "alignment_files/{}_1000_experimental.clustal".format(protein),
+                pdb_filepath=f"./datasets/{protein}.pdb",
+                alignment_path=f"./datasets/alignment_files/{protein}_1000_experimental.clustal",
                 first_ind=first_ind,
-                dist_th=20
-                ) 
+                dist_th=20,
+            )
 
-        create_pt_ds(
-                "./datasets/pseudo_scores/{}_tr_{}.tsv".format(protein, size), 
+            create_pt_ds(
+                f"./datasets/pseudo_scores/{protein}/{protein}_{pre}_{size}.tsv",
                 new_variants[chosen_var],
-                ns
-                )
+                ns,
+            )
     """
 
     new_variants = create_mutants(
         first_ind,
         seq,
-        "./nononsense/nononsense_pab1.tsv",
-        "./nononsense/third_split_run/"
-        "pab1_even_splits/split_{}/stest.txt".format(size),
+        f"./nononsense/nononsense_{protein}.tsv",
+        f"./nononsense/third_split_run/{protein}_even_splits/split_{size}/stest.txt",
     )
+    """

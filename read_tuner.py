@@ -10,13 +10,13 @@ import numpy as np
 
 
 def read_tuner(tuner_dir):
-    """docstring\n
+    """docstring
     :parameter
-        - read_tunerarg:\n
-          description\n
+        - read_tunerarg:
+          description
     :return
-        - read_tunerreturn\n
-          description\n"""
+        - read_tunerreturn
+          description"""
 
     scores = []
     settings = []
@@ -43,8 +43,8 @@ def read_tuner(tuner_dir):
     return score, settings, paths, order
 
 
-runs = [50, 100, 250, 500, 1000, 6000]
-runs = [50]
+runs = [50, 100, 250, 500, 1000, 2000, 6000]
+
 display_num = 5
 
 num = input("settings number:")
@@ -89,8 +89,17 @@ for i in range(len(runs)):
     u, ui = np.unique(all_settings[i], axis=0, return_index=True)
     i_score = scs[i][ui]
     i_order = np.argsort(i_score)
-    all_settings[i] = u[i_order][:10]
+    all_settings[i] = u[i_order][:display_num]
     print(i_score[i_order])
 
 all_settings = np.asarray(all_settings)
 print(all_settings)
+
+overall_best = []
+best_of_all = all_settings[:,0,:]
+for i in range(all_settings.shape[2]):
+    una, uca = np.unique(all_settings[:,:,i], return_counts=True)
+    un, uc = np.unique(best_of_all[:, i], return_counts=True)
+    print(un[np.argmax(uc)])
+    overall_best.append(una[np.argmax(uca)])
+print(overall_best)
