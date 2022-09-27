@@ -9,7 +9,6 @@ import gc
 import random
 
 import numpy as np
-import numpy.typing as npt
 from typing import Union
 import tensorflow as tf
 from tensorflow import keras
@@ -250,7 +249,8 @@ class DataGenerator(keras.utils.Sequence):
     """
     Generates n_channel x n x n matrices to feed them as batches to a network
             where n denotes len(wild type sequence)
-    modified after 'https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly'
+    modified after
+    'https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly'
     ...
     Attributes:
     - features:
@@ -452,12 +452,8 @@ class SaveToFile(keras.callbacks.Callback):
             time.time() - self.start_time_epoch,
             time.strftime("%H:%M:%S", time.localtime(self.start_time_epoch)),
         )
-        log_file(
-            self.filepath,
-            write_str=log_string,
-            optional_header="epoch,loss,mae,val_loss,val_mae,sec_per_epoch,"
-            "epoch_start_time",
-        )
+        with open(self.filepath, "a") as log_file_to_write:
+            log_file_to_write.write(log_string + "\n")
 
     def on_train_end(self, logs=None):
         log_file(self.filepath, write_str="Finished training")
@@ -532,16 +528,10 @@ class CustomPrint(keras.callbacks.Callback):
 
         if epoch % self.epoch_print == 0:
             print(
-                "E {} - loss: {:0.4f}  val_loss: {:0.4f} - loss change: {:0.4f}  "
-                "val_loss change: {:0.4f} - "
-                "seconds per epoch: {:0.4f}\n".format(
-                    str(epoch),
-                    cur_loss,
-                    cur_val_loss,
-                    cur_loss - self.latest_loss,
-                    cur_val_loss - self.latest_val_loss,
-                    time.time() - self.start_time_epoch,
-                )
+                f"E {epoch:<3} - loss: {cur_loss: 0.4f}  val_loss: {cur_val_loss: 0.4f} - loss change: {cur_loss - self.latest_loss: 0.4f}  ",
+                f"val_loss change: {cur_val_loss - self.latest_val_loss: 0.4f} - ",
+                f"seconds per epoch: {time.time() - self.start_time_epoch: 0.4f}\n",
+                end="",
             )
         # update the latest loss and latest validation loss to loss of this epoch
         self.latest_loss = cur_loss
@@ -569,32 +559,29 @@ class CustomPrint(keras.callbacks.Callback):
                 dp = np.nan
             d_cl = cur_loss - self.best_loss
             d_cvl = cur_val_loss - self.best_val_loss
+
             print(
-                "Best train epoch: {}\nBest validation epoch: {}\ndelta: {:0.4f} (equals {:0.2f}% of val_loss)\n"
-                "difference to best loss: {:0.4f}\ndifference to best val_loss: {:0.4f}\n".format(
-                    str(self.bl_epoch), str(self.bvl_epoch), d, dp, d_cl, d_cvl
-                )
+                f"Best train epoch: {self.bl_epoch}\n",
+                f"\rBest validation epoch: {self.bvl_epoch}\n",
+                f"\rdelta: {d:0.4f} (equals {dp:0.2f}% of val_loss)\n",
+                f"\rdifference to best loss ({self.best_loss:0.4f}): {d_cl:0.4f}\n",
+                f"\rdifference to best val_loss ({self.best_val_loss:0.4f}): {d_cvl:0.4f}\n",
             )
 
     def on_train_end(self, logs=None):
         # save model in the end and print overall training stats
         if self.save:
             self.model.save(self.model_d + "_end")
-        print("Overall best epoch stats")
+        print()
         print(
-            "Best training epoch: {} with a loss of {:0.4f}".format(
-                str(self.bl_epoch), self.best_loss
-            )
+            "Overall best epoch stats\n",
+            f"\rBest training epoch: {self.bl_epoch} with a loss of {self.best_loss:0.4f}",
         )
         print(
-            "Best validation epoch: {} with a loss of {:0.4f}".format(
-                str(self.bvl_epoch), self.best_val_loss
-            )
+            f"Best validation epoch: {self.bvl_epoch} with a loss of {self.best_val_loss:0.4f}"
         )
         print(
-            "Total training time in minutes: {:0.1f}\n".format(
-                (time.time() - self.start_time_training) / 60
-            )
+            f"Total training time in minutes: {(time.time() - self.start_time_training) / 60:0.1f}\n"
         )
 
 
@@ -925,7 +912,8 @@ def run_all(
             train_data = train_data[s_inds]
             train_labels = train_labels[s_inds]
             train_mutations = train_mutations[s_inds]
-            # only use as much fake data as needed to get cap# of training data or all if not enough could be created
+            # only use as much fake data as needed to get cap# of training data or all
+            # if not enough could be created
             if nt_len + ot_len > cap:
                 # number of augmented data needed to get cap# of training data points
                 need = cap - ot_len
@@ -958,11 +946,6 @@ def run_all(
         "test data restriction"
         tdr = int(len(data_dict["train_data"]) * 0.2)
         # !!! REMOVE the slicing for test_data !!!
-        # ---
-        # tdr = 5000
-        # train_data = train_data[:24]
-        # train_labels = train_labels[:24]
-        # train_mutations = train_mutations[:24]
 
         # data to validate during training
         test_data = data_dict["tune_data"][:tdr]
@@ -984,7 +967,8 @@ def run_all(
             t_labels = unseen_labels[test_inds]
             t_mutations = unseen_mutations[test_inds]
             print(
-                "\n--- will be using unseen data for final model performance evaluation ---\n"
+                "\n--- will be using unseen data for final model performance"
+                " evaluation ---\n"
             )
         else:
             if test_num > len(test_data):
@@ -995,10 +979,12 @@ def run_all(
             t_labels = test_labels[test_inds]
             t_mutations = test_mutations[test_inds]
             print(
-                "\n--- will be using validation data for evaluating the models performance ---\n"
+                "\n--- will be using validation data for evaluating the models"
+                " performance ---\n"
             )
 
-        # possible values and encoded wt_seq (based on different properties) for the DataGenerator
+        # possible values and encoded wt_seq (based on different properties) for the
+        # DataGenerator
         (
             hm_pos_vals,
             hp_norm,
@@ -1038,14 +1024,16 @@ def run_all(
         if load_trained_model is not None:
             model = keras.models.load_model(load_trained_model)
 
-        # load weights of a models convolutional part to a model that has a convolution part with the same architecture
+        # load weights of a models convolutional part to a model that has a
+        # convolution part with the same architecture
         # but maybe a different/ not trained classifier
         if transfer_conv_weights is not None:
             # loads model and its weights
             trained_model = keras.models.load_model(transfer_conv_weights)
             temp_weights = [layer.get_weights() for layer in trained_model.layers]
 
-            # which layers are conv layers (or not dense or flatten since these are sensitive to different input size)
+            # which layers are conv layers (or not dense or flatten since these are
+            # sensitive to different input size)
             transfer_layers = []
             for i in range(len(trained_model.layers)):
                 if i > 0:
@@ -1053,7 +1041,8 @@ def run_all(
                     #
                     """
                     layer_i = trained_model.layers[i]
-                    if not any([isinstance(layer_i, keras.layers.Dense), isinstance(layer_i, keras.layers.Flatten)])
+                    if not any([isinstance(layer_i, keras.layers.Dense), \
+                               isinstance(layer_i, keras.layers.Flatten)])
                         transfer_layers += [i]
                     """
                     #
@@ -1061,7 +1050,8 @@ def run_all(
                         transfer_layers += [i]
 
             # Transfer weights to new model
-            # fraction of layers that should be transferred (1. all conv layer weighs get transferred)
+            # fraction of layers that should be transferred (1. all conv layer weighs
+            # get transferred)
             fraction_to_train = 1.0  # 0.6
             for i in transfer_layers[: int(len(transfer_layers) * fraction_to_train)]:
                 model.layers[i].set_weights(temp_weights[i])
@@ -1072,7 +1062,10 @@ def run_all(
             model.summary()
 
         model.compile(
-            optimizer(learning_rate=lr), loss="mean_absolute_error", metrics=["mae"]
+            optimizer(learning_rate=lr),
+            loss="mean_absolute_error",
+            metrics=["mae"],
+            jit_compile=True,
         )
 
         all_callbacks = []
@@ -1247,20 +1240,21 @@ def run_all(
             end_time = timer()
 
             # adds training time to result_files and replaces the nan time
-            log_f = open(log_file_path, "r")
-            prev_log = log_f.readlines()
-            log_f.close()
-            log_cont_len = len(prev_log)
-            w_log = open(log_file_path, "w+")
-            for ci, i in enumerate(prev_log):
-                if len(prev_log) > 1:
-                    if log_cont_len - ci == 1:
-                        loi = i.strip().split(",")
-                        loi[-1] = str(np.round((end_time - starting_time) / 60, 0))
-                        w_log.write(",".join(loi) + "\n")
-                    else:
-                        w_log.write(i)
-            w_log.close()
+            if write_to_log:
+                log_f = open(log_file_path, "r")
+                prev_log = log_f.readlines()
+                log_f.close()
+                log_cont_len = len(prev_log)
+                w_log = open(log_file_path, "w+")
+                for ci, i in enumerate(prev_log):
+                    if len(prev_log) > 1:
+                        if log_cont_len - ci == 1:
+                            loi = i.strip().split(",")
+                            loi[-1] = str(np.round((end_time - starting_time) / 60, 0))
+                            w_log.write(",".join(loi) + "\n")
+                        else:
+                            w_log.write(i)
+                w_log.close()
 
             # training and validation plot of the training
             if validate_training:
@@ -1277,31 +1271,26 @@ def run_all(
                     print("Plotting validation failed due to nan in training")
 
             # calculating pearsons' r and spearman r for the test dataset
-            try:
-                mae, mse, pearsonr, pp, spearmanr, sp = pearson_spearman(
-                    model, test_generator, t_labels
+            mae, mse, pearsonr, pp, spearmanr, sp = pearson_spearman(
+                model, test_generator, t_labels
+            )
+            print(
+                "{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n{:<12s}{:0.4f}"
+                "\n{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n".format(
+                    "MAE",
+                    mae,
+                    "MSE",
+                    mse,
+                    "PearsonR",
+                    pearsonr,
+                    "PearsonP",
+                    pp,
+                    "SpearmanR",
+                    spearmanr,
+                    "SpearmanP",
+                    sp,
                 )
-                print(
-                    "{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n{:<12s}{:0.4f}\n".format(
-                        "MAE",
-                        mae,
-                        "MSE",
-                        mse,
-                        "PearsonR",
-                        pearsonr,
-                        "PearsonP",
-                        pp,
-                        "SpearmanR",
-                        spearmanr,
-                        "SpearmanP",
-                        sp,
-                    )
-                )
-            except ValueError:
-                print("MAE:", mae)
-                print(
-                    "Value Error while calculating statistics - most probably Nan during training."
-                )
+            )
 
             # creating more detailed plots
             if extensive_test:
@@ -1337,8 +1326,8 @@ def run_all(
                 log_file(
                     os.path.join(result_dir, "results.csv"),
                     result_string,
-                    "name,architecture,train_data_size,test_data_size,mae,mse,pearson_r,pearson_p,spearman_r,"
-                    "spearman_p",
+                    "name,architecture,train_data_size,test_data_size,mae,mse,"
+                    "pearson_r,pearson_p,spearman_r,spearman_p",
                 )
 
         gc.collect()
