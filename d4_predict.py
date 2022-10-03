@@ -23,6 +23,7 @@ from d4_utils import (
     read_blosum,
     aa_dict_pos,
 )
+from d4_split import read_split_file
 
 
 def predict_score(
@@ -202,14 +203,96 @@ def assess_performance(
         plt.show()
 
 
+def recall_calc(
+    protein: str,
+    test_var_inds_file: str,
+    model_filepath: str,
+    steps: int = 100,
+    test_size: int | None = None,
+    N: int = 100,
+):
+    """calculates the recall percentage for a given network and protein dataset
+    :parameter
+        - protein:
+          name of the protein
+        - test_var_inds_file:
+          file path to the test.txt file that contains the indices of samples
+          for the nononsense_PROTEIN.tsv
+        - model_filepath:
+          file path to the trained model_filepath
+        - steps:
+          number of steps in range function that should test the
+          recall percentage
+        - test_size:
+          max number of samples in one prediction
+        - N:
+          number of top samples (budget)
+    :return
+        - num
+          list with sample sizes per data point
+        - recall_perc
+          percentage of samples in the top N predictions
+    """
+    ps = protein_settings(protein)
+    dms_data = pd.read_csv(f"./nononsense/nononsense_{protein}.tsv", delimiter="\t")
+    tvi = read_split_file(test_var_inds_file)
+
+    dms_variants = np.asarray(dms_data[ps["variants"]])[tvi]
+    dms_scores = np.asarray(dms_data[ps["score"]])[tvi]
+
+    # predict the scores of the test data
+    score = predict_score(
+        f"./datasets/{protein}.pdb",
+        list(ps["sequence"]),
+        dms_variants,
+        model_filepath,
+        20,
+        f"./datasets/alignment_files/{protein}_1000_experimental.clustal",
+        protein,
+        first_ind=int(ps["offset"]),
+    )
+
+    # sort the scores of the true data for the best variants
+    top_n_ground_trouth = dms_variants[np.argsort(dms_scores)[::-1]][:N]
+    # variants sorted by prediction
+    pred_sort = dms_variants[np.argsort(score)[::-1]]
+    # variants randomly 'sorted'
+    random_ind = np.arange(len(dms_scores))
+    np.random.shuffle(random_ind)
+    random_sort = dms_variants[random_ind]
+
+    # calculates for different budgets how many of the predictions are truly in the
+    # top N
+    recall_perc = []
+    num = []
+    best_case = []
+    random_case = []
+    if test_size is None:
+        test_size = len(tvi) + 1
+    for i in range(10, test_size, steps):
+        predicted_top_n = pred_sort[:i] 
+        random_top_n = random_sort[:i]
+        # percentage of correctly recalls in the top N
+        recall_perc.append(np.sum(np.isin(predicted_top_n, top_n_ground_trouth)) / N)
+        # best case percentage
+        best_calc = i / N
+        if best_calc > 1.0:
+            best_calc = 1.0
+        best_case.append(best_calc)
+        # random choices percentage
+        random_case.append(np.sum(np.isin(random_top_n, top_n_ground_trouth)) / N)
+        num.append(i)
+    return num, recall_perc, random_case, best_case
+
+
 if __name__ == "__main__":
     protein = "pab1"
     ps = protein_settings(protein)
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     # calculate the models performance
-
+    """
     dms_data = pd.read_csv(
-        "./nononsense/nononsense_{}.tsv".format(protein), delimiter="\t"
+        "./nononsense/nononsense_{protein}.tsv", delimiter="\t"
     )
 
     dms_variants = np.asarray(dms_data[ps["variants"]])[:2000]
@@ -233,14 +316,25 @@ if __name__ == "__main__":
 
     voi = ["A128K", "R145L,K160T"]
     score = predict_score(
-        f"./datasets/{protein}.pdb",
-        list(ps["sequence"]),
-        voi,
-        "./result_files/saved_models/pab1_fr_50_27_08_2022_100124/",
-        20,
-        f"./datasets/alignment_files/{protein}_1000_experimental.clustal",
-        protein,
+        protein_pdb=f"./datasets/{protein}.pdb",
+        protein_seq=list(ps["sequence"]),
+        variant_s=voi,
+        model_filepath="./result_files/saved_models/pab1_fr_50_27_08_2022_100124/",
+        dist_th=20,
+        algn_path=f"./datasets/alignment_files/{protein}_1000_experimental.clustal",
+        algn_base=protein,
         first_ind=int(ps["offset"]),
     )
     for i, j in zip(voi, score):
         print(f"{i}: {j}")
+    
+    # ------------------------------------------------------------------------
+    # calculate recall percentage
+    print(recall_calc(
+        "gb1",
+        "result_files/rr5/recall/recall_fract_splits/dense_net2/"
+        "nononsense_gb1_28_09_2022_142206_splits0/test.txt",
+        "result_files/saved_models/recall_fract_ds/dense_net2/"
+        "nononsense_gb1_28_09_2022_142206/",
+    ))
+    """
