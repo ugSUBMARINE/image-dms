@@ -5,7 +5,8 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from scipy import stats
 
-from d4_predict import recall_calc
+from d4_predict import recall_calc, predict_score
+from d4_utils import protein_settings, run_dict, aa_dict
 
 plt.style.use("bmh")
 plt.rcParams.update({"font.size": 15})
@@ -125,7 +126,7 @@ def comparison_plot(
         first_architecture = first_architecture + " 1"
         second_architecture = second_architecture + " 2"
 
-    fig, ax = plt.subplots(3, num_settings)
+    fig, ax = plt.subplots(3, num_settings, figsize=(32, 18))
     for i in range(num_settings):
         ax[0, i].plot(
             SET_SIZES,
@@ -184,8 +185,9 @@ def comparison_plot(
     # setting one legend for all plots on the right side
     leg_lines, leg_labels = ax[0, 0].get_legend_handles_labels()
     fig.legend(leg_lines, leg_labels, loc="lower center", ncol=2)
-    fig.set_size_inches(32, 18)
-    fig.savefig(f"./{os.path.split(result_path0)[-1].split('.')[0]}.png")
+    fig.tight_layout(pad=5, w_pad=1.5, h_pad=1.5)
+    if save_fig:
+        fig.savefig(f"./{os.path.split(result_path0)[-1].split('.')[0]}.png")
     plt.show()
 
 
@@ -197,16 +199,31 @@ def compare_best(
     result_path4,
     result_path5,
     data_oi=2,
+    save_fig=False,
 ):
+    """comparison plot of all proteins for two different networks
+    :parameter
+        - result_path0:
+          path to results of eg pab1 simple_model_imp
+        - result_path1:
+          path to results of eg pab1 dense_net2
+        - same alternation goes on with different proteins and the other result paths
+        - data_oi:
+          index for SETTINGS use
+        - save_fig:
+          whether to save the plot
+    :return
+        - None
+    """
     parameters = locals()
     data = []
     architectures = []
     proteins = []
-    for i in list(parameters.values())[:-1]:
+    for i in list(parameters.values())[:-2]:
         architectures.append(os.path.split(os.path.split(i)[0])[1])
         data.append(get_data(i))
         proteins.append(os.path.split(i)[-1].split("_")[0])
-    fig, ax = plt.subplots(3, 3)
+    fig, ax = plt.subplots(3, 3, figsize=(32, 18))
     for i in range(6):
         if i % 2 == 0:
             col = "forestgreen"
@@ -248,12 +265,15 @@ def compare_best(
 
     leg_lines, leg_labels = ax[0, 0].get_legend_handles_labels()
     fig.legend(leg_lines, leg_labels, loc="lower center", ncol=2)
-    fig.set_size_inches(32, 18)
-    # fig.savefig(f"compare_best{SETTINGS[data_oi]}.png")
+    fig.tight_layout(pad=5, w_pad=1.5, h_pad=1.5)
+    if save_fig:
+        fig.savefig(f"compare_best{SETTINGS[data_oi]}.png")
     plt.show()
 
 
-def plot_reruns(protein_name: str, result_path: list[str] | None = None) -> None:
+def plot_reruns(
+    protein_name: str, result_path: list[str] | None = None, save_fig: bool = False
+) -> None:
     """plots MeanSquaredError, Pearsons' R, Spearman R and the relative performance
     compared to Gelman et al. 'Neural networks to learn protein sequence–function
     relationships from deep mutational scanning data'
@@ -262,6 +282,8 @@ def plot_reruns(protein_name: str, result_path: list[str] | None = None) -> None
           how the protein is named in the result and test files
         - result_path:
           list of file paths to the different training runs
+        - save_fig:
+          whether to save the plot or not
     :return
         None"""
     if result_path is None:
@@ -309,10 +331,10 @@ def plot_reruns(protein_name: str, result_path: list[str] | None = None) -> None
     ana_pearson = np.asarray(np.split(pearson, 2))
     ana_spearman = np.asarray(np.split(spearman, 2))
 
-    fig, axs = plt.subplots(2, 3)
-    sep_fig_mse, sep_axs_mse = plt.subplots(3, 3)
-    sep_fig_pearson, sep_axs_pearson = plt.subplots(3, 3)
-    sep_fig_spearman, sep_axs_spearman = plt.subplots(3, 3)
+    fig, axs = plt.subplots(2, 3, figsize=(32, 18))
+    sep_fig_mse, sep_axs_mse = plt.subplots(3, 3, figsize=(32, 18))
+    sep_fig_pearson, sep_axs_pearson = plt.subplots(3, 3, figsize=(32, 18))
+    sep_fig_spearman, sep_axs_spearman = plt.subplots(3, 3, figsize=(32, 18))
     sep_count = 0
 
     # different training set sizes
@@ -550,10 +572,7 @@ def plot_reruns(protein_name: str, result_path: list[str] | None = None) -> None
         label="break_even",
     )
 
-    # setting one legend for all plots on the right side
-    # box = axs[0, 2].get_position()
-    # axs[0, 2].set_position([box.x0, box.y0, box.width, box.height])
-    # axs[0, 2].legend(loc="center left", bbox_to_anchor=(1, -0.1))
+    # setting one legend for all plots
     leg_lines, leg_labels = axs[0, 0].get_legend_handles_labels()
     fig.legend(leg_lines, leg_labels, loc="lower center", ncol=4)
 
@@ -625,7 +644,16 @@ def plot_reruns(protein_name: str, result_path: list[str] | None = None) -> None
     sep_axs_mse[-1, -1].axis("off")
     sep_axs_pearson[-1, -1].axis("off")
     sep_axs_spearman[-1, -1].axis("off")
+    fig.tight_layout(pad=6, w_pad=1.5, h_pad=2)
+    sep_fig_mse.tight_layout(pad=5, w_pad=1.5, h_pad=1.5)
+    sep_fig_pearson.tight_layout(pad=5, w_pad=1.5, h_pad=1.5)
+    sep_fig_spearman.tight_layout(pad=5, w_pad=1.5, h_pad=1.5)
 
+    if save_fig:
+        fig.savefig(f"plot_reruns{protein_name}.png")
+        sep_fig_mse.savefig(f"plot_reruns_mse{protein_name}.png")
+        sep_fig_pearson.savefig(f"plot_reruns_pearson{protein_name}.png")
+        sep_fig_spearman.savefig(f"plot_reruns_spearman{protein_name}.png")
     plt.show()
 
 
@@ -636,7 +664,7 @@ def recall_plot() -> None:
     :return
         - None
     """
-    fig, ax = plt.subplots(2, 3, figsize=(9, 6))
+    fig, ax = plt.subplots(2, 3, figsize=(32, 18))
     # name of used proteins
     proteins = ["avgfp", "gb1", "pab1"]
     # dicts that specify the subplot position of each
@@ -749,15 +777,15 @@ def recall_plot() -> None:
         ].plot(j_n, j_rb, label="best case")
 
         # setting labels and titles for the plots as well as the log scale
-        ax[
-            architecture_position[architecture_i], protein_position[protein_name_i]
-        ].set(xscale="log")
+        ax[architecture_position[architecture_i], protein_position[protein_name_i]].set(
+            xscale="log"
+        )
 
         if protein_name_i == proteins[0]:
             ax[
                 architecture_position[architecture_i],
                 protein_position[protein_name_i],
-            ].set_ylabel("Recall Percentage Top 100")
+            ].set_ylabel(f"Recall Percentage Top 100\n{architecture_i}")
         if architecture_position[architecture_i] == 1:
             ax[1, protein_position[protein_name_i]].set_xlabel("Budget")
         if architecture_position[architecture_i] == 0:
@@ -791,32 +819,113 @@ def recall_plot() -> None:
     plt.show()
 
 
+def sm_effect_heatmap(protein: str, trained_models: list[str]) -> None:
+    """plots heat maps of predicted single mutation effects for each sequence position
+    :parameter
+        - protein:
+          name of the protein the models were trained on
+        - trained_models:
+          file paths to the trained models
+    :return
+        - None
+    """
+    # getting all the necessary data of the protein from protein_settings
+    data = pd.read_csv(f"nononsense/nononsense_{protein}.tsv", delimiter="\t")
+    # bool to later select only single mutations
+    mut_bool = data["num_mutations"] == 1
+    protein_attributes = protein_settings(protein)
+    offset = int(protein_attributes["offset"])
+    seq = protein_attributes["sequence"]
+    aas = list(aa_dict.values())
+    aa_positsion = dict(zip(list(aa_dict.values()), np.arange(len(aa_dict))))
+    to_fill = np.full((len(aa_dict), len(seq)), np.nan)
+    # variants of the dms dataset
+    voi = list(data[mut_bool]["variant"])
+
+    # titles for the plots
+    titles = [
+        "pretrained",
+        50,
+        100,
+        250,
+        500,
+        1000,
+        2000,
+        6000,
+        "whole dataset",
+        "ground truth",
+    ]
+
+    # use all models to predict all scores for all (single) mutations in the dataset
+    all_scores = []
+    # 20 x N maps filled with 200 - to later be filled with predicted scores
+    pre_maps = []
+    for i in trained_models:
+        score = predict_score(
+            protein_pdb=f"./datasets/{protein}.pdb",
+            protein_seq=list(seq),
+            variant_s=voi,
+            model_filepath=i,
+            dist_th=20,
+            algn_path=f"./datasets/alignment_files/{protein}_1000_experimental.clustal",
+            algn_base=protein,
+            first_ind=offset,
+        )
+        all_scores.append(score)
+        pre_maps.append(np.full((len(aa_dict), len(seq)), np.nan))
+
+    # fill each pre_maps with the predicted score
+    for ci, (i, j) in enumerate(
+        zip(list(data[mut_bool]["variant"]), list(data[mut_bool]["score"]))
+    ):
+        ind = int(i[1:-1]) - offset
+        aa_i = i[-1]
+        to_fill[aa_positsion[aa_i], ind] = j
+        for k in range(len(trained_models)):
+            pre_maps[k][aa_positsion[aa_i], ind] = all_scores[k][ci]
+
+    # add ground truth to pre_maps
+    pre_maps.append(to_fill)
+    # plot all heat maps
+    opts = {"vmin": -6, "vmax": 1}
+    fig, ax = plt.subplots(4, 3, figsize=(9, 6), layout="compressed")
+    for i in range(len(titles)):
+        if i < 3:
+            row = 0
+            col = i
+        elif i >= 3 and i < 6:
+            row = 1
+            col = i - 3
+        elif i >= 6 and i < 9:
+            row = 2
+            col = i - 6
+        else:
+            row = 3
+            col = 1
+
+        a = ax[row, col].imshow(pre_maps[i], **opts)
+        ax[row, col].set_title(titles[i])
+        if np.sum([row == 2, col == 0, col == 2]) == 2 or all([row == 3, col == 1]):
+            ax[row, col].set_xlabel("sequence position")
+        if col == 0 or all([col == 1, row == 3]):
+            ax[row, col].set_ylabel("amino acids")
+        ax[row, col].set_yticks(np.arange(len(aas)), aas, size="x-small", ha="center")
+        plt.colorbar(a, ax=ax[row, col], shrink=0.5)
+    ax[3, 0].axis("off")
+    ax[3, 2].axis("off")
+    plt.show()
+
+
 if __name__ == "__main__":
-    prot = "pab1"
-    """
-    plot_reruns(prot,
-            result_path="./result_files/"
-                    "DenseNet_results/{}_results.csv".format(prot))
-    """
+    pass
     """
     plot_reruns(
         prot,
-        result_path=f"./result_files/rr5/simple_model_imp/{prot}_results.csv",
+        "./result_files/rr5/dense_net2/pab1_results.csv",
+        save_fig=True,
     )
     """
-    """
-    plot_reruns(
-        prot,
-        result_path=f"./result_files/rr5/simple_model_imp/{prot}_results.csv",
-    )
-    """
-    """
-    prot = "pab1"
-    comparison_plot(
-        f"./result_files/rr5/dense_net2/{prot}_results.csv",
-        f"./result_files/rr5/simple_model_imp/{prot}_results.csv",
-    )
-    """
+
     """
     compare_best(
         "./result_files/rr5/dense_net2/pab1_results.csv",
@@ -828,4 +937,29 @@ if __name__ == "__main__":
         data_oi=5,
     )
     """
-    recall_plot()
+
+    # recall_plot()
+
+    """
+    comparison_plot(
+        "result_files/rr5/sep_conv_mix/gb1_results.csv",
+        "result_files/rr5/dense_net2/gb1_results.csv",
+    )
+    """
+
+    """
+    protein = "gb1"
+    trained_models = [
+        "result_files/saved_models/simple_model_imp_pretrained_gb1/gb1_fr_50_05_09_2022_190713/",
+        "result_files/saved_models/recall_fract_ds/simple_model_imp/nononsense_gb1_28_09_2022_125924/",
+        "result_files/saved_models/recall_fract_ds/simple_model_imp/nononsense_gb1_28_09_2022_130124/",
+        "result_files/saved_models/recall_fract_ds/simple_model_imp/nononsense_gb1_28_09_2022_130313/",
+        "result_files/saved_models/recall_fract_ds/simple_model_imp/nononsense_gb1_28_09_2022_130554/",
+        "result_files/saved_models/recall_fract_ds/simple_model_imp/nononsense_gb1_28_09_2022_130725/",
+        "result_files/saved_models/recall_fract_ds/simple_model_imp/nononsense_gb1_28_09_2022_130925/",
+        "result_files/saved_models/recall_fract_ds/simple_model_imp/nononsense_gb1_28_09_2022_131308/",
+        "result_files/saved_models/recall_whole_ds/nononsense_gb1_27_09_2022_155847/",
+    ]
+
+    sm_effect_heatmap(protein, trained_models)
+    """
