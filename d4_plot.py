@@ -940,12 +940,12 @@ if __name__ == "__main__":
 
     # recall_plot()
 
-    """
+    
     comparison_plot(
-        "result_files/rr5/sep_conv_mix/gb1_results.csv",
-        "result_files/rr5/dense_net2/gb1_results.csv",
+        "result_files/rr5/dense_net2/avgfp_results.csv",
+        "result_files/rr5/simple_model_imp/avgfp_results.csv",
     )
-    """
+    
 
     """
     protein = "gb1"

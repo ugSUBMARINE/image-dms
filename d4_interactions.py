@@ -54,7 +54,7 @@ def data_coord_extraction(
             np.column_stack((res_data[:, 0] == "CA", res_data[:, 1] == "GLY")), axis=1
         )
     ] = "CB"
-    # remove duplicated side chain entries and store only their first appearings
+    # remove duplicated side chain entries and store only their first appearing
     rd_un, rd_uc = np.unique(res_data, axis=0, return_index=True)
     rd_uc = np.sort(rd_uc)
     res_data = res_data[rd_uc]
@@ -493,7 +493,7 @@ def model_interactions(
         - scl:
           describing the side chain length of a residue
         - cp:
-          describing the aa position in look up table of alignemtn
+          describing the aa position in look up table of alignment
          for a detailed description please refer to the docstring of data_generator_vals
          in d4_generation.py
         - hmc: hm_converted

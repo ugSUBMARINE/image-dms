@@ -222,27 +222,20 @@ def progress_bar(num_batches: int, bar_len: int, batch: int) -> None:
           number of the current batch
     :return
         None"""
-    try:
-        # current bar length - how many '=' the bar needs to have at current batch
-        cur_bar = int(bar_len * (bar_len * (batch / bar_len) / num_batches))
-        # cur_bar = int(bar_len * (batch / num_batches))
+    # current bar length - how many '=' the bar needs to have at current batch
+    cur_bar = int(bar_len * (bar_len * (batch / bar_len) / num_batches))
+    # cur_bar = int(bar_len * (batch / num_batches))
 
-        # to get a complete bar at the end
-        if batch == num_batches - 1:
-            cur_bar = bar_len
-        # printing the progress bar
-        bar_string = "\r[{}>{}] {:0.0f}%".format(
-            "=" * cur_bar, " " * (bar_len - cur_bar), (batch + 1) / num_batches * 100
-        )
-        print(bar_string, end="")
+    # to get a complete bar at the end
+    if batch == num_batches - 1:
+        cur_bar = bar_len
+    # printing the progress bar
+    print(f"\r[{'=' * cur_bar}>{' ' * (bar_len - cur_bar)}] {(batch + 1) / num_batches * 100:0.0f}%", end="")
 
-        # set cursor to start of the line to overwrite progress bar when epoch
-        # is done
-        if num_batches - batch == 1:
-            print("\r[{}>] 100%".format("=" * bar_len), end="")
-            print("\r\r", end="")
-    except Exception as e:
-        print(e, "led to an error in the progress bar display")
+    # set cursor to start of the line to overwrite progress bar when epoch
+    # is done
+    if num_batches - batch == 1:
+        print(f"\r[{'=' * bar_len}>] 100%\r\r", end="")
 
 
 class DataGenerator(keras.utils.Sequence):
@@ -304,7 +297,7 @@ class DataGenerator(keras.utils.Sequence):
     - shuffle:
       if True data gets shuffled after every epoch
     - train:
-      if True Generator returns features and labels (use turing training)
+      if True Generator returns features and labels (use during training)
       else only features
     """
 
@@ -456,7 +449,8 @@ class SaveToFile(keras.callbacks.Callback):
             log_file_to_write.write(log_string + "\n")
 
     def on_train_end(self, logs=None):
-        log_file(self.filepath, write_str="Finished training")
+        with open(self.filepath, "a") as log_file_to_write:
+            log_file_to_write.write("Finished training")
 
 
 class CustomPrint(keras.callbacks.Callback):
@@ -476,7 +470,7 @@ class CustomPrint(keras.callbacks.Callback):
     - model_d:
       filepath where the models should be saved
     - model_save_interval:
-      minimum nuber of epochs to pass to save the model - only gets saved
+      minimum number of epochs to pass to save the model - only gets saved
       when the validation loss has improved
       since the last time the model was saved
     - save:
@@ -528,7 +522,8 @@ class CustomPrint(keras.callbacks.Callback):
 
         if epoch % self.epoch_print == 0:
             print(
-                f"E {epoch:<3} - loss: {cur_loss: 0.4f}  val_loss: {cur_val_loss: 0.4f} - loss change: {cur_loss - self.latest_loss: 0.4f}  ",
+                f"E {epoch:<3} - loss: {cur_loss: 0.4f}  val_loss: {cur_val_loss: 0.4f}", 
+                f"- loss change: {cur_loss - self.latest_loss: 0.4f}  ",
                 f"val_loss change: {cur_val_loss - self.latest_val_loss: 0.4f} - ",
                 f"seconds per epoch: {time.time() - self.start_time_epoch: 0.4f}\n",
                 end="",
@@ -682,7 +677,7 @@ def run_all(
     - r_seed:
       numpy and tensorflow random seed
     - deploy_early_stop:
-      whether early stop during training should be enabled (Ture) or not (False)
+      whether early stop during training should be enabled (True) or not (False)
             - es_monitor:
               what to monitor to determine whether to stop the training or not
             - es_min_d:
@@ -716,7 +711,7 @@ def run_all(
     - no_nan:
       True terminates training on nan
     - settings_test:
-      Ture doesn't train the model and only executes everything of the function
+      True doesn't train the model and only executes everything of the function
       that is before model.fit()
     - p_dir:
       path to the projects content root
@@ -765,7 +760,7 @@ def run_all(
         # dictionary with argument names as keys and the input as values
         arg_dict = locals()
 
-        # convert inputs to their respective fuction
+        # convert inputs to their respective function
         model_to_use = getattr(d4m, model_to_use)
         architecture_name = model_to_use.__code__.co_name
         optimizer = getattr(tf.keras.optimizers, optimizer)
@@ -852,7 +847,7 @@ def run_all(
 
         starting_time = timer()
 
-        # creating a list of the wt sequence string e.g. 'AVL...'  -> ['A', 'V', 'L',...]
+        # creating a list of the wt sequence string e.g. 'AVL...' -> ['A', 'V', 'L',...]
         wt_seq = list(wt_seq)
 
         # split dataset
@@ -1162,68 +1157,6 @@ def run_all(
         validation_generator = DataGenerator(test_data, test_labels, **params)
         test_generator = DataGenerator(t_data, np.zeros(len(t_labels)), **test_params)
 
-        # ---
-        """
-        import keras_tuner
-
-        def build_model(hp):
-            filter_num = hp.Int(
-                "filter_num", min_value=0, max_value=256, step=32, default=12
-            )
-            block_num = hp.Int("block_num", min_value=1, max_value=6, step=1, default=4)
-            block_depth = hp.Int(
-                "block_depth", min_value=2, max_value=6, step=1, default=4
-            )
-            filter_size = hp.Choice("filter_size", [3, 5, 7, 9])
-            e_pool = hp.Choice("e_pool", ["avg", "max"])
-            l_pool = hp.Choice("l_pool", ["avg", "max"])
-            classif_l = hp.Int("classif_l", min_value=0, max_value=3, step=1)
-            model = model_to_use(
-                wt_seq,
-                channel_num,
-                filter_num=filter_num,
-                block_num=block_num,
-                block_depth=block_depth,
-                classif_l=classif_l,
-                e_pool=e_pool,
-                l_pool=l_pool,
-                filter_size=filter_size,
-                bn=False,
-            )
-            model.compile(
-                optimizer(learning_rate=lr), loss="mean_absolute_error", metrics="mae"
-            )
-            return model
-
-        tuner_dir = os.path.join(p_dir, "tuner")
-        proj_name = "dense_net2_tune_{}".format(len(train_data))
-        print(
-            "Tuning results will be saved in {} in directory {}".format(
-                tuner_dir, proj_name
-            )
-        )
-        tuner = keras_tuner.BayesianOptimization(
-            hypermodel=build_model,
-            objective="val_loss",
-            max_trials=30,
-            executions_per_trial=1,
-            overwrite=True,
-            directory=tuner_dir,
-            project_name=proj_name,
-        )
-        tuner.search_space_summary()
-
-        tuner.search(
-            training_generator,
-            validation_data=validation_generator,
-            epochs=60,
-            callbacks=[all_callbacks],
-        )
-        tuner.results_summary()
-        best_hps = tuner.get_best_hyperparameters(5)
-        model = build_model(best_hps[0])
-        """
-        # ---
 
         if not settings_test:
             # training

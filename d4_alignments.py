@@ -24,7 +24,7 @@ def clustalw(
           array with the position of the query sequence in sequences
     """
     # protein names and sequences
-    # "----" to enabel the occ_test
+    # "----" to enable the occ_test
     proteins_so_far = ["---"]
     sequences = ["---"]
     for ci, i in enumerate(file_content):
@@ -78,7 +78,7 @@ def athreem_fasta(
 ) -> tuple[
     np.ndarray[tuple[int, int], np.dtype[str]], np.ndarray[tuple[int], np.dtype[int]]
 ]:
-    """reads a3m and fasta formated alignment files and returns the sequences and
+    """reads a3m and fasta formatted alignment files and returns the sequences and
     the query sequence position
     :parameter
         - data:
@@ -87,7 +87,7 @@ def athreem_fasta(
           name of the wild type protein sequence in the alignment
     :return
         - seq_arr:
-          sequences of the alignment with the maximumn length of the query
+          sequences of the alignment with the maximum length of the query
         - query_pos:
           where the query sequence is located in the seq_arr"""
 
@@ -156,11 +156,11 @@ def calc_conservation(
         - rows:
           indexing help with indices of each sequence position"""
 
-    # oringinal number of sequences in the alignment
+    # original number of sequences in the alignment
     ori_seq_num = sequences.shape[0]
     # query and sequence
     raw_query_seq = sequences[query_pos]
-    # removing the query befor unique
+    # removing the query before unique
     sequences = np.delete(sequences, query_pos, 0)
     # append the unique sequences to the query
     sequences, s_inds = np.unique(sequences, axis=0, return_counts=True)
@@ -183,7 +183,7 @@ def calc_conservation(
     # how often a conserved residue is present at a certain position
     conservation_score = []
     for i in range(sequences.shape[1]):
-        # unique conserved residues at seq position i and their number of apperance
+        # unique conserved residues at seq position i and their number of appearance
         un, c = np.unique(sequences[:, i], return_counts=True)
         unb = np.logical_and(un != " ", un != "-", un != ".")
         un = un[unb]
@@ -226,7 +226,7 @@ def alignment_table(
 ) -> tuple[
     np.ndarray[tuple[int, 20], np.dtype[float]], np.ndarray[tuple[int], np.dtype[int]]
 ]:
-    """function to call the right reading functino based on the input
+    """function to call the right reading function based on the input
     :parameter
         - alignment_path:
           file path to the multiple sequence alignment file

@@ -3,7 +3,6 @@ import os
 
 import d4_interactions
 import d4_models
-import tensorflow as tf
 
 
 def retrieve_args(ini_filepath: str) -> dict:
@@ -93,7 +92,7 @@ def retrieve_args(ini_filepath: str) -> dict:
         "split2": float,
     }
 
-    # check if all intputs got converted to the right type
+    # check if all inputs got converted to the right type
     for k, v in converted_args.items():
         check = type_check[k]
         cur_type = type(v)

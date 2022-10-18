@@ -1,314 +1,9 @@
 import os
 from typing import Union
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 from matplotlib import pyplot as plt
 
-
-def read_and_process(
-    path_to_file: str, variants: str, silent: bool = True, remove_astrix: bool = True
-) -> tuple[str, pd.DataFrame]:
-    """reads in the deep mutational scanning file and returns its data
-    :parameter
-        path_to_file:
-        path to the tsv file
-        variants:
-        how the variants' column in the file ins named
-        silent:
-        if True doesn't print any stats/ information
-        remove_astrix:
-        if True excludes nonsense mutations from the file
-    :returns
-        p_name:
-        name of the protein
-        raw_data:
-        data as pandas df"""
-    raw_data = pd.read_csv(path_to_file, delimiter="\t")
-    # getting the proteins name
-    if "/" in path_to_file:
-        p_name = path_to_file.strip().split("/")[-1].split(".")[0]
-    else:
-        p_name = path_to_file.strip().split(".")[0]
-    # some information about the file
-    if not silent:
-        print(" - ".join(raw_data.columns.tolist()))
-        print()
-        sc = 0
-        for i in list(raw_data):
-            if "score" in i:
-                sc += 1
-        if sc > 1:
-            print("*** multiple scores are given - choose appropriate one ***")
-        print("raw data length:", len(raw_data))
-        print("protein name:", p_name)
-    # checking each variant whether there is a mutation with an "*" and removing it
-    if remove_astrix:
-        rd_bool = []
-        for i in raw_data[variants]:
-            rd_bool += ["*" not in i]
-        raw_data = raw_data[rd_bool]
-        if not silent:
-            print(
-                "*** {} rows had to be excluded due to incompatibility ***".format(
-                    np.sum(np.invert(rd_bool))
-                )
-            )
-    return p_name, raw_data
-
-
-def check_seq(
-    raw_data_cs,
-    name_cs,
-    wt_seq_cs,
-    variants_cs,
-    save_fig=None,
-    plot_fig=False,
-    silent=True,
-):
-    """checks whether the wild sequence and the sequence reconstructed from the
-    raw data match and plot a histogram which shows how often a certain residue
-    was part of a mutation
-    :parameter
-        raw_data_cs: pd dataframe
-        dms data
-        name_cs: str
-        protein name
-        wt_seq_cs: list
-        wild type sequence as list eg ['A', 'V', 'L']
-        variants_cs: str
-        name of the variants' column in the raw data file
-        save_fig: any, optional
-        None doesn't safe the histogram anything else does
-        plot_fig: bool, optional
-        if True shows the histogram
-        silent:  bool, optional
-        if True doesn't show stats during execution
-    :return
-        first_ind: int
-        starting int of the sequence
-    """
-    # all variants in a list
-    v = raw_data_cs[variants_cs].tolist()
-    # list of lists with original amino acid and its residue index in the sequence
-    # from all listed variations
-    pre_seq = []
-    for i in v:
-        vi = i.strip().split(",")
-        for j in vi:
-            pre_seq += [[j[0], j[1:-1]]]
-
-    pro_seq = np.unique(pre_seq, axis=0)
-    # list of lists with original amino acid and its residue index in the sequence
-    # only unique entries = reconstructed sequence
-    pro_seq_sorted = pro_seq[np.argsort(pro_seq[:, 1].astype(int))]
-    print(pro_seq_sorted)
-    # checking the indexing of the sequence
-    first_ind = int(pro_seq_sorted[0][1])
-    print(first_ind)
-    if first_ind != 1:
-        if not silent:
-            print(
-                "*** {} used as start of the sequence indexing in the mutation file ***".format(
-                    str(first_ind)
-                )
-            )
-            print()
-
-    # checking whether the reconstructed sequence is the same as the wt sequence
-    pro_seq_inds = pro_seq_sorted[:, 1].astype(int)
-    gap_count = 0
-    gaps = []
-    for i in range(first_ind, len(pro_seq_inds) + first_ind):
-        if i < len(pro_seq_inds) - 1:
-            if pro_seq_inds[i + 1] - pro_seq_inds[i] > 1:
-                gap_count += pro_seq_inds[i + 1] - pro_seq_inds[i] - 1
-                gaps += [
-                    np.arange(
-                        pro_seq_inds[i] - first_ind + 1, pro_seq_inds[i + 1] - first_ind
-                    )
-                ]
-                if not silent:
-                    print(
-                        "*** residues between {} and {} not mutated***".format(
-                            str(pro_seq_inds[i]), str(pro_seq_inds[i + 1])
-                        )
-                    )
-
-    if gap_count != len(wt_seq_cs) - len(pro_seq_sorted):
-        if not silent:
-            print(
-                "    Sequence constructed from mutations:\n   ",
-                "".join(pro_seq_sorted[:, 0]),
-            )
-        raise ValueError(
-            "Wild type sequence doesn't match the sequence reconstructed from "
-            "the mutation file"
-        )
-    elif gap_count > 0:
-        fill = pro_seq_inds.copy().astype(object)
-        offset = 0
-        for i in gaps:
-            for j in i:
-                fill = np.insert(fill, j - offset, "_")
-                offset += 1
-        print("*** sequence check passed ***")
-
-        under_fill = []
-        rec_seq = []
-        for i in fill:
-            if i == "_":
-                rec_seq += ["-"]
-                under_fill += ["*"]
-            else:
-                rec_seq += [wt_seq_cs[int(i) - 1]]
-                under_fill += [" "]
-
-        r_seq_str = "".join(rec_seq)
-        w_seq_str = "".join(wt_seq_cs)
-        uf = "".join(under_fill)
-        if not silent:
-            print("reconstructed sequence\nwild type sequence\ngap indicator\n")
-            for i in range(0, len(wt_seq_cs), 80):
-                print(r_seq_str[i : i + 80])
-                print(w_seq_str[i : i + 80])
-                print(uf[i : i + 80])
-                print()
-    else:
-        print("*** sequence check passed ***")
-
-    if save_fig is not None:
-        # histogram for how often a residue site was part of a mutation
-        fig = plt.figure(figsize=(10, 6))
-        plt.hist(
-            x=np.asarray(pre_seq)[:, 1].astype(int),
-            bins=np.arange(first_ind, len(pro_seq) + 1 + first_ind),
-            color="forestgreen",
-        )
-        plt.xlabel("residue index")
-        plt.ylabel("number of mutations")
-        plt.title(name_cs)
-        plt.savefig(save_fig + "/" + "mutation_histogram_" + name_cs)
-        if plot_fig:
-            plt.show()
-    return first_ind
-
-
-def split_data(
-    raw_data_sd,
-    variants_sd,
-    score_sd,
-    number_mutations_sd,
-    max_train_mutations,
-    train_split,
-    r_seed,
-    silent=False,
-):
-    """splits data from raw_data_sd into training and test dataset
-    :parameter
-        raw_data_sd: pd dataframe
-        dms data
-        variants_sd: str
-        name of the variants column in raw_data_sd
-        score_sd: str
-        name of the score column in raw_data_sd
-        number_mutations_sd: str
-        name of the column that stats the number of mutations per variant in raw_data_sd
-        max_train_mutations: int on None
-            - maximum number of mutations per sequence to be used for training
-            - None: to use all mutations for training
-            - int: variants with mutations > max_train_mutations get stored in
-              unseen_data
-        train_split: int or float
-            how much of the dataset should be used as training data (int to specify
-            a number of data for the training dataset or a float (<=1) to specify
-            the fraction of the dataset used as training data
-        r_seed: int
-        random seed for pandas random_state
-        silent: bool, optional
-        if True doesn't show stats during execution
-    :returns
-        data: ndarray
-        variants
-        labels: ndarray
-        score for each variant
-        mutations: ndarray
-        number of mutations for each variant
-        train_data, train_labels, train_mutations
-        test_data, test_labels, test_mutations
-        if max_train_mutations is used (variants with more mutations than
-        max_train_mutations):
-        unseen_data, unseen_labels, unseen_mutations"""
-    vas = raw_data_sd[[variants_sd, score_sd, number_mutations_sd]]
-
-    if max_train_mutations is None:
-        if isinstance(train_split, float):
-            vas_train = vas.sample(frac=train_split, random_state=r_seed)
-            vas_test = vas.drop(vas_train.index)
-        else:
-            vas_train = vas.sample(n=train_split, random_state=r_seed)
-            vas_test = vas.drop(vas_train.index)
-        vas_train = np.asarray(vas_train)
-        vas_test = np.asarray(vas_test)
-
-        train_data = vas_train[:, 0]
-        train_labels = vas_train[:, 1]
-        train_mutations = vas_train[:, 2]
-
-        test_data = vas_test[:, 0]
-        test_labels = vas_test[:, 1]
-        test_mutations = vas_test[:, 2]
-        if not silent:
-            print("train data size:", len(train_data))
-            print("test data size:", len(test_data))
-
-        unseen_mutations = None
-        unseen_labels = None
-        unseen_data = None
-    else:
-        vs_un = vas[vas[number_mutations_sd] <= max_train_mutations]
-        vs_up = vas[vas[number_mutations_sd] > max_train_mutations]
-        if isinstance(train_split, float):
-            vs_un_train = vs_un.sample(frac=train_split, random_state=r_seed)
-            vs_un_test = vs_un.drop(vs_un_train.index)
-        else:
-            vs_un_train = vs_un.sample(n=train_split, random_state=r_seed)
-            vs_un_test = vs_un.drop(vs_un_train.index)
-
-        vs_un_train = np.asarray(vs_un_train)
-        vs_un_test = np.asarray(vs_un_test)
-        vs_up = np.asarray(vs_up)
-
-        train_data = vs_un_train[:, 0]
-        train_labels = vs_un_train[:, 1]
-        train_mutations = vs_un_train[:, 2]
-
-        test_data = vs_un_test[:, 0]
-        test_labels = vs_un_test[:, 1]
-        test_mutations = vs_un_test[:, 2]
-
-        unseen_data = vs_up[:, 0]
-        unseen_labels = vs_up[:, 1]
-        unseen_mutations = vs_up[:, 2]
-
-        if not silent:
-            print("train data size:", len(train_data))
-            print("test data size:", len(test_data))
-            print("unseen data size:", len(unseen_data))
-    return (
-        train_data,
-        train_labels,
-        train_mutations,
-        test_data,
-        test_labels,
-        test_mutations,
-        unseen_data,
-        unseen_labels,
-        unseen_mutations,
-    )
-
-
-# ---------------------------------------------- NOW USED --------------------------------------------------------------
 def split_inds(
     file_path: str,
     variants: str,
@@ -515,7 +210,7 @@ def create_split_file(
     name: str,
     train_split: list[int],
     tune_split: list[int],
-    test_split: list[int] | npt.NDArray[int],
+    test_split: list[int] | np.ndarray[tuple[int], np.dtype[int]],
 ) -> None:
     """creates train tune and test split txt files in a directory called 'splits'
     :parameter
@@ -528,7 +223,9 @@ def create_split_file(
           corresponding files"""
 
     def open_and_write(
-        file_path: str, fname: str, data: list[int] | npt.NDArray[int]
+        file_path: str,
+        fname: str,
+        data: list[int] | np.ndarray[tuple[int], np.dtype[int]],
     ) -> None:
         """writes splits to file
         :parameter
@@ -537,7 +234,7 @@ def create_split_file(
             - name:
               name of the file
             - data:
-              data that should be writen to file"""
+              data that should be written to file"""
         file = open(file_path + "/" + fname + ".txt", "w+")
         for i in data:
             file.write(str(i) + "\n")
@@ -557,7 +254,7 @@ def create_split_file(
     open_and_write(new_path, "test", test_split)
 
 
-def read_split_file(file_path: str) -> np.ndarray[tuple[int], int]:
+def read_split_file(file_path: str) -> np.ndarray[tuple[int], np.dtype[int]]:
     """parses txt file that contains the indices for a split (one index per row) and
     returns the indices as ndarray
     :parameter
@@ -639,7 +336,9 @@ def create_inds(
 
 
 def create_txt(
-    file_path: str, data: list | npt.NDArray[Union[int, float, str]], name: str
+    file_path: str,
+    data: list | np.ndarray[tuple[int], np.dtype[int | float | str]],
+    name: str,
 ) -> None:
     """writes data (indices) to .txt file with one index per row
     :parameter

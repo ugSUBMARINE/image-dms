@@ -2,27 +2,7 @@ import os
 import warnings
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
-
-import tensorflow as tf
-
-from d4_models import (
-    simple_model,
-    simple_model_norm,
-    simple_model_imp,
-    create_simple_model,
-    simple_model_gap,
-    simple_stride_model_test,
-    shrinking_res,
-    inception_res,
-    deeper_res,
-    res_net,
-    vgg,
-    simple_longer,
-    simple_stride_model,
-    get_conv_mixer_256_8,
-)
 
 
 def protein_settings(
@@ -329,7 +309,9 @@ def read_blosum() -> tuple[np.ndarray[tuple[int, int], np.dtype[int]], list[str]
     return blosum_matrix, blosum_keys
 
 
-def present_matrix(matrix: npt.NDArray[int | float], col_row: list[str]) -> None:
+def present_matrix(
+    matrix: np.ndarray[tuple[int, int], np.dtype[int | float]], col_row: list[str]
+) -> None:
     """prints a given square matrix where columns and rows have the same one letter
     head in an easy readable way
     :parameter
@@ -357,8 +339,6 @@ def present_matrix(matrix: npt.NDArray[int | float], col_row: list[str]) -> None
             dlj = max_len - len(j)
             inter_i += [" " * dlj + j]
         print(" ".join(inter_i))
-
-
 
 
 class dotdict(dict):

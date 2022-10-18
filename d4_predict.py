@@ -310,10 +310,10 @@ if __name__ == "__main__":
     )
 
     assess_performance(dms_scores, score)
-
+    """
     # ------------------------------------------------------------------------
     # accessing predicted scores
-
+    """
     voi = ["A128K", "R145L,K160T"]
     score = predict_score(
         protein_pdb=f"./datasets/{protein}.pdb",
@@ -327,9 +327,10 @@ if __name__ == "__main__":
     )
     for i, j in zip(voi, score):
         print(f"{i}: {j}")
-    
+    """
     # ------------------------------------------------------------------------
     # calculate recall percentage
+    """
     print(recall_calc(
         "gb1",
         "result_files/rr5/recall/recall_fract_splits/dense_net2/"

@@ -140,7 +140,7 @@ def calc_pseudo_score(
     alignment_path: str,
     dist_th: int | float,
 ) -> np.ndarray[tuple[int], np.dtype[float]]:
-    """calculates the pseudo scores to create pretraining datasets
+    """calculates the pseudo scores to create pre training datasets
     :parameter
         - sequence:
           protein wild type sequence like ['A', 'V', 'L', 'I']
