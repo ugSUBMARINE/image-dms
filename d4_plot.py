@@ -102,92 +102,68 @@ def get_data(
     return architecture, inter_mse, inter_pearson, inter_spearman
 
 
-def comparison_plot(
-    result_path0: str, result_path1: str, save_fig: bool = False
-) -> None:
+def comparison_plot(paths: list, save_fig: bool = False) -> None:
     """plots comparisons between all medians of all settings
     :parameter
-        - result_path0:
-          file path to the results for the first architecture
-        - result_path1:
-          file path to the results for the second architecture
+        - paths:
+          list of file paths of the result files
         - save_fig:
           whether to save the plot
     """
     num_settings = len(SETTINGS)
     # getting the data from the data files
-    first_architecture, first_mse, first_pearson, first_spearman = get_data(
-        result_path0
-    )
-    second_architecture, second_mse, second_pearson, second_spearman = get_data(
-        result_path1
-    )
-    if first_architecture == second_architecture:
-        first_architecture = first_architecture + " 1"
-        second_architecture = second_architecture + " 2"
 
     fig, ax = plt.subplots(3, num_settings, figsize=(32, 18))
-    for i in range(num_settings):
-        ax[0, i].plot(
-            SET_SIZES,
-            first_mse[i],
-            label=f"{first_architecture}",
-            color="forestgreen",
-            marker="x",
-        )
-        ax[0, i].plot(
-            SET_SIZES,
-            second_mse[i],
-            label=f"{second_architecture}",
-            color="firebrick",
-            marker="x",
-        )
-        ax[1, i].plot(
-            SET_SIZES,
-            first_pearson[i],
-            label=f"{first_architecture}",
-            color="forestgreen",
-            marker="x",
-        )
-        ax[1, i].plot(
-            SET_SIZES,
-            second_pearson[i],
-            label=f"{second_architecture}",
-            color="firebrick",
-            marker="x",
-        )
-        ax[2, i].plot(
-            SET_SIZES,
-            first_spearman[i],
-            label=f"{first_architecture}",
-            color="forestgreen",
-            marker="x",
-        )
-        ax[2, i].plot(
-            SET_SIZES,
-            second_spearman[i],
-            label=f"{second_architecture}",
-            color="firebrick",
-            marker="x",
-        )
+    arch_used = []
+    used_architectures = []
+    for j in range(len(paths)):
+        architecture, mse, pearson, spearman = get_data(paths[j])
+        if architecture in used_architectures:
+            c = 1
+            while architecture + "_" + str(c) in architecture:
+                c += 1
+            architecture = architecture + "_"  + str(c)
+        used_architectures.append(architecture)
+        for i in range(num_settings):
+            ax[0, i].plot(
+                SET_SIZES,
+                mse[i],
+                label=f"{architecture}",
+                # color="forestgreen",
+                marker="x",
+            )
+            ax[1, i].plot(
+                SET_SIZES,
+                pearson[i],
+                label=f"{architecture}",
+                # color="forestgreen",
+                marker="x",
+            )
+            ax[2, i].plot(
+                SET_SIZES,
+                spearman[i],
+                label=f"{architecture}",
+                # color="forestgreen",
+                marker="x",
+            )
 
-        # setting the appearance
-        ax[0, i].set(xscale="log", yticks=MSE_RANGE)
-        ax[1, i].set(xscale="log", yticks=PEARSON_RANGE)
-        ax[2, i].set(xscale="log", yticks=SPEARMAN_RANGE)
-        if i == 0:
-            ax[0, i].set_ylabel("Median MSE")
-            ax[1, i].set_ylabel("Median PearsonR")
-            ax[2, i].set_ylabel("Median SpearmanR")
-        ax[2, i].set_xlabel("train set size")
-        ax[0, i].set_title(SETTINGS[i])
+            # setting the appearance
+            ax[0, i].set(xscale="log", yticks=MSE_RANGE)
+            ax[1, i].set(xscale="log", yticks=PEARSON_RANGE)
+            ax[2, i].set(xscale="log", yticks=SPEARMAN_RANGE)
+            if i == 0:
+                ax[0, i].set_ylabel("Median MSE")
+                ax[1, i].set_ylabel("Median PearsonR")
+                ax[2, i].set_ylabel("Median SpearmanR")
+            ax[2, i].set_xlabel("train set size")
+            ax[0, i].set_title(SETTINGS[i])
 
     # setting one legend for all plots on the right side
     leg_lines, leg_labels = ax[0, 0].get_legend_handles_labels()
-    fig.legend(leg_lines, leg_labels, loc="lower center", ncol=2)
+    fig.legend(leg_lines, leg_labels, loc="lower center", ncol=len(paths))
     fig.tight_layout(pad=5, w_pad=1.5, h_pad=1.5)
     if save_fig:
-        fig.savefig(f"./{os.path.split(result_path0)[-1].split('.')[0]}.png")
+        fig.savefig(f"./{os.path.split(paths[0])[-1].split('.')[0]}.png")
     plt.show()
 
 
@@ -918,11 +894,10 @@ def sm_effect_heatmap(protein: str, trained_models: list[str]) -> None:
 
 if __name__ == "__main__":
     pass
-    """
+    """ 
     plot_reruns(
-        prot,
-        "./result_files/rr5/dense_net2/pab1_results.csv",
-        save_fig=True,
+        "pab1",
+        "./result_files/rr5/sep_conv_mix/pab1_results.csv",
     )
     """
 
@@ -939,13 +914,15 @@ if __name__ == "__main__":
     """
 
     # recall_plot()
-
-    
+    prot = "pab1"
     comparison_plot(
-        "result_files/rr5/dense_net2/avgfp_results.csv",
-        "result_files/rr5/simple_model_imp/avgfp_results.csv",
+        [
+            f"result_files/rr5/simple_model_imp/{prot}_results.csv",
+            f"result_files/rr5/dense_net2/{prot}_results.csv",
+            f"result_files/rr5/sep_conv_mix/{prot}_results.csv",
+            f"result_files/rr5/sep_conv_res/{prot}_results.csv",
+        ]
     )
-    
 
     """
     protein = "gb1"
