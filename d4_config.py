@@ -24,17 +24,22 @@ def retrieve_args(ini_filepath: str) -> dict:
     config_data = config["run args"]
     for i in config_data:
         i_data = config_data[i]
+        # converte None
         if i_data.upper() == "NONE" or i_data == "":
             converted_args[i] = None
         elif any(map(str.isdigit, i_data)):
+            # converte to int
             if i_data.isdigit():
                 converted_args[i] = int(i_data)
             else:
+                # convert to float
                 try:
                     converted_args[i] = float(i_data)
+                # convert to str
                 except ValueError:
                     converted_args[i] = i_data
         else:
+            # convert to bool
             try:
                 converted_args[i] = config_data.getboolean(i)
             except ValueError:
@@ -90,6 +95,8 @@ def retrieve_args(ini_filepath: str) -> dict:
         "split0": float,
         "split1": float,
         "split2": float,
+        "reduce": bool,
+        "jit": bool,
     }
 
     # check if all inputs got converted to the right type
