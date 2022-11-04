@@ -407,6 +407,18 @@ def arg_dict(p_dir: str = "") -> dict:
         action="store_true",
         help="set flag to clear error log before run",
     )
+    parser.add_argument(
+        "-rd",
+        "--reduce",
+        action="store_true",
+        help="set flag to use size reducing intro layer",
+    )
+    parser.add_argument(
+        "-j",
+        "--jit_compile",
+        action="store_false",
+        help="set flag to not use jit_compile from tensorflow",
+    )
 
     args = parser.parse_args()
     cf_path = args.config_file
@@ -541,6 +553,8 @@ def arg_dict(p_dir: str = "") -> dict:
         "write_to_log": args.write_to_log,
         "daug": args.data_aug,
         "clear_el": args.clear_error_log,
+        "reduce": args.reduce,
+        "jit": args.jit_compile,
     }
     return d
 
