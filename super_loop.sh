@@ -1,22 +1,22 @@
 #!/bin/bash
 
-names=("pab1")  # ("avgfp" "pab1" "gb1")
-split=("first" "second" "third") 
+names=("avgfp")  # ("avgfp" "pab1" "gb1")
+split=("first") # ("first" "second" "third") 
 train_sizes=(50 100 250 500 1000 2000 6000)
 batch_size=32
-architecture=dense_net2
+architecture=sep_conv_mix
 epochs=100
 channels=7
 simple=1
-simple_trans_nt=1
+simple_trans_nt=0
 simple_trans_t=1
-aug=1
-aug_trans_nt=1
-aug_trans_t=1
+aug=0
+aug_trans_nt=0
+aug_trans_t=0
 
 for p_name in "${names[@]}"; do
   if [ $p_name == "avgfp" ]; then
-    weigths="result_files/saved_models/avgfp_22_07_2022_215011/" 
+    weigths="result_files/saved_models/avgfp_fr_50_25_10_2022_203303/" 
     l_rate=0.001
   elif [ $p_name == "pab1" ]; then 
     weigths="result_files/saved_models/pab1_23_07_2022_105600/" 
