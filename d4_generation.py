@@ -638,6 +638,8 @@ def run_all(
     use_split_file: str | None = None,
     daug: bool = False,
     clear_el: bool = False,
+    reduce: bool = False,
+    jit: bool = True
 ):
     """runs all functions to train a neural network
     :parameter
@@ -753,6 +755,10 @@ def run_all(
       True to use data augmentation
     - clear_el:
       if True error log gets cleared before a run
+    - reduce:
+      if True a size reducing intro layer is used
+    - jit:
+      it True jit_compile from tensorflow is used
     :return
         None
     """
@@ -1008,6 +1014,7 @@ def run_all(
         model = model_to_use(
             wt_seq,
             channel_num,
+            reduce=reduce
         )
 
         # load weights to model
@@ -1060,7 +1067,7 @@ def run_all(
             optimizer(learning_rate=lr),
             loss="mean_absolute_error",
             metrics=["mae"],
-            jit_compile=True,
+            jit_compile=jit,
         )
 
         all_callbacks = []
