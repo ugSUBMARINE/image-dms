@@ -122,7 +122,7 @@ def comparison_plot(paths: list, save_fig: bool = False) -> None:
             c = 1
             while architecture + "_" + str(c) in architecture:
                 c += 1
-            architecture = architecture + "_"  + str(c)
+            architecture = architecture + "_" + str(c)
         used_architectures.append(architecture)
         for i in range(num_settings):
             ax[0, i].plot(
@@ -167,83 +167,58 @@ def comparison_plot(paths: list, save_fig: bool = False) -> None:
     plt.show()
 
 
-def compare_best(
-    result_path0,
-    result_path1,
-    result_path2,
-    result_path3,
-    result_path4,
-    result_path5,
-    data_oi=2,
-    save_fig=False,
-):
-    """comparison plot of all proteins for two different networks
+def best_setting_comp(
+    file_paths: list[str], setting_index: int = 2, save_fig: bool = False
+) -> None:
+    """plots the mse, PearsonR and SpearmanR for all 3 proteins for a chosen setting
     :parameter
-        - result_path0:
-          path to results of eg pab1 simple_model_imp
-        - result_path1:
-          path to results of eg pab1 dense_net2
-        - same alternation goes on with different proteins and the other result paths
-        - data_oi:
-          index for SETTINGS use
+        - file_paths:
+          parent file paths where results of specific architecture are stored
+        - setting_index:
+          index of the setting of interest like listed in SETTINGS
         - save_fig:
-          whether to save the plot
+          whether to save the plot or not
     :return
         - None
     """
-    parameters = locals()
-    data = []
-    architectures = []
-    proteins = []
-    for i in list(parameters.values())[:-2]:
-        architectures.append(os.path.split(os.path.split(i)[0])[1])
-        data.append(get_data(i))
-        proteins.append(os.path.split(i)[-1].split("_")[0])
-    fig, ax = plt.subplots(3, 3, figsize=(32, 18))
-    for i in range(6):
-        if i % 2 == 0:
-            col = "forestgreen"
-        else:
-            col = "firebrick"
-        # to plot dense and simple on the same column per protein
-        i_plot = i // 2
-        ax[0, i_plot].plot(
-            SET_SIZES,
-            data[i][1][data_oi],
-            label=architectures[i],
-            marker="x",
-            color=col,
-        )
-        ax[1, i_plot].plot(
-            SET_SIZES,
-            data[i][2][data_oi],
-            label=architectures[i],
-            marker="x",
-            color=col,
-        )
-        ax[2, i_plot].plot(
-            SET_SIZES,
-            data[i][3][data_oi],
-            label=architectures[i],
-            marker="x",
-            color=col,
-        )
-        # setting the appearance
-        ax[0, i_plot].set(xscale="log", yticks=MSE_RANGE)
-        ax[1, i_plot].set(xscale="log", yticks=PEARSON_RANGE)
-        ax[2, i_plot].set(xscale="log", yticks=SPEARMAN_RANGE)
-        if i == 0:
-            ax[0, i_plot].set_ylabel("Median MSE")
-            ax[1, i_plot].set_ylabel("Median PearsonR")
-            ax[2, i_plot].set_ylabel("Median SpearmanR")
-        ax[2, i_plot].set_xlabel("train set size")
-        ax[0, i_plot].set_title(proteins[i])
+    proteins = ["gb1", "pab1", "avgfp"]
 
+    fig, ax = plt.subplots(3, 3, figsize=(32, 18))
+    # column position of each protein
+    protein_position = dict(zip(proteins, np.arange(len(proteins))))
+    for i in file_paths:
+        for p in proteins:
+            # read the result csv
+            arch, p_mse, p_p, p_sp = get_data(os.path.join(i, p + "_results.csv"))
+
+            # plotting
+            ax[0, protein_position[p]].plot(
+                SET_SIZES, p_mse[setting_index], label=arch, marker="x"
+            )
+            ax[1, protein_position[p]].plot(
+                SET_SIZES, p_p[setting_index], label=arch, marker="x"
+            )
+            ax[2, protein_position[p]].plot(
+                SET_SIZES, p_sp[setting_index], label=arch, marker="x"
+            )
+
+            # appearance settings
+            ax[0, protein_position[p]].set(xscale="log", yticks=MSE_RANGE)
+            ax[1, protein_position[p]].set(xscale="log", yticks=PEARSON_RANGE)
+            ax[2, protein_position[p]].set(xscale="log", yticks=SPEARMAN_RANGE)
+            if protein_position[p] == 0:
+                ax[0, 0].set_ylabel("Median MSE")
+                ax[1, 0].set_ylabel("Median PearsonR")
+                ax[2, 0].set_ylabel("Median SpearmanR")
+            ax[2, protein_position[p]].set_xlabel("train set size")
+            ax[0, protein_position[p]].set_title(p)
+
+    # legend handeling
     leg_lines, leg_labels = ax[0, 0].get_legend_handles_labels()
-    fig.legend(leg_lines, leg_labels, loc="lower center", ncol=2)
+    fig.legend(leg_lines, leg_labels, loc="lower center", ncol=len(file_paths))
     fig.tight_layout(pad=5, w_pad=1.5, h_pad=1.5)
     if save_fig:
-        fig.savefig(f"compare_best{SETTINGS[data_oi]}.png")
+        fig.savefig("best_setting_comp.png")
     plt.show()
 
 
@@ -894,25 +869,15 @@ def sm_effect_heatmap(protein: str, trained_models: list[str]) -> None:
 
 if __name__ == "__main__":
     pass
-    """ 
+    """
     plot_reruns(
         "pab1",
         "./result_files/rr5/sep_conv_mix/pab1_results.csv",
     )
     """
+    # plot_reruns("avgfp", "result_files/results.csv", save_fig=True)
 
     """
-    compare_best(
-        "./result_files/rr5/dense_net2/pab1_results.csv",
-        "./result_files/rr5/simple_model_imp/pab1_results.csv",
-        "./result_files/rr5/dense_net2/gb1_results.csv",
-        "./result_files/rr5/simple_model_imp/gb1_results.csv",
-        "./result_files/rr5/dense_net2/avgfp_results.csv",
-        "./result_files/rr5/simple_model_imp/avgfp_results.csv",
-        data_oi=5,
-    )
-    """
-
     # recall_plot()
     prot = "pab1"
     comparison_plot(
@@ -922,6 +887,16 @@ if __name__ == "__main__":
             f"result_files/rr5/sep_conv_mix/{prot}_results.csv",
             f"result_files/rr5/sep_conv_res/{prot}_results.csv",
         ]
+    )
+    """
+
+    best_setting_comp(
+        [
+            "result_files/rr5/simple_model_imp",
+            "result_files/rr5/dense_net2",
+            "result_files/rr5/sep_conv_mix",
+        ],
+        5,
     )
 
     """
