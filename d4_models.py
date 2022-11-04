@@ -10,23 +10,7 @@ from keras import layers
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 
-def simple_model(wt_seq, channel_num, model_name="simple_model"):
-    inputs = keras.Input(shape=(len(wt_seq), len(wt_seq), channel_num), name=model_name)
-    x = layers.Conv2D(16, 3, padding="same", activation="leaky_relu")(inputs)
-    x = layers.MaxPooling2D()(x)
-    x = layers.Conv2D(32, 3, padding="same", activation="leaky_relu")(x)
-    x = layers.MaxPooling2D()(x)
-    x = layers.Conv2D(64, 3, padding="same", activation="leaky_relu")(x)
-    x = layers.MaxPooling2D()(x)
-    x = layers.Flatten()(x)
-    x = layers.Dense(128, activation="leaky_relu")(x)
-    outputs = layers.Dense(1)(x)
-    model = keras.Model(inputs, outputs, name=model_name + "_")
-    model.summary()
-    return model
-
-
-def simple_model_imp(wt_seq, channel_num, model_name="simple_model_imp"):
+def simple_model_imp(wt_seq, channel_num, model_name="simple_model_imp", reduce=-1):
     inputs = keras.Input(shape=(len(wt_seq), len(wt_seq), channel_num), name=model_name)
     x = layers.Conv2D(16, 3, padding="same", activation="leaky_relu")(inputs)
     x = layers.MaxPooling2D()(x)
@@ -45,7 +29,7 @@ def simple_model_imp(wt_seq, channel_num, model_name="simple_model_imp"):
     return model
 
 
-def res_net(wt_seq, channel_num, model_name="res_net"):
+def res_net(wt_seq, channel_num, model_name="res_net", reduce=-1):
     # function for creating an identity or projection residual module
     def residual_module(layer_in, n_filters):
         """https://machinelearningmastery.com/how-to-implement-major-architecture-innovations-for-convolutional
@@ -105,7 +89,7 @@ def res_net(wt_seq, channel_num, model_name="res_net"):
     return model
 
 
-def vgg(wt_seq, channel_num, model_name="vgg"):
+def vgg(wt_seq, channel_num, model_name="vgg", reduce=-1):
     """https://machinelearningmastery.com/how-to-implement-major-architecture-innovations-for-convolutional
     -neural-networks/"""
 
@@ -122,8 +106,6 @@ def vgg(wt_seq, channel_num, model_name="vgg"):
     x = vgg_block(x, 32, 4)
     x = vgg_block(x, 64, 4)
     x = vgg_block(x, 64, 4)
-    # x = vgg_block(x, 64, 4)
-    # x = vgg_block(x, 64, 4)
     x = layers.Flatten()(x)
     x = layers.Dense(128, activation="leaky_relu")(x)
     x = layers.Dense(256, activation="leaky_relu")(x)
@@ -159,7 +141,7 @@ def conv_mixer_block(x, filters: int, kernel_size: int):
 
 
 def get_conv_mixer_256_8(
-    wt_seq, channel_num, filters=128, depth=8, kernel_size=5, patch_size=2
+    wt_seq, channel_num, filters=128, depth=8, kernel_size=5, patch_size=2, reduce=-1
 ):  # 128 8 5 2
     """modified after https://keras.io/examples/vision/convmixer/"""
     inputs = keras.Input((len(wt_seq), len(wt_seq), channel_num))
@@ -188,7 +170,7 @@ def dense_net2(
     filter_num=12,
     block_num=4,
     block_depth=4,
-    intro_layer=True,
+    reduce=False,
     bn=False,
     classif_l=2,
     filter_size=3,
@@ -246,61 +228,7 @@ def dense_net2(
     return model
 
 
-def sep_conv_res(wt_seq, channel_num, model_name="sep_conv_res"):
-    def block(prev_in):
-        bx = layers.SeparableConv2D(64, 3, padding="same", activation="leaky_relu")(
-            prev_in
-        )
-        bxx = layers.SeparableConv2D(64, 3, padding="same", activation="leaky_relu")(bx)
-        bo = layers.concatenate([prev_in, bx, bxx])
-        # bo = layers.Conv2D(128,1,padding="same")(bo)
-        return bo
-
-    inputs = keras.Input(shape=(len(wt_seq), len(wt_seq), channel_num), name=model_name)
-    x = layers.SeparableConv2D(
-        64, 3, strides=2, padding="same", activation="leaky_relu"
-    )(inputs)
-    for i in range(6):
-        x = block(x)
-
-    x = layers.GlobalMaxPool2D()(x)
-    x = layers.Dense(128, activation="leaky_relu")(x)
-    x = layers.Dense(128, activation="leaky_relu")(x)
-    x = layers.Dense(64, activation="leaky_relu")(x)
-    outputs = layers.Dense(1)(x)
-    model = keras.Model(inputs, outputs, name=model_name + "_")
-    model.summary()
-    return model
-
-
-def sep_conv_res_test(wt_seq, channel_num, model_name="sep_conv_res_test"):
-    def block(prev_in):
-        bx = layers.SeparableConv2D(32, 3, padding="same", activation="leaky_relu")(
-            prev_in
-        )
-        bxx = layers.SeparableConv2D(32, 3, padding="same", activation="leaky_relu")(bx)
-        bo = layers.concatenate([prev_in, bx, bxx])
-        # bo = layers.Conv2D(128,1,padding="same")(bo)
-        return bo
-
-    inputs = keras.Input(shape=(len(wt_seq), len(wt_seq), channel_num), name=model_name)
-    x = layers.SeparableConv2D(
-        32, 3, strides=2, padding="same", activation="leaky_relu"  # 2
-    )(inputs)
-    for i in range(9):
-        x = block(x)
-
-    x = layers.GlobalMaxPool2D()(x)
-    x = layers.Dense(128, activation="leaky_relu")(x)
-    # x = layers.Dense(128, activation="leaky_relu")(x)
-    x = layers.Dense(64, activation="leaky_relu")(x)
-    outputs = layers.Dense(1)(x)
-    model = keras.Model(inputs, outputs, name=model_name + "_")
-    model.summary()
-    return model
-
-
-def sep_conv_mix(wt_seq, channel_num, model_name="sep_conv_mix"):
+def sep_conv_mix(wt_seq, channel_num, model_name="sep_conv_mix", reduce=False):
     def block(prev_in):
         bx = layers.SeparableConv2D(32, 3, padding="same", activation="leaky_relu")(
             prev_in
@@ -310,13 +238,20 @@ def sep_conv_mix(wt_seq, channel_num, model_name="sep_conv_mix"):
         return bo
 
     inputs = keras.Input(shape=(len(wt_seq), len(wt_seq), channel_num), name=model_name)
-    x = layers.SeparableConv2D(32, 3, padding="same", activation="leaky_relu")(inputs)
+    if reduce:
+        kernel_size = 9
+        strides_ = 9
+    else:
+        kernel_size = 3
+        strides_ = 1
+    x = layers.SeparableConv2D(
+        32, kernel_size, strides=strides_, padding="same", activation="leaky_relu"
+    )(inputs)
     for i in range(9):
         x = block(x)
 
     x = layers.GlobalMaxPool2D()(x)
     x = layers.Dense(128, activation="leaky_relu")(x)
-    # x = layers.Dense(128, activation="leaky_relu")(x)
     x = layers.Dense(64, activation="leaky_relu")(x)
     outputs = layers.Dense(1)(x)
     model = keras.Model(inputs, outputs, name=model_name + "_")
@@ -325,4 +260,4 @@ def sep_conv_mix(wt_seq, channel_num, model_name="sep_conv_mix"):
 
 
 if __name__ == "__main__":
-    mod = sep_conv_res_test(np.arange(75), 7)
+    mod = sep_conv_res(np.arange(237), 7)
