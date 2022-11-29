@@ -178,14 +178,6 @@ def arg_dict(p_dir: str = "") -> dict:
         help="threshold distances between any side chain atom to count as interacting",
     )
     parser.add_argument(
-        "-cn",
-        "--channel_num",
-        type=int,
-        required=False,
-        default=7,
-        help="number of channels = number of matrices used",
-    )
-    parser.add_argument(
         "-lw",
         "--load_trained_weights_path",
         type=str,
@@ -254,7 +246,7 @@ def arg_dict(p_dir: str = "") -> dict:
         "-et",
         "--extensive_test",
         action="store_true",
-        help="set flag so more test are done and more detailed plots are created",
+        help="set flag so more tests are done and more detailed plots are created",
     )
     parser.add_argument(
         "-es",
@@ -524,7 +516,6 @@ def arg_dict(p_dir: str = "") -> dict:
         "save_model": args.save_model,
         "settings_test": args.settings_test,
         "dist_thr": args.dist_thr,
-        "channel_num": args.channel_num,
         "load_trained_weights": args.load_trained_weights_path,
         "load_trained_model": args.load_trained_model_path,
         "max_train_mutations": args.max_train_mutations,
@@ -635,14 +626,6 @@ def predict_dict(p_dir: str = "") -> dict:
         help="int: after how many samples the gradient gets updated",
     )
     parser.add_argument(
-        "-cn",
-        "--channel_num",
-        type=int,
-        required=False,
-        default=7,
-        help="int: number of channels = number of matrices used",
-    )
-    parser.add_argument(
         "-fi",
         "--first_ind",
         type=str,
@@ -687,7 +670,6 @@ def predict_dict(p_dir: str = "") -> dict:
         "algn_path": args.alignment_file,
         "algn_base": args.query_name,
         "batch_size": args.batch_size,
-        "channel_num": args.channel_num,
         "first_ind": args.first_ind,
     }
 

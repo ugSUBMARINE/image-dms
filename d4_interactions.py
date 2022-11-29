@@ -62,29 +62,6 @@ def data_coord_extraction(
     return res_data, res_coords
 
 
-def dist_calc_old(
-    arr1: np.ndarray[tuple[int, int], np.dtype[int | float]],
-    arr2: np.ndarray[tuple[int, int], np.dtype[int | float]],
-) -> np.ndarray[tuple[int, int], np.dtype[float]]:
-    """calculates distance between arr1 and arr2 and returns a 2D array with all
-    distances of all arr1 points
-    against all arr2 points
-    :parameter
-        - arr1, arr2:
-          2D arrays of 1D lists with 3D coordinates eg [[x1, y1, z1],...]
-    :return
-        - dist:
-          len(arr1) x len(arr2) distance matrix between arr1 and arr2"""
-    # get only the x,y,z coordinates from the input arrays and reshape them so they
-    # can be subtracted from each other
-    arr1_coords_rs = arr1.reshape(arr1.shape[0], 1, arr1.shape[1])
-    arr2_coord_rs = arr2.reshape(1, arr2.shape[0], arr2.shape[1])
-    # calculating the distance between each point and returning a
-    # 2D array with all distances
-    dist = np.sqrt(((arr1_coords_rs - arr2_coord_rs) ** 2).sum(axis=2))
-    return dist
-
-
 def dist_calc(
     arr1: np.ndarray[tuple[int, int], np.dtype[int | float]],
     arr2: np.ndarray[tuple[int, int], np.dtype[int | float]],
@@ -535,16 +512,22 @@ def model_interactions(
         clashes(clc, cur_cl, cln, distance_matrix, dist_thr=dist_thrh) * factor_matrix
     )
 
-    # conservation matrix
-    cur_con = mutate_sequences(coc, feature_to_encode, cp, first_ind)
-    part_co = conservation_m(cur_con, cot, cor, interaction_matrix) 
-
     # interaction position
     position = index_matrix * interaction_matrix 
 
-    return np.stack(
-        (part_hb, part_hp, part_cm, part_ia, part_cl, part_co, position), axis=2
-    )
+    # when alignment file is given
+    if cot is not None:
+        # conservation matrix
+        cur_con = mutate_sequences(coc, feature_to_encode, cp, first_ind)
+        part_co = conservation_m(cur_con, cot, cor, interaction_matrix) 
+
+        return np.stack(
+            (part_hb, part_hp, part_cm, part_ia, part_cl, part_co, position), axis=2
+        )
+    else:
+        return np.stack(
+            (part_hb, part_hp, part_cm, part_ia, part_cl, position), axis=2
+        )
 
 
 if __name__ == "__main__":
@@ -576,7 +559,7 @@ if __name__ == "__main__":
     ) = data_generator_vals(
         protein_settings("pab1")["sequence"],
         alignment_base="pab1",
-        alignment_path="./datasets/alignment_files/"
+        alignment_path="datasets/alignment_files/"
         "pab1_1000_experimental.clustal",
     )
     dist_m, factor, comb_bool = atom_interaction_matrix_d("datasets/pab1.pdb", 20)

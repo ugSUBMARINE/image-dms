@@ -1,9 +1,6 @@
 import configparser
 import os
 
-import d4_interactions
-import d4_models
-
 
 def retrieve_args(ini_filepath: str) -> dict:
     """reads the supplied ini file, checks for data types and returns args as
@@ -57,7 +54,6 @@ def retrieve_args(ini_filepath: str) -> dict:
         "variants": str,
         "score": str,
         "dist_thr": [int, float],
-        "channel_num": int,
         "max_train_mutations": [int, none_type],
         "training_epochs": int,
         "test_num": int,

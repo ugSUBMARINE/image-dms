@@ -208,8 +208,8 @@ def split_inds(
 def create_split_file(
     p_dir: str,
     name: str,
-    train_split: list[int],
-    tune_split: list[int],
+    train_split: list[int] | np.ndarray[tuple[int], np.dtype[int]],
+    tune_split: list[int] | np.ndarray[tuple[int], np.dtype[int]],
     test_split: list[int] | np.ndarray[tuple[int], np.dtype[int]],
 ) -> None:
     """creates train tune and test split txt files in a directory called 'splits'
@@ -295,13 +295,11 @@ def read_split_dir(file_path: str) -> dict:
         else:
             raise FileNotFoundError(
                 "Wrong number of files to create train, tune, test index list - "
-                "3 needed but {} are given".format(str(len(files)))
+                f"3 needed but {len(files)} are given"
             )
     else:
         raise FileNotFoundError(
-            "Directory '{}' containing the split files doesn't exist".format(
-                str(file_path)
-            )
+            f"Directory '{file_path}' containing the split files doesn't exist"
         )
 
 

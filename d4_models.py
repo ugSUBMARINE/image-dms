@@ -32,8 +32,8 @@ def simple_model_imp(wt_seq, channel_num, model_name="simple_model_imp", reduce=
 def res_net(wt_seq, channel_num, model_name="res_net", reduce=-1):
     # function for creating an identity or projection residual module
     def residual_module(layer_in, n_filters):
-        """https://machinelearningmastery.com/how-to-implement-major-architecture-innovations-for-convolutional
-        -neural-networks/"""
+        """https://machinelearningmastery.com/how-to-implement-major-architecture-
+        innovations-for-convolutional-neural-networks/"""
         merge_input = layer_in
         # check if the number of filters needs to be increase, assumes channels last format
         if layer_in.shape[-1] != n_filters:
@@ -198,7 +198,7 @@ def dense_net2(
             temp = layers.concatenate([x, temp])
         return temp
 
-    if intro_layer:
+    if reduce:
         x = layers.Conv2D(128, 3, 2, padding="same")(inputs)
         x = layers.MaxPooling2D(3, 2)(x)
         x = d_block(x)
@@ -259,5 +259,15 @@ def sep_conv_mix(wt_seq, channel_num, model_name="sep_conv_mix", reduce=False):
     return model
 
 
+def model_template(wt_seq, channel_num, model_name="model_template", reduce=-1):
+    inputs = keras.Input(shape=(len(wt_seq), len(wt_seq), channel_num), name=model_name)
+    x = layers.Conv2D(16, 3, padding="same", activation="leaky_relu")(inputs)
+    x = layers.GlobalMaxPool2D()(x)
+    outputs = layers.Dense(1)(x)
+    model = keras.Model(inputs, outputs, name=model_name + "_")
+    model.summary()
+    return model
+
+
 if __name__ == "__main__":
-    mod = sep_conv_res(np.arange(237), 7)
+    mod = model_template(np.arange(237), 7)

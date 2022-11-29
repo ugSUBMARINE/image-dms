@@ -7,7 +7,7 @@ import pandas as pd
 
 def protein_settings(
     protein_name: str,
-    data_path: str = "./datasets/protein_settings_ori.txt",
+    data_path: str = "datasets/protein_settings_ori.txt",
 ) -> dict:
     """gets different setting for the protein of interest from the protein_settings file
     :parameter
@@ -99,8 +99,8 @@ def log_file(file_path: str, write_str: str, optional_header: str = "") -> None:
 def compare_get_settings(
     run_name1: str,
     run_name2: str | None = None,
-    file_path1: str = "./result_files/log_file.csv",
-    file_path2: str = "./result_files/log_file.csv",
+    file_path1: str = "result_files/log_file.csv",
+    file_path2: str = "result_files/log_file.csv",
     column_to_search1: str = "name",
     column_to_search2: str = "name",
 ) -> None:
@@ -179,10 +179,10 @@ def get_func(name: str):
 def run_dict(
     run_name: str,
     column_to_search: str = "name",
-    data_path: str = "./result_files/log_file.csv",
+    data_path: str = "result_files/log_file.csv",
 ) -> dict:
     """creates a dictionary from data_path that can be used as input for the run_all
-    at d4batch_driver.py
+    at d4_cmd_driver.py
     :parameter
         - run_name:
           name of the run whose parameters should be used
@@ -512,8 +512,11 @@ if __name__ == "__main__":
 
     # star_message()
     # print(run_dict("nononsense_pab1_28_08_2022_234726"))
+    """
     compare_get_settings(
         "nononsense_pab1_30_03_2022_203940",
         file_path1="./nononsense/logs_results_convmixer/"
         "pab1_log_file.csv",
     )
+    """
+    compare_get_settings("nononsense_avgfp_06_11_2022_094003",file_path1="result_files/rr5/generalization/log_file.csv")

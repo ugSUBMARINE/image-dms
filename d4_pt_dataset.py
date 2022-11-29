@@ -1,16 +1,19 @@
 from itertools import product, combinations
 import sys
+import argparse
 
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from scipy.stats import pearsonr, spearmanr
 
-from d4_utils import aa_dict, aa_dict_pos, protein_settings
 from d4_interactions import model_interactions, atom_interaction_matrix_d
 from d4_generation import data_generator_vals
-from d4_utils import protein_settings, log_file
 from d4_utils import (
+    aa_dict,
+    aa_dict_pos,
+    protein_settings,
+    log_file,
     hydrophobicity,
     h_bonding,
     sasa,
@@ -137,7 +140,7 @@ def calc_pseudo_score(
     first_ind: int,
     variants: list[str],
     pdb_filepath: str,
-    alignment_path: str,
+    alignment_path: str | None = None,
     dist_th: int | float,
 ) -> np.ndarray[tuple[int], np.dtype[float]]:
     """calculates the pseudo scores to create pre training datasets
@@ -267,12 +270,13 @@ def create_pt_ds(file_path: str, variants: list[str], scores: list[float]) -> No
 
 
 if __name__ == "__main__":
+    """
     protein = "avgfp"
     p_data = protein_settings(protein)
     first_ind = int(p_data["offset"])
     seq = np.asarray(list(p_data["sequence"]))
     size = 50
-    
+
     runs = ["first", "second", "third"]
     for r in runs:
         if r == "first":
@@ -309,12 +313,4 @@ if __name__ == "__main__":
                 new_variants[chosen_var],
                 ns,
             )
-    """
-
-    new_variants = create_mutants(
-        first_ind,
-        seq,
-        f"./nononsense/nononsense_{protein}.tsv",
-        f"./nononsense/third_split_run/{protein}_even_splits/split_{size}/stest.txt",
-    )
     """

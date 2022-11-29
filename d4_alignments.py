@@ -1,6 +1,8 @@
-import numpy as np
 import sys
+
+import numpy as np
 from matplotlib import pyplot as plt
+
 from d4_utils import aa_dict, aa_dict_pos, protein_settings
 
 np.set_printoptions(threshold=sys.maxsize)
@@ -258,5 +260,5 @@ def alignment_table(
 
 if __name__ == "__main__":
     alignment_table_ = alignment_table(
-        "~//Downloads/uni_tubingen_algn/hhmer_clustalw.txt", "pab1"
+        "datasets/alignment_files/pab1_1000_experimental.clustal", "pab1"
     )

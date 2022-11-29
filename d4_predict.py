@@ -25,6 +25,8 @@ from d4_utils import (
 )
 from d4_split import read_split_file
 
+from d4_argpars import predict_dict
+
 
 def predict_score(
     protein_pdb: str,
@@ -32,10 +34,9 @@ def predict_score(
     variant_s: list[str],
     model_filepath: str,
     dist_th: int | float,
-    algn_path: str,
-    algn_base: str,
+    algn_path: str | None = None,
+    algn_base: str | None = None,
     batch_size: int = 32,
-    channel_num: int = 7,
     first_ind: int = 0,
 ) -> np.ndarray[tuple[int], np.dtype[float]]:
     """predicts scores of variants with provided trained model
@@ -60,8 +61,6 @@ def predict_score(
           index of the start of the protein sequence
         - batch_size:
           how many variants get predicted at once
-        - channel_num:
-          number of (interaction) matrices that encode a variant
         - first_ind:
           offset of the start of the sequence
           (when sequence doesn't start with residue 0)
@@ -84,6 +83,11 @@ def predict_score(
         co_table,
         co_rows,
     ) = data_generator_vals(protein_seq, algn_path, algn_base)
+
+    # set number of channels based on presence of the alignment file
+    channel_num = 7
+    if algn_path is None:
+        channel_num = 6
 
     dist_m, factor, comb_bool = atom_interaction_matrix_d(protein_pdb, dist_th)
     # checks whether sequence in structure as wt_seq match
@@ -270,7 +274,7 @@ def recall_calc(
     if test_size is None:
         test_size = len(tvi) + 1
     for i in range(10, test_size, steps):
-        predicted_top_n = pred_sort[:i] 
+        predicted_top_n = pred_sort[:i]
         random_top_n = random_sort[:i]
         # percentage of correctly recalls in the top N
         recall_perc.append(np.sum(np.isin(predicted_top_n, top_n_ground_trouth)) / N)
@@ -292,7 +296,7 @@ if __name__ == "__main__":
     # calculate the models performance
     """
     dms_data = pd.read_csv(
-        "./nononsense/nononsense_{protein}.tsv", delimiter="\t"
+        f"nononsense/nononsense_{protein}.tsv", delimiter="\t"
     )
 
     dms_variants = np.asarray(dms_data[ps["variants"]])[:2000]
@@ -302,7 +306,8 @@ if __name__ == "__main__":
         f"./datasets/{protein}.pdb",
         list(ps["sequence"]),
         dms_variants,
-        "./result_files/saved_models/pab1_fr_50_27_08_2022_100124/",
+        "./pub_result_files/saved_models/recall_whole_ds/"
+        "nononsense_pab1_04_11_2022_094109/",
         20,
         f"./datasets/alignment_files/{protein}_1000_experimental.clustal",
         protein,
@@ -339,3 +344,4 @@ if __name__ == "__main__":
         "nononsense_gb1_28_09_2022_142206/",
     ))
     """
+    predict_score(**predict_dict())

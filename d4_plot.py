@@ -608,24 +608,27 @@ def plot_reruns(
     plt.show()
 
 
-def recall_plot() -> None:
+def recall_plot(save_fig: bool = False) -> None:
     """plots all recall results
     :parameter
-        - None
+        - save_fig:
+          whether to save to plot or not
     :return
         - None
     """
-    fig, ax = plt.subplots(2, 3, figsize=(32, 18))
     # name of used proteins
     proteins = ["avgfp", "gb1", "pab1"]
+    architectures = ["simple_model_imp", "dense_net2", "sep_conv_mix"]
+    num_proteins = len(proteins)
+    num_architectures = len(architectures)
     # dicts that specify the subplot position of each
     # protein-architecture combination
-    protein_position = dict(zip(proteins, np.arange(len(proteins))))
-    architecture_position = dict(zip(["simple_model_imp", "dense_net2"], np.arange(2)))
+    protein_position = dict(zip(proteins, np.arange(num_proteins)))
+    architecture_position = dict(zip(architectures, np.arange(num_architectures)))
 
     split_data = np.split(
         pd.read_csv("result_files/rr5/recall/fract_splits_results.csv", delimiter=","),
-        6,
+        num_proteins * num_architectures,
     )
     whole_data = pd.read_csv("result_files/rr5/recall/whole_results.csv", delimiter=",")
     filenames_whole = np.asarray(whole_data["name"])
@@ -679,6 +682,7 @@ def recall_plot() -> None:
     # dict specifying the number of test samples per protein
     test_num = dict(zip(fl[:, 1], fl[:, 0].astype(int)))
 
+    fig, ax = plt.subplots(num_architectures, num_proteins, figsize=(32, 18))
     for ci, i in enumerate(split_data):
         # names of the runs
         filename_i = np.asarray(i["name"])
@@ -764,9 +768,13 @@ def recall_plot() -> None:
             architecture_position[architecture_w], protein_position[protein_name_w]
         ].plot(w_n, w_rp, label="whole data")
 
+        print(f"protein {ci} done")
+
     # setting one legend for all plots on the right side
     leg_lines, leg_labels = ax[0, 0].get_legend_handles_labels()
     fig.legend(leg_lines, leg_labels, loc="lower center", ncol=len(SET_SIZES) + 3)
+    if save_fig:
+        fig.savefig("recall_plot.png")
     plt.show()
 
 
@@ -867,6 +875,85 @@ def sm_effect_heatmap(protein: str, trained_models: list[str]) -> None:
     plt.show()
 
 
+def generalization(
+    doi: str = "pearson_r", num_runs: int = 3, save_fig: bool = False
+) -> None:
+    """plot generalization results
+    :parameter
+        - doi:
+          data column of interest in the result file
+        - num_runs:
+          number of replicas deon
+        - save_fig:
+          True to save the plot as generalization.png
+    :return
+        - None
+    """
+    # differnt settings used during training
+    settings = [
+        "base",
+        "pre training",
+        "data augmentation",
+        "pre training+\ndata augmentation",
+    ]
+    # get date
+    data = pd.read_csv("result_files/rr5/generalization/results.csv", delimiter=",")
+    architectures = np.unique(data["architecture"])
+    num_settings = len(settings)
+    num_architectures = len(architectures)
+
+    # position of each setting in the plot
+    setting_pos = np.arange(num_settings)
+    colors = {
+        0: "forestgreen",
+        1: "firebrick",
+        2: "royalblue",
+        3: "darkorange",
+        4: "aqua",
+    }
+
+    # plot each architectures median and the std as errorbars
+    fig, ax = plt.subplots(1, 1, figsize=(32, 18))
+    for ci, i in enumerate(architectures):
+        i_data = np.asarray(np.split(data[data["architecture"] == i][doi], num_runs))
+        i_median = np.median(i_data, axis=0)
+        i_std = i_data.std(axis=0)
+        """
+        ax.errorbar(
+            setting_pos, i_median, yerr=i_std, fmt="o", capsize=5, alpha=0.5, label=i
+        )
+        """
+        print(i_median)
+        ax.scatter(setting_pos, i_median, color=colors[ci], marker="x", s=100)
+        ax.errorbar(
+            setting_pos,
+            i_median,
+            yerr=np.max(i_data, axis=0) - i_median,
+            fmt="s",
+            capsize=5,
+            alpha=0.3,
+            label=i,
+            lolims=True,
+            color=colors[ci],
+        )
+        ax.errorbar(
+            setting_pos,
+            i_median,
+            yerr=i_median - np.min(i_data, axis=0),
+            fmt="s",
+            capsize=5,
+            alpha=0.3,
+            uplims=True,
+            color=colors[ci],
+        )
+    ax.set_xticks(setting_pos, settings)
+    fig.legend(loc="lower center", ncol=num_architectures)
+    fig.tight_layout(pad=5, w_pad=1.5, h_pad=1.5)
+    if save_fig:
+        fig.savefig("generalization.png")
+    plt.show()
+
+
 if __name__ == "__main__":
     pass
     """
@@ -876,9 +963,9 @@ if __name__ == "__main__":
     )
     """
     # plot_reruns("avgfp", "result_files/results.csv", save_fig=True)
-
+    # recall_plot(save_fig=True)
+    generalization()
     """
-    # recall_plot()
     prot = "pab1"
     comparison_plot(
         [
@@ -889,7 +976,7 @@ if __name__ == "__main__":
         ]
     )
     """
-
+    """
     best_setting_comp(
         [
             "result_files/rr5/simple_model_imp",
@@ -898,7 +985,7 @@ if __name__ == "__main__":
         ],
         5,
     )
-
+    """
     """
     protein = "gb1"
     trained_models = [

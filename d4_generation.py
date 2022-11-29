@@ -117,7 +117,7 @@ def augment(
 
 
 def data_generator_vals(
-    wt_seq: str, alignment_path: str, alignment_base: str
+    wt_seq: str, alignment_path: str | None = None, alignment_base: str | None = None
 ) -> tuple[
     np.ndarray[tuple[int], np.dtype[int]],
     float,
@@ -182,9 +182,11 @@ def data_generator_vals(
     cm_converted = np.asarray(list(map(charge.get, wt_seq)))
     ia_converted = np.asarray(list(map(sasa.get, wt_seq)))
     cl_converted = np.asarray(list(map(side_chain_length.get, wt_seq)))
-    co_converted = np.asarray(list(map(aa_dict_pos.get, wt_seq)))
-
-    co_table, co_rows = alignment_table(alignment_path, alignment_base)
+    if alignment_path is not None:
+        co_converted = np.asarray(list(map(aa_dict_pos.get, wt_seq)))
+        co_table, co_rows = alignment_table(alignment_path, alignment_base)
+    else:
+        co_converted, co_table, co_rows = None, None, None
 
     wt_len = len(wt_seq)
     mat_size = wt_len * wt_len
@@ -230,7 +232,10 @@ def progress_bar(num_batches: int, bar_len: int, batch: int) -> None:
     if batch == num_batches - 1:
         cur_bar = bar_len
     # printing the progress bar
-    print(f"\r[{'=' * cur_bar}>{' ' * (bar_len - cur_bar)}] {(batch + 1) / num_batches * 100:0.0f}%", end="")
+    print(
+        f"\r[{'=' * cur_bar}>{' ' * (bar_len - cur_bar)}] {(batch + 1) / num_batches * 100:0.0f}%",
+        end="",
+    )
 
     # set cursor to start of the line to overwrite progress bar when epoch
     # is done
@@ -522,7 +527,7 @@ class CustomPrint(keras.callbacks.Callback):
 
         if epoch % self.epoch_print == 0:
             print(
-                f"E {epoch:<3} - loss: {cur_loss: 0.4f}  val_loss: {cur_val_loss: 0.4f}", 
+                f"E {epoch:<3} - loss: {cur_loss: 0.4f}  val_loss: {cur_val_loss: 0.4f}",
                 f"- loss change: {cur_loss - self.latest_loss: 0.4f}  ",
                 f"val_loss change: {cur_val_loss - self.latest_val_loss: 0.4f} - ",
                 f"seconds per epoch: {time.time() - self.start_time_epoch: 0.4f}\n",
@@ -570,13 +575,16 @@ class CustomPrint(keras.callbacks.Callback):
         print()
         print(
             "Overall best epoch stats\n",
-            f"\rBest training epoch: {self.bl_epoch} with a loss of {self.best_loss:0.4f}",
+            "\rBest training epoch: "
+            f"{self.bl_epoch} with a loss of {self.best_loss:0.4f}",
         )
         print(
-            f"Best validation epoch: {self.bvl_epoch} with a loss of {self.best_val_loss:0.4f}"
+            f"Best validation epoch: {self.bvl_epoch} with a loss of "
+            f"{self.best_val_loss:0.4f}"
         )
         print(
-            f"Total training time in minutes: {(time.time() - self.start_time_training) / 60:0.1f}\n"
+            "Total training time in minutes: "
+            f"{(time.time() - self.start_time_training) / 60:0.1f}\n"
         )
 
 
@@ -602,13 +610,12 @@ def run_all(
     variants: str,
     score: str,
     dist_thr: int | float,
-    channel_num: int,
     max_train_mutations: int | None,
     training_epochs: int,
     test_num: int,
     first_ind: int,
-    algn_path: str,
-    algn_bl: str,
+    algn_path: str | None = None,
+    algn_bl: str | None = None,
     r_seed: int | None = None,
     deploy_early_stop: bool = True,
     es_monitor: str = "val_loss",
@@ -639,7 +646,7 @@ def run_all(
     daug: bool = False,
     clear_el: bool = False,
     reduce: bool = False,
-    jit: bool = True
+    jit: bool = True,
 ):
     """runs all functions to train a neural network
     :parameter
@@ -661,8 +668,6 @@ def run_all(
       name of the score column
     - dist_thr:
       threshold distances between any side chain atom to count as interacting
-    - channel_num:
-      number of channels
     - max_train_mutations:
       - int specifying maximum number of mutations per sequence to be used for training
       - None to use all mutations for training
@@ -1010,12 +1015,13 @@ def run_all(
         # checks whether sequence in the pdb and the wt_seq match
         check_structure(pdb_file, comb_bool, wt_seq)
 
+        # number of matrices used to encode structure
+        channel_num = 7
+        if algn_path is None:
+            channel_num = 6
+
         # neural network model function
-        model = model_to_use(
-            wt_seq,
-            channel_num,
-            reduce=reduce
-        )
+        model = model_to_use(wt_seq, channel_num, reduce=reduce)
 
         # load weights to model
         if load_trained_weights is not None:
@@ -1040,15 +1046,14 @@ def run_all(
             for i in range(len(trained_model.layers)):
                 if i > 0:
                     l_name = trained_model.layers[i].name
-                    #
-                    """
+                    # select all layers apart from Dense and Flatten
                     layer_i = trained_model.layers[i]
-                    if not any([isinstance(layer_i, keras.layers.Dense), \
-                               isinstance(layer_i, keras.layers.Flatten)])
-                        transfer_layers += [i]
-                    """
-                    #
-                    if not any(["dense" in l_name, "flatten" in l_name]):
+                    if not any(
+                        [
+                            isinstance(layer_i, keras.layers.Dense),
+                            isinstance(layer_i, keras.layers.Flatten),
+                        ]
+                    ):
                         transfer_layers += [i]
 
             # Transfer weights to new model
@@ -1163,7 +1168,6 @@ def run_all(
         training_generator = DataGenerator(train_data, train_labels, **params)
         validation_generator = DataGenerator(test_data, test_labels, **params)
         test_generator = DataGenerator(t_data, np.zeros(len(t_labels)), **test_params)
-
 
         if not settings_test:
             # training
