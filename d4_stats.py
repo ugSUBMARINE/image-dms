@@ -144,7 +144,8 @@ def validation(
         else:
             wx += [wx[-1] + w[i - 1]]
         # mean of all errors when i number of mutations are present
-        # value is as often in mean_error_per_mutations as often i number of mutations are present
+        # value is as often in mean_error_per_mutations as often i 
+        # number of mutations are present
         mean_error_per_mutations += [
             np.mean(all_errors[prev_ind : prev_ind + int(w[i])])
         ] * int(w[i])

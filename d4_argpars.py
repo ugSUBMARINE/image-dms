@@ -222,18 +222,13 @@ def arg_dict(p_dir: str = "") -> dict:
     parser.add_argument(
         "-sf",
         "--save_figures",
-        type=int,
-        required=False,
-        default=None,
-        help="str specifying the file path where the figures should be stored or "
-        "None to not save figures",
+        action="store_true",
+        help="set flag to store plots in result_files"
     )
     parser.add_argument(
         "-pf",
         "--show_figures",
-        type=bool,
-        required=False,
-        default=False,
+        action="store_true",
         help="set flag to show figures",
     )
     parser.add_argument(
@@ -481,7 +476,9 @@ def arg_dict(p_dir: str = "") -> dict:
 
     tsv_ex = os.path.join(p_dir, tsv_ex)
     pdb_ex = os.path.join(p_dir, pdb_ex)
-    align_ex = os.path.join(p_dir, args.alignment_file)
+    align_ex = None
+    if args.alignment_file is not None:
+        align_ex = os.path.join(p_dir, args.alignment_file)
 
     # checking whether the files exist
     if not os.path.isfile(tsv_ex):
@@ -492,7 +489,7 @@ def arg_dict(p_dir: str = "") -> dict:
         raise FileNotFoundError(
             "pdb file path is incorrect - file '{}' doesn't exist".format(str(pdb_ex))
         )
-    if not os.path.isfile(align_ex):
+    if align_ex is not None and not os.path.isfile(align_ex):
         raise FileNotFoundError(
             "alignment file path is incorrect - file '{}' doesn't exist".format(
                 str(args.alignment_file)
@@ -597,14 +594,15 @@ def predict_dict(p_dir: str = "") -> dict:
         "-af",
         "--alignment_file",
         type=str,
-        required=True,
+        required=False,
+        default=None,
         help="str: alignment file for the protein of interest",
     )
     parser.add_argument(
         "-qn",
         "--query_name",
         type=str,
-        required=True,
+        required=False,
         default=None,
         help="str: name of the wild type sequence in the protein alignment file",
     )
@@ -648,7 +646,7 @@ def predict_dict(p_dir: str = "") -> dict:
                 str(args.model_filepath)
             )
         )
-    if not os.path.isfile(args.alignment_file):
+    if args.alignment_file is not None and not os.path.isfile(align_ex):
         raise FileNotFoundError(
             "alignment file path is incorrect - file '{}' doesn't exist".format(
                 str(args.alignment_file)

@@ -565,7 +565,8 @@ class CustomPrint(keras.callbacks.Callback):
                 f"\rBest validation epoch: {self.bvl_epoch}\n",
                 f"\rdelta: {d:0.4f} (equals {dp:0.2f}% of val_loss)\n",
                 f"\rdifference to best loss ({self.best_loss:0.4f}): {d_cl:0.4f}\n",
-                f"\rdifference to best val_loss ({self.best_val_loss:0.4f}): {d_cvl:0.4f}\n",
+                f"\rdifference to best val_loss ({self.best_val_loss:0.4f}): "
+                f"{d_cvl:0.4f}\n",
             )
 
     def on_train_end(self, logs=None):
@@ -831,10 +832,12 @@ def run_all(
             random.seed(r_seed)
 
         # creates a directory where plots will be saved
-        if save_fig is not None:
-            save_fig = os.path.join(save_fig, "plots_" + name)
+        if (save_fig and validate_training) or (save_fig and extensive_test):
+            save_fig = os.path.join(result_dir, "plots_" + name)
             if not os.path.isdir(save_fig):
                 os.mkdir(save_fig)
+        else:
+            save_fig = None
 
         if not settings_test:
             # writes used arguments to log file
@@ -889,6 +892,13 @@ def run_all(
         train_labels = data_dict["train_labels"]
         # number of mutations per variant
         train_mutations = data_dict["train_mutations"]
+
+        # restrict training data to certain number of mutations per variant
+        if max_train_mutations is not None:
+            mtm_bool = train_mutations <= max_train_mutations
+            train_data = train_data[mtm_bool]
+            train_labels = train_labels[mtm_bool]
+            train_mutations = train_mutations[mtm_bool]
 
         if daug:
             # original data

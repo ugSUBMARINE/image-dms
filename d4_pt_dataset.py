@@ -140,8 +140,8 @@ def calc_pseudo_score(
     first_ind: int,
     variants: list[str],
     pdb_filepath: str,
-    alignment_path: str | None = None,
     dist_th: int | float,
+    alignment_path: str | None = None,
 ) -> np.ndarray[tuple[int], np.dtype[float]]:
     """calculates the pseudo scores to create pre training datasets
     :parameter
@@ -154,10 +154,10 @@ def calc_pseudo_score(
           ['A1S', 'R3K,L9T']
         - pdb_filepath:
           file path to the pdb file of the protein
-        - alignment_path:
-          path to the alignment file of the protein
         - dist_th:
           distance threshold used for model_interactions
+        - alignment_path:
+          path to the alignment file of the protein
     :return
         - pseudo_score:
           calculated pseudo scores for the given variants
