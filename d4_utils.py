@@ -223,9 +223,9 @@ def run_dict(
                 split_list = value_i[1:-1].split("_")
                 for j in split_list:
                     if j.isdecimal():
-                        new_split_list += [int(j)]
+                        new_split_list.append(int(j))
                     else:
-                        new_split_list += [float(j)]
+                        new_split_list.append(float(j))
                 pre_dict[pre_keys[i]] = new_split_list
 
     # deletes entries that are not used in run_all
@@ -298,8 +298,8 @@ def read_blosum() -> tuple[np.ndarray[tuple[int, int], np.dtype[int]], list[str]
                 for k in data_line:
                     kstrip = k.strip()
                     if len(kstrip) > 0:
-                        read_data_line += [kstrip]
-                value_lines += [read_data_line[1:-4]]
+                        read_data_line.append(kstrip)
+                value_lines.append(read_data_line[1:-4])
             line_counter += 1
     # create 2d ndarray an fill diagonal with 0
     blosum_matrix = np.asarray(value_lines, dtype=int)
@@ -307,38 +307,6 @@ def read_blosum() -> tuple[np.ndarray[tuple[int, int], np.dtype[int]], list[str]
     np.fill_diagonal(blosum_matrix, 0)
     blosum_keys = np.asarray(keys)
     return blosum_matrix, blosum_keys
-
-
-def present_matrix(
-    matrix: np.ndarray[tuple[int, int], np.dtype[int | float]], col_row: list[str]
-) -> None:
-    """prints a given square matrix where columns and rows have the same one letter
-    head in an easy readable way
-    :parameter
-        - matrix:
-          substitution matrix
-        - col_row:
-          name of the columns/ rows (usually the amino acid one-letter code)
-    :return
-        None"""
-
-    max_len = 0
-    for i in matrix.flatten().astype(str):
-        l = len(i)
-        if l > max_len:
-            max_len = l
-    inter_cr = []
-    for i in col_row:
-        dcr = max_len - len(i)
-        inter_cr += [" " * dcr + i]
-    print(" " * (max_len - 1), " ".join(inter_cr))
-
-    for ci, i in enumerate(matrix.astype(str)):
-        inter_i = [col_row[ci]]
-        for j in i:
-            dlj = max_len - len(j)
-            inter_i += [" " * dlj + j]
-        print(" ".join(inter_i))
 
 
 class dotdict(dict):
@@ -519,4 +487,7 @@ if __name__ == "__main__":
         "pab1_log_file.csv",
     )
     """
-    compare_get_settings("nononsense_avgfp_06_11_2022_094003",file_path1="result_files/rr5/generalization/log_file.csv")
+    compare_get_settings(
+        "nononsense_avgfp_06_11_2022_094003",
+        file_path1="result_files/rr5/generalization/log_file.csv",
+    )

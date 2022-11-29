@@ -125,7 +125,7 @@ def predict_score(
     if len(variant_s) <= 64:
         pred = []
         for i in variant_s:
-            pred += [
+            pred.append(
                 float(
                     model(
                         np.asarray(
@@ -162,7 +162,7 @@ def predict_score(
                         training=False,
                     )
                 )
-            ]
+            )
         pred = np.asarray(pred)
     else:
         generator = DataGenerator(variant_s, np.zeros(len(variant_s)), **params)

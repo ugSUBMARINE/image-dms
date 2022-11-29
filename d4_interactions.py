@@ -32,17 +32,17 @@ def data_coord_extraction(
     for line in file:
         if "ATOM  " in line[:6]:
             line = line.strip()
-            res_data += [
+            res_data.append(
                 [
                     line[12:16].replace(" ", "").strip(),
                     line[17:20].replace(" ", "").strip(),
                     line[21].replace(" ", "").strip(),
                     line[22:26].replace(" ", "").strip(),
                 ]
-            ]
-            res_coords += [
+            )
+            res_coords.append(
                 [line[30:38].strip(), line[38:46].strip(), line[46:54].strip()]
-            ]
+            )
     file.close()
 
     res_data = np.asarray(res_data)
@@ -513,21 +513,19 @@ def model_interactions(
     )
 
     # interaction position
-    position = index_matrix * interaction_matrix 
+    position = index_matrix * interaction_matrix
 
     # when alignment file is given
     if cot is not None:
         # conservation matrix
         cur_con = mutate_sequences(coc, feature_to_encode, cp, first_ind)
-        part_co = conservation_m(cur_con, cot, cor, interaction_matrix) 
+        part_co = conservation_m(cur_con, cot, cor, interaction_matrix)
 
         return np.stack(
             (part_hb, part_hp, part_cm, part_ia, part_cl, part_co, position), axis=2
         )
     else:
-        return np.stack(
-            (part_hb, part_hp, part_cm, part_ia, part_cl, position), axis=2
-        )
+        return np.stack((part_hb, part_hp, part_cm, part_ia, part_cl, position), axis=2)
 
 
 if __name__ == "__main__":
@@ -559,8 +557,7 @@ if __name__ == "__main__":
     ) = data_generator_vals(
         protein_settings("pab1")["sequence"],
         alignment_base="pab1",
-        alignment_path="datasets/alignment_files/"
-        "pab1_1000_experimental.clustal",
+        alignment_path="datasets/alignment_files/" "pab1_1000_experimental.clustal",
     )
     dist_m, factor, comb_bool = atom_interaction_matrix_d("datasets/pab1.pdb", 20)
 

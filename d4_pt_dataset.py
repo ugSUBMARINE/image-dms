@@ -74,10 +74,10 @@ def create_mutants(
     double_mut_join = []
     for i in single_mut:
         i_join = "".join(i)
-        single_mut_join += [i_join]
+        single_mut_join.append(i_join)
     for i in double_muts:
         i_join = ",".join(np.sort(["".join(i[:3]), "".join(i[3:])]))
-        double_mut_join += [i_join]
+        double_mut_join.append(i_join)
 
     single_mut_join = np.asarray(single_mut_join)
     double_mut_join = np.asarray(double_mut_join)
@@ -93,7 +93,7 @@ def create_mutants(
             i_split = i.strip().split(",")
             i_len = len(i_split)
             if i_len == 1:
-                used_sm += [i]
+                used_sm.append(i)
             elif i_len == 2:
                 used_dm.append(",".join(np.sort(i_split)))
 
@@ -112,17 +112,17 @@ def create_mutants(
         sm_hits = []
         for i in single_mut_join:
             try:
-                sm_hits += [sm_dict[i]]
+                sm_hits.append(sm_dict[i])
             except KeyError:
-                sm_hits += [1]
+                sm_hits.append(1)
         sm_hits = np.asarray(sm_hits)
 
         dm_hits = []
         for i in double_mut_join:
             try:
-                dm_hits += [dm_dict[i]]
+                dm_hits.append(dm_dict[i])
             except KeyError:
-                dm_hits += [1]
+                dm_hits.append(1)
         dm_hits = np.asarray(dm_hits)
 
         sm_true = single_mut_join[sm_hits.astype(bool)]
@@ -242,7 +242,7 @@ def calc_pseudo_score(
         )
 
         inter_v = np.sum(np.abs(psi - base), axis=(0, 1))
-        pseudo_score += [np.sum(inter_v)]
+        pseudo_score.append(np.sum(inter_v))
 
     pseudo_score = np.asarray(pseudo_score) / 100
 

@@ -75,7 +75,7 @@ def split_inds(
         no_ast_bool = []
         for i in variants_raw:
             var = i.strip()
-            no_ast_bool += ["*" not in var]
+            no_ast_bool.append("*" not in var)
     else:
         no_ast_bool = np.ones(len(variants_raw)).astype(bool)
 
@@ -267,7 +267,7 @@ def read_split_file(file_path: str) -> np.ndarray[tuple[int], np.dtype[int]]:
     content = split_file.readlines()
     split_ind = []
     for i in content:
-        split_ind += [int(i.strip())]
+        split_ind.append(int(i.strip()))
     split_file.close()
     return np.asarray(split_ind)
 
@@ -288,8 +288,8 @@ def read_split_dir(file_path: str) -> dict:
         names = []
         if len(files) == 3:
             for i in files:
-                names += [str(i).split(".")[0]]
-                splits += [read_split_file(os.path.join(s_dir, i))]
+                names.append(str(i).split(".")[0])
+                splits.append(read_split_file(os.path.join(s_dir, i)))
             splits_dict = dict(zip(names, splits))
             return splits_dict
         else:

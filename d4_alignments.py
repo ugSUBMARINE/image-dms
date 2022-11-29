@@ -53,8 +53,8 @@ def clustalw(
                 # excluding None sequence lines
                 if cur_name.upper().isupper():
                     if len(occ_test) == 0:
-                        proteins_so_far += [cur_name]
-                        sequences += [cur_seq]
+                        proteins_so_far.append(cur_name)
+                        sequences.append(cur_seq)
                     else:
                         sequences[occ_test[0]] += cur_seq
 
@@ -114,7 +114,7 @@ def athreem_fasta(
         elif algn_started:
             if next_seq:
                 if len(seq_store) > 0:
-                    sequences += [list(seq_store[0].upper())]
+                    sequences.append(list(seq_store[0].upper()))
                 seq_store = [i.rstrip()]
                 next_seq = False
             else:
@@ -131,9 +131,9 @@ def athreem_fasta(
     for i in sequences:
         i_len = len(i)
         if i_len == query_len:
-            seq_arr += [i]
+            seq_arr.append(i)
         elif i_len > query_len:
-            seq_arr += [i[:query_len]]
+            seq_arr.append(i[:query_len])
 
     return np.asarray(seq_arr), np.asarray([query_pos])
 
@@ -190,8 +190,8 @@ def calc_conservation(
         unb = np.logical_and(un != " ", un != "-", un != ".")
         un = un[unb]
         c = c[unb]
-        conservation += [un.tolist()]
-        conservation_score += [c.tolist()]
+        conservation.append(un.tolist())
+        conservation_score.append(c.tolist())
 
     # number of amino acids
     aa_len = len(aa_dict_pos)

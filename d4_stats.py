@@ -129,9 +129,9 @@ def validation(
     cc = []
     for i in range(len(mutations)):
         if i % 2 == 0:
-            cc += [c[0]]
+            cc.append(c[0])
         else:
-            cc += [c[1]]
+            cc.append(c[1])
     # amount of values for each number of mutation
     _, w = np.unique(mutations, return_counts=True)
 
@@ -140,9 +140,9 @@ def validation(
     mean_error_per_mutations = []
     for i in range(len(w)):
         if i == 0:
-            wx += [0]
+            wx.append(0)
         else:
-            wx += [wx[-1] + w[i - 1]]
+            wx.append(wx[-1] + w[i - 1])
         # mean of all errors when i number of mutations are present
         # value is as often in mean_error_per_mutations as often i 
         # number of mutations are present
@@ -215,7 +215,7 @@ def validation(
     boxes = []
     for i in range(1, np.max(mutations) + 1):
         i_bool = mutations == i
-        boxes += [all_errors[i_bool].tolist()]
+        boxes.append(all_errors[i_bool].tolist())
     plt.boxplot(boxes)
     plt.xticks(range(1, np.max(mutations) + 1))
     if save_fig is not None:

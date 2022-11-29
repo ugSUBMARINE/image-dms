@@ -95,8 +95,8 @@ def augment(
             # check the new data if it has the same mutation more than once
             # - if so add its index to the to_del(ete) ids
             if len(np.unique(pos_new_data)) != new_mutations[cj]:
-                to_del += [cj]
-            new_data += [",".join(pos_new_data)]
+                to_del.append(cj)
+            new_data.append(",".join(pos_new_data))
         # remove the "wrong" augmentations
         new_labels = np.delete(new_labels, to_del)
         new_mutations = np.delete(new_mutations, to_del)
@@ -849,13 +849,13 @@ def run_all(
                 for i in list(arg_dict.values()):
                     if type(i) == list:
                         try:
-                            prep_values += ["".join(i)]
+                            prep_values.append("".join(i))
                         except TypeError:
-                            prep_values += [
+                            prep_values.append(
                                 "".join(str(i)).replace(",", "_").replace(" ", "")
-                            ]
+                            )
                     else:
-                        prep_values += [str(i)]
+                        prep_values.append(str(i))
                 values = name + "," + ",".join(prep_values) + ",nan"
                 log_file(log_file_path, values, header)
 
@@ -1064,7 +1064,7 @@ def run_all(
                             isinstance(layer_i, keras.layers.Flatten),
                         ]
                     ):
-                        transfer_layers += [i]
+                        transfer_layers.append(i)
 
             # Transfer weights to new model
             # fraction of layers that should be transferred (1. all conv layer weighs
@@ -1095,23 +1095,23 @@ def run_all(
                 mode=es_mode,
                 restore_best_weights=es_restore_bw,
             )
-            all_callbacks += [es_callback]
+            all_callbacks.append(es_callback)
 
         # stops training on nan
         if no_nan:
-            all_callbacks += [tf.keras.callbacks.TerminateOnNaN()]
+            all_callbacks.append(tf.keras.callbacks.TerminateOnNaN())
 
         # save mae and loss to temp file
         if write_temp:
-            all_callbacks += [SaveToFile(temp_path)]
+            all_callbacks.append(SaveToFile(temp_path))
 
         # clear Session after each epoch
-        # all_callbacks += [ClearMemory()]
+        # all_callbacks.append(ClearMemory())
 
         # custom stats print
         # number of batches needed for status bar increments
         n_batches = int(np.ceil(len(train_data) / batch_size))
-        all_callbacks += [
+        all_callbacks.append(
             CustomPrint(
                 num_batches=n_batches,
                 epoch_print=1,
@@ -1119,7 +1119,7 @@ def run_all(
                 model_d=recent_model_dir,
                 save=save_model,
             )
-        ]
+        )
 
         # parameters for the DataGenerator
         params = {
