@@ -959,7 +959,7 @@ if __name__ == "__main__":
     """
     plot_reruns(
         "pab1",
-        "./result_files/rr5/sep_conv_mix/pab1_results.csv",
+        "~/PycharmProjects/dms/result_files/rr5/sep_conv_mix/pab1_results.csv",
     )
     """
     # plot_reruns("avgfp", "result_files/results.csv", save_fig=True)

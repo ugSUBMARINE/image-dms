@@ -483,7 +483,7 @@ if __name__ == "__main__":
     """
     compare_get_settings(
         "nononsense_pab1_30_03_2022_203940",
-        file_path1="./nononsense/logs_results_convmixer/"
+        file_path1="~/PycharmProjects/dms/nononsense/logs_results_convmixer/"
         "pab1_log_file.csv",
     )
     """
