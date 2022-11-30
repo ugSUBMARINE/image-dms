@@ -1,6 +1,6 @@
 #!/bin/bash
 
-names=("avgfp") #  "pab1" "gb1"
+names=("avgfp" "pab1" "gb1")
 split=("first") # "second" "third") 
 train_sizes=(50 100 250 500 1000 2000 6000)
 batch_size=32
