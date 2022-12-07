@@ -35,7 +35,7 @@ for rand_S in 1 42 96; do
                 fi
                 if [ -f $tsv_path ];
                 then
-                python3 -Wdefault ./d4_cmd_driver.py -pn $p_name -qn $p_name -af ./datasets/alignment_files/"$p_name"_1000_experimental.clustal -te 100 -bs 64 -a $arch -rs $rand_S --tsv_filepath $tsv_path -wf -cn 7 --use_split_file "nononsense/single_double_avgfp/avgfp_splits0/" $red $pret $pre_weigths $trl $daug
+                python3 -Wdefault ./d4_cmd_driver.py -pn $p_name -qn $p_name -af ./datasets/alignment_files/"$p_name"_1000_experimental.clustal -te 100 -bs 64 -a $arch -rs $rand_S --tsv_filepath $tsv_path -wf --use_split_file "nononsense/single_double_avgfp/avgfp_splits0/" $red $pret $pre_weigths $trl $daug
                 else
                 echo "Failed to locate $tsv_path"
                 fi

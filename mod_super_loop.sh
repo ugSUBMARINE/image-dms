@@ -40,7 +40,7 @@ for p_name in "${names[@]}"; do
         for i in "${train_sizes[@]}"; do
           if [ -d "$path$i" ];
           then
-          python3 -Wdefault ./d4_cmd_driver.py -pn "$p_name" -qn "$p_name" -af $algn_file -te $epochs -bs "$batch_size" -a "$architecture" -rs 1 --use_split_file "$path$i" --tsv_filepath "$tsv" -wf -cn $channels -lr "$l_rate" $red 
+          python3 -Wdefault ./d4_cmd_driver.py -pn "$p_name" -qn "$p_name" -af $algn_file -te $epochs -bs "$batch_size" -a "$architecture" -rs 1 --use_split_file "$path$i" --tsv_filepath "$tsv" -wf -lr "$l_rate" $red 
           else
           echo "Failed to locate folder $path$i"
           fi
@@ -51,7 +51,7 @@ for p_name in "${names[@]}"; do
           weigths=$pre_weigths$i"_"*
           if [ -d "$path$i" ];
           then
-          python3 -Wdefault ./d4_cmd_driver.py -pn "$p_name" -qn "$p_name" -af $algn_file -te $epochs -bs "$batch_size" -a "$architecture" -rs 1 --use_split_file "$path$i" --tsv_filepath "$tsv" --transfer_conv_weights $weigths -wf -cn $channels -lr "$l_rate" $red
+          python3 -Wdefault ./d4_cmd_driver.py -pn "$p_name" -qn "$p_name" -af $algn_file -te $epochs -bs "$batch_size" -a "$architecture" -rs 1 --use_split_file "$path$i" --tsv_filepath "$tsv" --transfer_conv_weights $weigths -wf -lr "$l_rate" $red
           else
           echo "Failed to locate folder $path$i"
           fi
@@ -62,7 +62,7 @@ for p_name in "${names[@]}"; do
           weigths=$pre_weigths$i"_"*
           if [ -d "$path$i" ];
           then
-          python3 -Wdefault ./d4_cmd_driver.py -pn "$p_name" -qn "$p_name" -af $algn_file -te $epochs -bs "$batch_size" -a "$architecture" -rs 1 --use_split_file "$path$i" --tsv_filepath "$tsv" --transfer_conv_weights $weigths -tl -wf -cn $channels -lr "$l_rate" -sm $red
+          python3 -Wdefault ./d4_cmd_driver.py -pn "$p_name" -qn "$p_name" -af $algn_file -te $epochs -bs "$batch_size" -a "$architecture" -rs 1 --use_split_file "$path$i" --tsv_filepath "$tsv" --transfer_conv_weights $weigths -tl -wf -lr "$l_rate" -sm $red
           else
           echo "Failed to locate folder $path$i"
           fi
@@ -83,7 +83,7 @@ for p_name in "${names[@]}"; do
         for i in "${train_sizes[@]}"; do
           if [ -d "$path$i" ];
           then
-          python3 -Wdefault ./d4_cmd_driver.py -pn "$p_name" -qn "$p_name" -af $algn_file -te $epochs -bs "$batch_size" -a "$architecture" -rs 1 --use_split_file "$path$i" --tsv_filepath "$tsv" -wf -da -cn $channels -lr "$l_rate" $red
+          python3 -Wdefault ./d4_cmd_driver.py -pn "$p_name" -qn "$p_name" -af $algn_file -te $epochs -bs "$batch_size" -a "$architecture" -rs 1 --use_split_file "$path$i" --tsv_filepath "$tsv" -wf -da -lr "$l_rate" $red
           else
           echo "Failed to locate folder $path$i"
           fi
@@ -94,7 +94,7 @@ for p_name in "${names[@]}"; do
           weigths=$pre_weigths$i"_"*
           if [ -d "$path$i" ];
           then
-          python3 -Wdefault ./d4_cmd_driver.py -pn "$p_name" -qn "$p_name" -af $algn_file -te $epochs -bs "$batch_size" -a "$architecture" -rs 1 --use_split_file "$path$i" --tsv_filepath "$tsv" --transfer_conv_weights $weigths -wf -da -cn $channels -lr "$l_rate" $red
+          python3 -Wdefault ./d4_cmd_driver.py -pn "$p_name" -qn "$p_name" -af $algn_file -te $epochs -bs "$batch_size" -a "$architecture" -rs 1 --use_split_file "$path$i" --tsv_filepath "$tsv" --transfer_conv_weights $weigths -wf -da -lr "$l_rate" $red
           else
           echo "Failed to locate folder $path$i"
           fi
@@ -105,7 +105,7 @@ for p_name in "${names[@]}"; do
           weigths=$pre_weigths$i"_"*
           if [ -d "$path$i" ];
           then
-          python3 -Wdefault ./d4_cmd_driver.py -pn "$p_name" -qn "$p_name" -af $algn_file -te $epochs -bs "$batch_size" -a "$architecture" -rs 1 --use_split_file "$path$i" --tsv_filepath "$tsv" --transfer_conv_weights $weigths -tl -wf -da -cn $channels -lr "$l_rate" $red
+          python3 -Wdefault ./d4_cmd_driver.py -pn "$p_name" -qn "$p_name" -af $algn_file -te $epochs -bs "$batch_size" -a "$architecture" -rs 1 --use_split_file "$path$i" --tsv_filepath "$tsv" --transfer_conv_weights $weigths -tl -wf -da -lr "$l_rate" $red
           else
           echo "Failed to locate folder $path$i"
           fi
