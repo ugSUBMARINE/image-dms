@@ -646,7 +646,7 @@ def predict_dict(p_dir: str = "") -> dict:
                 str(args.model_filepath)
             )
         )
-    if args.alignment_file is not None and not os.path.isfile(align_ex):
+    if args.alignment_file is not None and not os.path.isfile(args.alignment_file):
         raise FileNotFoundError(
             "alignment file path is incorrect - file '{}' doesn't exist".format(
                 str(args.alignment_file)
