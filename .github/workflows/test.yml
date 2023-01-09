@@ -37,4 +37,4 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test training 
       shell: bash
-      run: python3 d4_cmd_driver.py --protein_name gb1 --pdb_filepath datasets/gb1.pdb --tsv_filepath nononsense/nononsense_gb1.tsv -te 1
+      run: python3 d4_cmd_driver.py --protein_name gb1 --pdb_filepath datasets/gb1.pdb --tsv_filepath nononsense/nononsense_gb1.tsv -te 1 -s0 5 -s1 5 -s2 5 
