@@ -3,7 +3,7 @@ from d4_generation import run_all
 from d4_utils import run_dict
 
 # root directory of all files of the project
-content_root_dir = "/home/gwirn/PycharmProjects/dms"
+content_root_dir = "."
 # run new training
 run_all(**arg_dict(p_dir=content_root_dir))
 # rerun saved training
