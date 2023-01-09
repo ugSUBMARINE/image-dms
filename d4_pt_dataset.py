@@ -141,6 +141,7 @@ def calc_pseudo_score(
     variants: list[str],
     pdb_filepath: str,
     dist_th: int | float,
+    alignment_base: str,
     alignment_path: str | None = None,
 ) -> np.ndarray[tuple[int], np.dtype[float]]:
     """calculates the pseudo scores to create pre training datasets
@@ -156,6 +157,8 @@ def calc_pseudo_score(
           file path to the pdb file of the protein
         - dist_th:
           distance threshold used for model_interactions
+        - alignment_base:
+          name of the protein in the alignment file
         - alignment_path:
           path to the alignment file of the protein
     :return
@@ -270,6 +273,7 @@ def create_pt_ds(file_path: str, variants: list[str], scores: list[float]) -> No
 
 
 if __name__ == "__main__":
+    pass
     """
     protein = "avgfp"
     p_data = protein_settings(protein)
@@ -303,6 +307,7 @@ if __name__ == "__main__":
                 variants=new_variants[chosen_var],
                 sequence=seq,
                 pdb_filepath=f"./datasets/{protein}.pdb",
+                alignment_base=protein,
                 alignment_path=f"./datasets/alignment_files/{protein}_1000_experimental.clustal",
                 first_ind=first_ind,
                 dist_th=20,
