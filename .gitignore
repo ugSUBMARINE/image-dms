@@ -1,11 +1,9 @@
 venv/
 nvvm/
-*.txt
 *.swp
 *.csv
 __*
 test_file.py
-Karl/
 tuner/
 simple_model_imp_rr3/
 .pytest_chache/
@@ -14,10 +12,7 @@ assets/
 ../
 .idea/
 result_files/
-datasets/
-nononsense/
 explore.py
-create_a_gif.py
 optimization_alg.py
 d4pretraining_bd.py
 nohup.out
