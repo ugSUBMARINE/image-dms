@@ -3,6 +3,8 @@ This repository contains code to train different convolutional neural networks o
 Also different methods for data augmentation and pretraining are implemented to get better predictions with less experimental data.
 It contains supplementary data to the paper "Flattening the curve - how to get better predictions with less data" and code to reproduce these results as well as to train these networks on new datasets.
 
+![TEST](https://github.com/ugSUBMARINE/image-dms/actions/workflows/test.yml/badge.svg)
+
 ## Setup
 
 **Software Requirements:**
@@ -16,7 +18,7 @@ It contains supplementary data to the paper "Flattening the curve - how to get b
     *  File containing the proteins structure
     *  This structure has to have the same amino acid sequence as the mutations used in the *deep mutational scanning dataset file*
     *  [File Format](https://pdb101.rcsb.org/learn/guide-to-understanding-pdb-data/beginner%E2%80%99s-guide-to-pdb-structures-and-the-pdbx-mmcif-format)    
-*  deep mutational scanning dataset with as tsv file with 3 tab separated columns:
+*  deep mutational scanning dataset as tsv file with 3 tab separated columns:
     *  sample header: variants`\t`num_mutations`\t`score`\n`  
     *  sample row: G1W`\t`1`\t`1.618034`\n`  
     *  variants (describing the variant eg G1W) 
