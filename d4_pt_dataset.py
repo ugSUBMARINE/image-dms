@@ -181,7 +181,7 @@ def calc_pseudo_score(
         co_table,
         co_rows,
     ) = data_generator_vals(
-        sequence, alignment_base=protein, alignment_path=alignment_path
+        sequence, alignment_base=alignment_base, alignment_path=alignment_path
     )
 
     dist_m, factor, comb_bool = atom_interaction_matrix_d(pdb_filepath, dist_th)
