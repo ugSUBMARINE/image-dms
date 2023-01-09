@@ -153,7 +153,7 @@ def arg_dict(p_dir: str = "") -> dict:
         "--architecture",
         type=str,
         required=False,
-        default="dense_net2",
+        default="sep_conv_mix",
         help="input the name of the model function from d4_models",
     )
     parser.add_argument(

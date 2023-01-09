@@ -8,8 +8,6 @@ tuner/
 simple_model_imp_rr3/
 .pytest_chache/
 assets/
-./
-../
 .idea/
 result_files/
 explore.py
