@@ -9,7 +9,7 @@ from d4_predict import recall_calc, predict_score
 from d4_utils import protein_settings, run_dict, aa_dict
 
 # plt.style.use("bmh")
-# plt.rcParams.update({"font.size": 12})
+plt.rcParams.update({"font.size": 14})
 CM = 1 / 2.54
 SET_SIZES = [50, 100, 250, 500, 1000, 2000, 6000]
 COLORS = ["blue", "orange", "green", "red", "violet", "brown", "black"]
@@ -22,9 +22,9 @@ MSE_RANGE = np.arange(0.0, 6.5, 0.5)
 PEARSON_RANGE = np.arange(-0.3, 1.1, 0.2)
 SPEARMAN_RANGE = np.arange(-0.50, 1.1, 0.2)
 
-RELATIVE_PR = np.arange(-1.5, 1.95, 0.2)
-RELATIVE_SR = np.arange(-1.5, 1.95, 0.20)
-RELATIVE_MSE = np.arange(-5.20, 1.90, 0.50)
+RELATIVE_PR = np.arange(-1.5, 1.95, 0.5)
+RELATIVE_SR = np.arange(-1.5, 1.95, 0.5)
+RELATIVE_MSE = np.arange(-5.20, 1.90, 0.5)
 SETTINGS = [
     "base",
     "transfer no train",
@@ -1148,7 +1148,7 @@ def plot_recall(show_fig: bool = True, save_fig: bool = False):
     a_pos = dict(zip(architectures, np.arange(num_arch)))
     p_pos = dict(zip(proteins, np.arange(num_prot)))
 
-    fig, ax = plt.subplots(num_arch, num_prot)
+    fig, ax = plt.subplots(num_arch, num_prot, figsize=(16,10))
     file = open("pub_result_files/plot_data/recall.txt", "r")
 
     c = 0.0
@@ -1204,8 +1204,10 @@ def plot_recall(show_fig: bool = True, save_fig: bool = False):
         c += 1
 
     file.close()
-    leg_lines, leg_labels = ax[0, 0].get_legend_handles_labels()
-    fig.legend(leg_lines, leg_labels, loc="lower center", ncol=len(SETTINGS) + 4)
+    leg_lines, leg_labels = ax[-1, 0].get_legend_handles_labels()
+    fig.legend(leg_lines, leg_labels, loc="lower center", ncol=len(SET_SIZES) + 3)
+    plt.tight_layout(rect=[0, -0.3, 1, 1])
+    plt.subplots_adjust(bottom=0.13)
     if save_fig:
         fig.savefig(f"recall.png")
     if show_fig:
@@ -1290,5 +1292,5 @@ if __name__ == "__main__":
     
     """
     # generate_recall_data()
-    # plot_recall()
+    plot_recall(save_fig=True)
     # generalization(save_fig=True)
