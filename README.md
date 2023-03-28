@@ -1,7 +1,7 @@
 # Sometimes images say more than a thousand sequences
 This repository contains code to train different convolutional neural networks on deep mutational scanning datasets (or any datasets that associate scores to mutations in a protein) using a new kind of protein structure encoding and to predict the scores for untested variants.
 Also different methods for data augmentation and pretraining are implemented to get better predictions with less experimental data.
-It contains supplementary data to the paper "Flattening the curve - how to get better predictions with less data" and code to reproduce these results as well as to train these networks on new datasets.
+It contains supplementary data to the paper "[Flattening the curve - how to get better predictions with less data](https://www.biorxiv.org/content/10.1101/2023.03.27.534314v1)" and code to reproduce these results as well as to train these networks on new datasets.
 
 ![TEST](https://github.com/ugSUBMARINE/image-dms/actions/workflows/test.yml/badge.svg)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
