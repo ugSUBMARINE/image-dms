@@ -51,7 +51,10 @@ If the proteins pdb file is stored as `PROTEIN_NAME.pdb` in `datasets/` one can 
 
 ### Creating pretraining dataset(s)
 In order to pretrain the models, a pseudo score for each possible single and double variant gets calculated. This datasets can then be used to pretrain the models on "variants" of the same protein they will later have to predict scores for.
-The bottom of `d4_pt_dataset.py` contains a code snippet demonstrating how to create a pseudo score dataset for a given protein.
+In order to create pretraining data run `python3 d4_pt_dataset.py` with the needed arguments to create pretraining data. 
+A minimum setting (if the protein is set in `protein_settings_ori.txt`) would be `python3 d4_pt_dataset.py --p_name PROTEIN_NAME --pdb_file /PATH/TO/PDB/FILE`.
+`PROTEIN_NAME` is also important to be the same name as the wild type sequence in the alignment file.
+Run it with only the `-h` flag to see all possible parameters.
 After creating the dataset, one can run the same command as in the minimal example above with the pseudo dataset tsv file path used in the `--tsv_filepath`.
 
 This will save the pretrained model in `result_files/saved_models/` containing time and dataset name in its name like `dataset_DD_MM_YYYY_HHMM`. In there the model with the best validation performance will be stored. The same directory with `_end` will contain the model in its state at the last training epoch.

@@ -223,7 +223,7 @@ def arg_dict(p_dir: str = "") -> dict:
         "-sf",
         "--save_figures",
         action="store_true",
-        help="set flag to store plots in result_files"
+        help="set flag to store plots in result_files",
     )
     parser.add_argument(
         "-pf",
@@ -672,6 +672,185 @@ def predict_dict(p_dir: str = "") -> dict:
     }
 
     return pred_dict
+
+
+def pretrain_dict(p_dir: str = "") -> dict:
+    """creates a parameter dict for creating pretrainging data with the use of argparse
+    :parameter
+        - p_dir:
+          directory where the datasets are stored
+    :return
+        - d:
+          dictionary specifying all parameters for predictions in d4_prediction.py
+    """
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+
+    parser.add_argument(
+        "-pn",
+        "--p_name",
+        type=str,
+        required=True,
+        help="name of the protein (also in the alignment file and setting file)",
+    )
+    parser.add_argument(
+        "-pf",
+        "--pdb_file",
+        type=str,
+        required=True,
+        help="file path to the pdb file of the protein",
+    )
+    parser.add_argument(
+        "-ap",
+        "--algn_path",
+        type=str,
+        required=False,
+        help="file path to the alignment file of the protein"
+        "(can be omitted but should be used)",
+    )
+    parser.add_argument(
+        "-pd",
+        "--p_data",
+        action="store_false",
+        help="set flag if protein data is not in the protein_settings_ori.txt file",
+    )
+    parser.add_argument(
+        "-pi",
+        "--p_firstind",
+        type=int,
+        required=False,
+        default=None,
+        help="index of the first amino acid, overwrite p_data here if given",
+    )
+    parser.add_argument(
+        "-ps",
+        "--p_seq",
+        type=str,
+        required=False,
+        default=None,
+        help="amino acid sequence of the protein, overwrite p_data here if given",
+    )
+    parser.add_argument(
+        "-ts",
+        "--tsv_path",
+        type=str,
+        required=False,
+        default=None,
+        help="path to the tsv file with true assay scores if these variants should"
+        "not be used in pretraining",
+    )
+    parser.add_argument(
+        "-ti",
+        "--testind_path",
+        type=str,
+        required=False,
+        default=None,
+        help="path to file with indices of variants that should be excluded for the"
+        "pretraining score generation",
+    )
+    parser.add_argument(
+        "-o",
+        "--out_path",
+        type=str,
+        required=False,
+        default=None,
+        help="path where the pseudo score tsv file should be stored - default is"
+        "'datasets/pseudo_scores/P_NAME'",
+    )
+    parser.add_argument(
+        "-a",
+        "--add",
+        type=str,
+        required=False,
+        default=None,
+        help="string that should be added to the filename",
+    )
+    parser.add_argument(
+        "-n",
+        "--num_var",
+        type=int,
+        required=False,
+        default=40000,
+        help="number of variants that should be generated",
+    )
+
+    parser.add_argument(
+        "-nv",
+        "--name_var",
+        type=str,
+        required=False,
+        default="variant",
+        help="name of the variant column in the tsv file",
+    )
+    parser.add_argument(
+        "-nm",
+        "--name_nmut",
+        type=str,
+        required=False,
+        default="num_mutations",
+        help="name of the num_mutations column in the tsv file",
+    )
+    parser.add_argument(
+        "-ns",
+        "--name_score",
+        type=str,
+        required=False,
+        default="score",
+        help="name of the score column in the tsv file",
+    )
+
+    args = parser.parse_args()
+    # checking whether the files exist
+    if not os.path.isfile(args.pdb_file):
+        raise FileNotFoundError(
+            "pdb file path is incorrect - file '{}' doesn't exist".format(
+                str(args.pdb_file)
+            )
+        )
+    if args.algn_path is not None and not os.path.isfile(args.algn_path):
+        raise FileNotFoundError(
+            "alignment file path is incorrect - file '{}' doesn't exist".format(
+                str(args.algn_path)
+            )
+        )
+    if args.tsv_path is not None and not os.path.isfile(args.tsv_path):
+        raise FileNotFoundError(
+            "tsv file path is incorrect - file '{}' doesn't exist".format(
+                str(args.tsv_path)
+            )
+        )
+    if args.testind_path is not None and not os.path.isfile(args.testind_path):
+        raise FileNotFoundError(
+            "test ind file path is incorrect - file '{}' doesn't exist".format(
+                str(args.testind_path)
+            )
+        )
+    if args.out_path is not None and not os.path.isdir(args.out_path):
+        raise FileNotFoundError(
+            "out_path directory path is incorrect - dir '{}' doesn't exist".format(
+                str(args.out_path)
+            )
+        )
+
+    pret_dict = {
+        "p_name": args.p_name,
+        "pdb_file": args.pdb_file,
+        "algn_path": args.algn_path,
+        "p_data": args.p_data,
+        "p_firstind": args.p_firstind,
+        "p_seq": args.p_seq,
+        "tsv_path": args.tsv_path,
+        "testind_path": args.testind_path,
+        "out_path": args.out_path,
+        "add": args.add,
+        "num_var": args.num_var,
+        "name_var": args.name_var,
+        "name_nmut": args.name_nmut,
+        "name_score": args.name_score,
+    }
+
+    return pret_dict
 
 
 if __name__ == "__main__":
