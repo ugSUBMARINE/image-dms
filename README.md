@@ -133,6 +133,17 @@ Different variants need to be `_` separated.
 *  Generalization capability:
     *  `bash generalization.sh`
 
+## Citation
+```bib
+@article {Wirnsberger2023.03.27.534314,
+	author = {Wirnsberger, Gregor and Priti{\v s}anac, Iva and Oberdorfer, Gustav and Gruber, Karl},
+	title = {Flattening the curve - How to get better results with small deep-mutational-scanning datasets},
+	year = {2023},
+	doi = {10.1101/2023.03.27.534314},
+}
+
+```
+
 ## Overview of the flow of information between all files
 
 ![information flow](https://github.com/ugSUBMARINE/image-dms/blob/master/flow_of_information.png?raw=True)
