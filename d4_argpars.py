@@ -335,7 +335,7 @@ def arg_dict(p_dir: str = "") -> dict:
     parser.add_argument(
         "-fi",
         "--first_ind",
-        type=str,
+        type=int,
         required=False,
         default=None,
         help="offset of the start of the sequence (when sequence doesn't start "
