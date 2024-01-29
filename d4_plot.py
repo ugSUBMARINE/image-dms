@@ -9,7 +9,7 @@ from d4_predict import recall_calc, predict_score
 from d4_utils import protein_settings, run_dict, aa_dict
 
 # plt.style.use("bmh")
-plt.rcParams.update({"font.size": 14})
+plt.rcParams.update({"font.size": 10})
 CM = 1 / 2.54
 SET_SIZES = [50, 100, 250, 500, 1000, 2000, 6000]
 COLORS = ["blue", "orange", "green", "red", "violet", "brown", "black"]
@@ -18,13 +18,14 @@ NN_COLORS = {
     "dense_net2": "firebrick",
     "sep_conv_mix": "forestgreen",
 }
-MSE_RANGE = np.arange(0.0, 6.5, 0.5)
-PEARSON_RANGE = np.arange(-0.3, 1.1, 0.2)
-SPEARMAN_RANGE = np.arange(-0.50, 1.1, 0.2)
+MSE_RANGE = np.arange(0.0, 6.5, 1)
+PEARSON_RANGE = np.arange(-0.5, 1.3, 0.2)
+SPEARMAN_RANGE = np.arange(-0.5, 1.1, 0.2)
 
-RELATIVE_PR = np.arange(-1.5, 1.95, 0.5)
-RELATIVE_SR = np.arange(-1.5, 1.95, 0.5)
-RELATIVE_MSE = np.arange(-5.20, 1.90, 0.5)
+RELATIVE_PR = np.arange(-1.5, 2.1, 0.5)
+RELATIVE_SR = np.arange(-1.5, 2.1, 0.5)
+RELATIVE_MSE = np.arange(-5.20, 2.1, 1)
+
 SETTINGS = [
     "base",
     "transfer no train",
@@ -33,6 +34,11 @@ SETTINGS = [
     "aug transfer no train",
     "aug transfer train",
 ]
+LINE_WIDTH = 1
+MARKER_SIZE = 5
+DPI = 300
+SAVE_PATH = "./plots"
+imgFileFormat = "svg"
 
 
 def get_data(
@@ -114,7 +120,10 @@ def get_data(
 
 def get_gitter_data(protein_name):
     # get the sequence convolution data to compare the runs to
-    g_data = pd.read_csv(f"nononsense/{protein_name}_test_formatted.txt", delimiter=",")
+    g_data = pd.read_csv(
+        f"pub_result_files/gelman_data/{protein_name}_size_formatted.csv", delimiter=","
+    )
+    # g_data = pd.read_csv(f"nononsense/{protein_name}_test_formatted.txt", delimiter=",")
     g_mses = g_data["mse"].values
     g_pearsons = g_data["pearsonr"].values
     g_spearmans = g_data["spearmanr"].values
@@ -143,7 +152,7 @@ def comparison_plot(paths: list, save_fig: bool = False) -> None:
     num_settings = len(SETTINGS)
     # getting the data from the data files
 
-    fig, ax = plt.subplots(3, num_settings, figsize=(32, 18))
+    fig, ax = plt.subplots(3, num_settings, figsize=(7.5, 4.7))
     arch_used = []
     used_architectures = []
     for j in range(len(paths)):
@@ -161,6 +170,8 @@ def comparison_plot(paths: list, save_fig: bool = False) -> None:
                 label=f"{architecture}",
                 # color="forestgreen",
                 marker="x",
+                linewidth=LINE_WIDTH,
+                markersize=MARKER_SIZE,
             )
             ax[1, i].plot(
                 SET_SIZES,
@@ -168,6 +179,8 @@ def comparison_plot(paths: list, save_fig: bool = False) -> None:
                 label=f"{architecture}",
                 # color="forestgreen",
                 marker="x",
+                linewidth=LINE_WIDTH,
+                markersize=MARKER_SIZE,
             )
             ax[2, i].plot(
                 SET_SIZES,
@@ -175,6 +188,8 @@ def comparison_plot(paths: list, save_fig: bool = False) -> None:
                 label=f"{architecture}",
                 # color="forestgreen",
                 marker="x",
+                linewidth=LINE_WIDTH,
+                markersize=MARKER_SIZE,
             )
 
             # setting the appearance
@@ -186,14 +201,24 @@ def comparison_plot(paths: list, save_fig: bool = False) -> None:
                 ax[1, i].set_ylabel("Median PearsonR")
                 ax[2, i].set_ylabel("Median SpearmanR")
             ax[2, i].set_xlabel("train set size")
-            ax[0, i].set_title(SETTINGS[i])
+            ax[0, i].set_title(SETTINGS[i], fontsize=8)
 
     # setting one legend for all plots on the right side
     leg_lines, leg_labels = ax[0, 0].get_legend_handles_labels()
-    fig.legend(leg_lines, leg_labels, loc="lower center", ncol=len(paths))
-    fig.tight_layout(pad=5, w_pad=1.5, h_pad=1.5)
+    fig.legend(
+        leg_lines,
+        leg_labels,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0),
+        ncol=len(paths),
+    )
+    fig.tight_layout(pad=1, w_pad=0.1, h_pad=0.1)
     if save_fig:
-        fig.savefig(f"./{os.path.split(paths[0])[-1].split('.')[0]}.png")
+        fig.savefig(
+            os.path.join(SAVE_PATH, f"{os.path.split(paths[0])[-1].split('.')[0]}.{imgFileFormat}"),
+            dpi=DPI,
+            bbox_inches="tight",
+        )
     plt.show()
 
 
@@ -213,7 +238,7 @@ def best_setting_comp(
     """
     proteins = ["gb1", "pab1", "avgfp"]
 
-    fig, ax = plt.subplots(3, 3, figsize=(32, 18))
+    fig, ax = plt.subplots(3, 3, figsize=(7.5, 4.7))
     # column position of each protein
     protein_position = dict(zip(proteins, np.arange(len(proteins))))
     for i in file_paths:
@@ -223,13 +248,31 @@ def best_setting_comp(
 
             # plotting
             ax[0, protein_position[p]].plot(
-                SET_SIZES, p_mse[setting_index], label=arch, marker="x"
+                SET_SIZES,
+                p_mse[setting_index],
+                label=arch,
+                marker="x",
+                linewidth=LINE_WIDTH,
+                markersize=MARKER_SIZE,
+                color=NN_COLORS[arch],
             )
             ax[1, protein_position[p]].plot(
-                SET_SIZES, p_p[setting_index], label=arch, marker="x"
+                SET_SIZES,
+                p_p[setting_index],
+                label=arch,
+                marker="x",
+                linewidth=LINE_WIDTH,
+                markersize=MARKER_SIZE,
+                color=NN_COLORS[arch],
             )
             ax[2, protein_position[p]].plot(
-                SET_SIZES, p_sp[setting_index], label=arch, marker="x"
+                SET_SIZES,
+                p_sp[setting_index],
+                label=arch,
+                marker="x",
+                linewidth=LINE_WIDTH,
+                markersize=MARKER_SIZE,
+                color=NN_COLORS[arch],
             )
 
             # appearance settings
@@ -245,15 +288,28 @@ def best_setting_comp(
 
     # legend handeling
     leg_lines, leg_labels = ax[0, 0].get_legend_handles_labels()
-    fig.legend(leg_lines, leg_labels, loc="lower center", ncol=len(file_paths))
-    fig.tight_layout(pad=5, w_pad=1.5, h_pad=1.5)
+    fig.legend(
+        leg_lines,
+        leg_labels,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0),
+        ncol=len(file_paths),
+    )
+    fig.tight_layout(pad=1, w_pad=0.3, h_pad=0.1)
     if save_fig:
-        fig.savefig("best_setting_comp.png")
+        fig.savefig(
+            os.path.join(SAVE_PATH, f"overall_comparison_augtransvertrainconv.{imgFileFormat}"),
+            dpi=DPI,
+            bbox_inches="tight",
+        )
     plt.show()
 
 
 def plot_reruns(
-    protein_name: str, result_path: list[str] | None = None, save_fig: bool = False
+    protein_name: str,
+    result_path: list[str] | None = None,
+    save_fig: bool = False,
+    show_fig: bool = False,
 ) -> None:
     """plots MeanSquaredError, Pearsons' R, Spearman R and the relative performance
     compared to Gelman et al. 'Neural networks to learn protein sequence–function
@@ -265,6 +321,8 @@ def plot_reruns(
           list of file paths to the different training runs
         - save_fig:
           whether to save the plot or not
+        - show_fig:
+          whether to show the plots or not
     :return
         None"""
     if result_path is None:
@@ -275,7 +333,7 @@ def plot_reruns(
 
     # get the sequence convolution data to compare the runs to
     g_data = pd.read_csv(
-        "nononsense/{}_test_formatted.txt".format(protein_name), delimiter=","
+        f"pub_result_files/gelman_data/{protein_name}_size_formatted.csv", delimiter=","
     )
     g_mses = g_data["mse"].values
     g_pearsons = g_data["pearsonr"].values
@@ -311,10 +369,10 @@ def plot_reruns(
     ana_pearson = np.asarray(np.split(pearson, 2))
     ana_spearman = np.asarray(np.split(spearman, 2))
 
-    fig, axs = plt.subplots(2, 3, figsize=(32, 18))
-    sep_fig_mse, sep_axs_mse = plt.subplots(3, 3, figsize=(32, 18))
-    sep_fig_pearson, sep_axs_pearson = plt.subplots(3, 3, figsize=(32, 18))
-    sep_fig_spearman, sep_axs_spearman = plt.subplots(3, 3, figsize=(32, 18))
+    fig, axs = plt.subplots(2, 3, figsize=(7.5, 4.7))
+    sep_fig_mse, sep_axs_mse = plt.subplots(3, 3, figsize=(7.5, 4.7))
+    sep_fig_pearson, sep_axs_pearson = plt.subplots(3, 3, figsize=(7.5, 4.7))
+    sep_fig_spearman, sep_axs_spearman = plt.subplots(3, 3, figsize=(7.5, 4.7))
     sep_count = 0
 
     # different training set sizes
@@ -376,6 +434,8 @@ def plot_reruns(
                 label=label_str,
                 marker="x",
                 color=COLORS[sep_count],
+                linewidth=LINE_WIDTH,
+                markersize=MARKER_SIZE,
             )
             axs[0, 1].plot(
                 set_sizes,
@@ -383,6 +443,8 @@ def plot_reruns(
                 label=label_str,
                 marker="x",
                 color=COLORS[sep_count],
+                linewidth=LINE_WIDTH,
+                markersize=MARKER_SIZE,
             )
             axs[0, 2].plot(
                 set_sizes,
@@ -390,6 +452,8 @@ def plot_reruns(
                 label=label_str,
                 marker="x",
                 color=COLORS[sep_count],
+                linewidth=LINE_WIDTH,
+                markersize=MARKER_SIZE,
             )
             axs[1, 0].plot(
                 set_sizes,
@@ -397,6 +461,8 @@ def plot_reruns(
                 label=label_str,
                 marker="x",
                 color=COLORS[sep_count],
+                linewidth=LINE_WIDTH,
+                markersize=MARKER_SIZE,
             )
             axs[1, 1].plot(
                 set_sizes,
@@ -404,6 +470,8 @@ def plot_reruns(
                 label=label_str,
                 marker="x",
                 color=COLORS[sep_count],
+                linewidth=LINE_WIDTH,
+                markersize=MARKER_SIZE,
             )
             axs[1, 2].plot(
                 set_sizes,
@@ -411,6 +479,8 @@ def plot_reruns(
                 label=label_str,
                 marker="x",
                 color=COLORS[sep_count],
+                linewidth=LINE_WIDTH,
+                markersize=MARKER_SIZE,
             )
 
             row_num = 0
@@ -422,6 +492,8 @@ def plot_reruns(
                 label=label_str,
                 marker="x",
                 color=COLORS[sep_count],
+                linewidth=LINE_WIDTH,
+                markersize=MARKER_SIZE,
             )
             sep_axs_mse[row_num, j].fill_between(
                 set_sizes,
@@ -437,6 +509,8 @@ def plot_reruns(
                 label=label_str,
                 marker="x",
                 color=COLORS[sep_count],
+                linewidth=LINE_WIDTH,
+                markersize=MARKER_SIZE,
             )
             sep_axs_pearson[row_num, j].fill_between(
                 set_sizes,
@@ -452,6 +526,8 @@ def plot_reruns(
                 label=label_str,
                 marker="x",
                 color=COLORS[sep_count],
+                linewidth=LINE_WIDTH,
+                markersize=MARKER_SIZE,
             )
             sep_axs_spearman[row_num, j].fill_between(
                 set_sizes,
@@ -468,30 +544,38 @@ def plot_reruns(
         set_sizes,
         g_split_mses,
         label=g_label,
-        marker="o",
+        marker="^",
         color="black",
+        linewidth=LINE_WIDTH,
+        markersize=MARKER_SIZE,
     )
     axs[0, 1].plot(
         set_sizes,
         g_split_pearsons,
         label=g_label,
-        marker="o",
+        marker="^",
         color="black",
+        linewidth=LINE_WIDTH,
+        markersize=MARKER_SIZE,
     )
     axs[0, 2].plot(
         set_sizes,
         g_split_spearmans,
         label=g_label,
-        marker="o",
+        marker="^",
         color="black",
+        linewidth=LINE_WIDTH,
+        markersize=MARKER_SIZE,
     )
 
     sep_axs_mse[2, 1].plot(
         set_sizes,
         g_split_mses,
         label=g_label,
-        marker="o",
+        marker="^",
         color="black",
+        linewidth=LINE_WIDTH,
+        markersize=MARKER_SIZE,
     )
     sep_axs_mse[2, 1].fill_between(
         set_sizes,
@@ -504,8 +588,10 @@ def plot_reruns(
         set_sizes,
         g_split_pearsons,
         label=g_label,
-        marker="o",
+        marker="^",
         color="black",
+        linewidth=LINE_WIDTH,
+        markersize=MARKER_SIZE,
     )
     sep_axs_pearson[2, 1].fill_between(
         set_sizes,
@@ -518,8 +604,10 @@ def plot_reruns(
         set_sizes,
         g_split_spearmans,
         label=g_label,
-        marker="o",
+        marker="^",
         color="black",
+        linewidth=LINE_WIDTH,
+        markersize=MARKER_SIZE,
     )
     sep_axs_spearman[2, 1].fill_between(
         set_sizes,
@@ -536,6 +624,8 @@ def plot_reruns(
         linestyle="dashdot",
         color="black",
         label="break_even",
+        linewidth=LINE_WIDTH,
+        markersize=MARKER_SIZE,
     )
     axs[1, 1].plot(
         set_sizes,
@@ -543,6 +633,8 @@ def plot_reruns(
         linestyle="dashdot",
         color="black",
         label="break_even",
+        linewidth=LINE_WIDTH,
+        markersize=MARKER_SIZE,
     )
     axs[1, 2].plot(
         set_sizes,
@@ -550,34 +642,29 @@ def plot_reruns(
         linestyle="dashdot",
         color="black",
         label="break_even",
+        linewidth=LINE_WIDTH,
+        markersize=MARKER_SIZE,
     )
-
-    # setting one legend for all plots
-    leg_lines, leg_labels = axs[0, 0].get_legend_handles_labels()
-    fig.legend(leg_lines, leg_labels, loc="lower center", ncol=4)
 
     # define the appearance of the plots
     x_label = "train set size"
-    mse_range = np.arange(0.0, 6.0, 0.5)
-    pearson_range = np.arange(-0.3, 1.1, 0.2)
-    spearman_range = np.arange(-0.3, 1.1, 0.2)
     axs[0, 0].set(
         xscale="log",
-        yticks=mse_range,
+        yticks=MSE_RANGE,
         ylabel="MSE",
         xlabel=x_label,
         title="Median MSE",
     )
     axs[0, 1].set(
         xscale="log",
-        yticks=pearson_range,
+        yticks=PEARSON_RANGE,
         ylabel="Correlation Coefficient",
         xlabel=x_label,
         title="Median PearsonR",
     )
     axs[0, 2].set(
         xscale="log",
-        yticks=spearman_range,
+        yticks=PEARSON_RANGE,
         ylabel="Correlation Coefficient",
         xlabel=x_label,
         title="Median SpearmanR",
@@ -604,37 +691,86 @@ def plot_reruns(
         title="Relative Performance SpearmanR",
     )
 
-    for i in list(itertools.product([0, 1, 2], repeat=2)):
-        sep_axs_mse[i].set(xscale="log", yticks=mse_range, ylabel="MSE", xlabel=x_label)
-        sep_axs_mse[i].legend(loc="upper right")
+    titles = SETTINGS + ["sequence convolution"]
+    for ci, i in enumerate(list(itertools.product([0, 1, 2], repeat=2))):
+        sep_axs_mse[i].set(xscale="log", yticks=MSE_RANGE, ylabel="MSE", xlabel=x_label)
+        # sep_axs_mse[i].legend(loc="upper right", fontsize=8)
         sep_axs_pearson[i].set(
-            xscale="log", yticks=pearson_range, ylabel="PearsonR", xlabel=x_label
+            xscale="log", yticks=PEARSON_RANGE, ylabel="PearsonR", xlabel=x_label
         )
-        sep_axs_pearson[i].legend(loc="lower right")
+        # sep_axs_pearson[i].legend(loc="lower right", fontsize=8)
         sep_axs_spearman[i].set(
-            xscale="log", yticks=spearman_range, ylabel="SpearmanR", xlabel=x_label
+            xscale="log", yticks=SPEARMAN_RANGE, ylabel="SpearmanR", xlabel=x_label
         )
-        sep_axs_spearman[i].legend(loc="lower right")
-    sep_axs_mse[0, 1].set(title="MeanSquaredError")
-    sep_axs_pearson[0, 1].set(title="Pearson Correlation Coefficient")
-    sep_axs_spearman[0, 1].set(title="Spearman Correlation Coefficient")
+        if ci != 6 and ci != 8:
+            if ci == 7:
+                ci = -1
+            sep_axs_pearson[i].set_title(titles[ci], fontsize=8)
+            sep_axs_mse[i].set_title(titles[ci], fontsize=8)
+            sep_axs_spearman[i].set_title(titles[ci], fontsize=8)
+        # sep_axs_spearman[i].legend(loc="lower right", fontsize=8)
+    # sep_axs_mse[0, 1].set(title="MeanSquaredError")
+    # sep_axs_pearson[0, 1].set(title="Pearson Correlation Coefficient")
+    # sep_axs_spearman[0, 1].set(title="Spearman Correlation Coefficient")
     sep_axs_mse[-1, 0].axis("off")
     sep_axs_pearson[-1, 0].axis("off")
     sep_axs_spearman[-1, 0].axis("off")
     sep_axs_mse[-1, -1].axis("off")
     sep_axs_pearson[-1, -1].axis("off")
     sep_axs_spearman[-1, -1].axis("off")
-    fig.tight_layout(pad=6, w_pad=1.5, h_pad=2)
-    sep_fig_mse.tight_layout(pad=5, w_pad=1.5, h_pad=1.5)
-    sep_fig_pearson.tight_layout(pad=5, w_pad=1.5, h_pad=1.5)
-    sep_fig_spearman.tight_layout(pad=5, w_pad=1.5, h_pad=1.5)
+
+    # setting one legend for all plots
+    leg_lines, leg_labels = axs[0, 0].get_legend_handles_labels()
+    fig.legend(
+        leg_lines,
+        leg_labels,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0),
+        ncol=4,
+    )
+
+    fig.tight_layout(pad=1, w_pad=0.3, h_pad=0.1)
+    sep_fig_mse.tight_layout(pad=1, w_pad=0.3, h_pad=0.1)
+    sep_fig_pearson.tight_layout(pad=1, w_pad=0.3, h_pad=0.1)
+    sep_fig_spearman.tight_layout(pad=1, w_pad=0.3, h_pad=0.1)
 
     if save_fig:
-        fig.savefig(f"plot_reruns{protein_name}.png")
-        sep_fig_mse.savefig(f"plot_reruns_mse{protein_name}.png")
-        sep_fig_pearson.savefig(f"plot_reruns_pearson{protein_name}.png")
-        sep_fig_spearman.savefig(f"plot_reruns_spearman{protein_name}.png")
-    plt.show()
+        print(result_path)
+        fig.savefig(
+            os.path.join(
+                SAVE_PATH,
+                f"plot_reruns_{protein_name}_{result_path.split('/')[-2]}.{imgFileFormat}",
+            ),
+            dpi=DPI,
+            bbox_inches="tight",
+        )
+        sep_fig_mse.savefig(
+            os.path.join(
+                SAVE_PATH,
+                f"plot_reruns_mse_{protein_name}_{result_path.split('/')[-2]}.{imgFileFormat}",
+            ),
+            dpi=DPI,
+            bbox_inches="tight",
+        )
+        sep_fig_pearson.savefig(
+            os.path.join(
+                SAVE_PATH,
+                f"plot_reruns_pearson_{protein_name}_{result_path.split('/')[-2]}.{imgFileFormat}",
+            ),
+            dpi=DPI,
+            bbox_inches="tight",
+        )
+        sep_fig_spearman.savefig(
+            os.path.join(
+                SAVE_PATH,
+                f"plot_reruns_spearman_{protein_name}_{result_path.split('/')[-2]}.{imgFileFormat}",
+            ),
+            dpi=DPI,
+            bbox_inches="tight",
+        )
+        plt.close()
+    if show_fig:
+        plt.show()
 
 
 def sm_effect_heatmap(
@@ -731,16 +867,17 @@ def sm_effect_heatmap(
     opts = {"vmin": -6, "vmax": 1}
     # uncomment for difference to ground truth
     # opts = {"vmin": 0, "vmax": 6}
-    fig, ax = plt.subplots(
-        10, figsize=(10.5 * CM, 29.7 * CM), layout="compressed", sharey=True
-    )
+    fig, ax = plt.subplots(10, figsize=(2.42, 8.52), sharey=True, layout="constrained")
     for i in range(len(titles)):
         a = ax[i].imshow(pre_maps[i], **opts)
+        ax[i].tick_params(axis="both", which="major", labelsize=8)
+        ax[i].tick_params(axis="both", which="minor", labelsize=8)
         # uncomment do plot difference to ground truth
         # a = ax[i].imshow(np.abs(pre_maps[i] - to_fill), **opts)
-        ax[i].set_title(titles[i])
+        ax[i].set_title(titles[i], fontsize=8)
         ax[i].set_yticks([])
-    ax[-1].set_xlabel("Sequence Position")
+        ax[i].set_xticks(np.arange(0, 50, 20), fontsize=2)
+    ax[-1].set_xlabel("Sequence Position", fontsize=8)
     # set colorbar
     cbar_ax = fig.add_axes([0.85, 0.4, 0.05, 0.2])
     fig.colorbar(a, cax=cbar_ax)
@@ -748,9 +885,13 @@ def sm_effect_heatmap(
     # shared ylabel
     plt.tick_params(labelcolor="none", top=False, bottom=False, left=False, right=False)
     plt.grid(False)
-    plt.ylabel("Amino Acids", labelpad=-60)
+    plt.ylabel("Amino Acids", labelpad=-20)
     if save_fig:
-        fig.savefig(f"{protein}_sm_effect_heatmap.png")
+        fig.savefig(
+            os.path.join(SAVE_PATH, f"{protein}_sm_effect_heatmap.{imgFileFormat}"),
+            dpi=DPI,
+            bbox_inches="tight",
+        )
     plt.show()
 
 
@@ -775,7 +916,12 @@ def generalization(
         "data augmentation",
         "pre training+\ndata augmentation",
     ]
-    settings = ["B", "PT", "DA", "PT+DA"]
+    settings = [
+        "base",
+        "pretraining",
+        "data\naugmentation",
+        "pretraining\ndata augmentation",
+    ]
     # get date
     data = pd.read_csv("pub_result_files/rr5/generalization/results.csv", delimiter=",")
     architectures = np.unique(data["architecture"])
@@ -786,7 +932,7 @@ def generalization(
     setting_pos = np.arange(num_settings)
 
     # plot each architectures median and the std as errorbars
-    fig, ax = plt.subplots(1, 1, figsize=(21 * CM, 14.8 * CM))
+    fig, ax = plt.subplots(1, 1, figsize=(6, 3.75))
     for ci, i in enumerate(architectures):
         i_data = np.asarray(np.split(data[data["architecture"] == i][doi], num_runs))
         i_median = np.median(i_data, axis=0)
@@ -814,6 +960,7 @@ def generalization(
             lolims=True,
             color=i_color,
             linestyle="none",
+            linewidth=2,
         )
         for i in cl:
             i.set_marker("_")
@@ -827,19 +974,24 @@ def generalization(
             uplims=True,
             color=i_color,
             linestyle="none",
+            linewidth=2,
         )
         for i in cl:
             i.set_marker("_")
             i.set_markersize(10)
 
     ax.set_xticks(setting_pos, settings)
+    ax.set_xticks(setting_pos, ["B", "PT", "DA", "PT+DA"])
     ax.set_ylabel("PearsonR")
     yt = np.arange(-0.25, 1.25, 0.25)
     ax.set_yticks(yt, yt)
-    fig.legend(loc="lower center", ncol=num_architectures)
-    fig.tight_layout(pad=5, w_pad=1.5, h_pad=1.5)
+    fig.tight_layout(pad=1, w_pad=0.8, h_pad=0.1)
+    fig.legend(loc="upper center", ncol=num_architectures, bbox_to_anchor=(0.5, 0))
+    # fig.tight_layout(pad=5, w_pad=1.5, h_pad=1.5)
     if save_fig:
-        fig.savefig("generalization.png")
+        fig.savefig(
+            os.path.join(SAVE_PATH, f"generalization.{imgFileFormat}"), dpi=DPI, bbox_inches="tight"
+        )
     plt.show()
 
 
@@ -880,7 +1032,7 @@ def rr_metrics_combined(
         d_name = "MSE"
         data_id = 0
 
-    fig, ax = plt.subplots(2, 3, figsize=(42 * CM, 29.7 * CM))  # , sharex=True)
+    fig, ax = plt.subplots(2, 3, figsize=(7.5, 4.7))
     for ci, i in enumerate(SETTINGS):
         rel_data = [
             2 - (first_data[data_id][ci] / first_g_data[data_id]),
@@ -899,8 +1051,18 @@ def rr_metrics_combined(
             label=i,
             marker="x",
             color=COLORS[ci],
+            linewidth=LINE_WIDTH,
+            markersize=MARKER_SIZE,
         )
-        ax[1, 0].plot(SET_SIZES, rel_data[0], label=i, marker="x", color=COLORS[ci])
+        ax[1, 0].plot(
+            SET_SIZES,
+            rel_data[0],
+            label=i,
+            marker="x",
+            color=COLORS[ci],
+            linewidth=LINE_WIDTH,
+            markersize=MARKER_SIZE,
+        )
 
         ax[0, 1].plot(
             SET_SIZES,
@@ -908,8 +1070,18 @@ def rr_metrics_combined(
             label=i,
             marker="x",
             color=COLORS[ci],
+            linewidth=LINE_WIDTH,
+            markersize=MARKER_SIZE,
         )
-        ax[1, 1].plot(SET_SIZES, rel_data[1], label=i, marker="x", color=COLORS[ci])
+        ax[1, 1].plot(
+            SET_SIZES,
+            rel_data[1],
+            label=i,
+            marker="x",
+            color=COLORS[ci],
+            linewidth=LINE_WIDTH,
+            markersize=MARKER_SIZE,
+        )
 
         ax[0, 2].plot(
             SET_SIZES,
@@ -917,8 +1089,18 @@ def rr_metrics_combined(
             label=i,
             marker="x",
             color=COLORS[ci],
+            linewidth=LINE_WIDTH,
+            markersize=MARKER_SIZE,
         )
-        ax[1, 2].plot(SET_SIZES, rel_data[2], label=i, marker="x", color=COLORS[ci])
+        ax[1, 2].plot(
+            SET_SIZES,
+            rel_data[2],
+            label=i,
+            marker="x",
+            color=COLORS[ci],
+            linewidth=LINE_WIDTH,
+            markersize=MARKER_SIZE,
+        )
 
     ax[0, 0].plot(
         SET_SIZES,
@@ -926,33 +1108,60 @@ def rr_metrics_combined(
         label="sequence convolution",
         marker="^",
         color="black",
+        linewidth=LINE_WIDTH,
+        markersize=MARKER_SIZE,
     )
-    ax[1, 0].plot(SET_SIZES, np.ones(len(SET_SIZES)), color="black", linestyle="--")
+    ax[1, 0].plot(
+        SET_SIZES,
+        np.ones(len(SET_SIZES)),
+        color="black",
+        linestyle="--",
+        linewidth=LINE_WIDTH,
+        markersize=MARKER_SIZE,
+    )
     ax[0, 1].plot(
         SET_SIZES,
         second_g_data[data_id],
         label="sequence convolution",
         marker="^",
         color="black",
+        linewidth=LINE_WIDTH,
+        markersize=MARKER_SIZE,
     )
-    ax[1, 1].plot(SET_SIZES, np.ones(len(SET_SIZES)), color="black", linestyle="--")
+    ax[1, 1].plot(
+        SET_SIZES,
+        np.ones(len(SET_SIZES)),
+        color="black",
+        linestyle="--",
+        linewidth=LINE_WIDTH,
+        markersize=MARKER_SIZE,
+    )
     ax[0, 2].plot(
         SET_SIZES,
         third_g_data[data_id],
         label="sequence convolution",
         marker="^",
         color="black",
+        linewidth=LINE_WIDTH,
+        markersize=MARKER_SIZE,
     )
-    ax[1, 2].plot(SET_SIZES, np.ones(len(SET_SIZES)), color="black", linestyle="--")
+    ax[1, 2].plot(
+        SET_SIZES,
+        np.ones(len(SET_SIZES)),
+        color="black",
+        linestyle="--",
+        linewidth=LINE_WIDTH,
+        markersize=MARKER_SIZE,
+    )
 
-    ax[0, 0].set(xscale="log", yticks=d_range, title=first_protein_name)
-    ax[0, 0].set_ylabel(d_name, fontsize=12)
+    ax[0, 0].set(xscale="log", yticks=d_range, title=first_protein_name, ylabel=d_name)
     ax[1, 0].set(
         xscale="log",
         yticks=rp_range,
+        ylim=(rp_range[0], rp_range[-1]),
+        xlabel="Dataset Size",
+        ylabel="Relative Performance Factor",
     )
-    ax[1, 0].set_xlabel("Dataset Size", fontsize=12)
-    ax[1, 0].set_ylabel("Relative Performance Factor", fontsize=12)
     ax[0, 1].set(
         xscale="log",
         yticks=d_range,
@@ -961,8 +1170,9 @@ def rr_metrics_combined(
     ax[1, 1].set(
         xscale="log",
         yticks=rp_range,
+        ylim=(rp_range[0], rp_range[-1]),
+        xlabel="Dataset Size",
     )
-    ax[1, 1].set_xlabel("Dataset Size", fontsize=12)
     ax[0, 2].set(
         xscale="log",
         yticks=d_range,
@@ -971,13 +1181,25 @@ def rr_metrics_combined(
     ax[1, 2].set(
         xscale="log",
         yticks=rp_range,
+        ylim=(rp_range[0], rp_range[-1]),
+        xlabel="Dataset Size",
     )
-    ax[1, 2].set_xlabel("Dataset Size", fontsize=12)
+
     leg_lines, leg_labels = ax[0, 0].get_legend_handles_labels()
-    fig.legend(leg_lines, leg_labels, loc="lower center", ncol=len(SETTINGS) + 1)
-    plt.subplots_adjust(hspace=0.08, wspace=0.12)
+    fig.legend(
+        leg_lines,
+        leg_labels,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0),
+        ncol=int(len(SET_SIZES) / 2),
+    )
+    fig.tight_layout(pad=1, w_pad=0.3, h_pad=0.1)
     if save_fig:
-        fig.savefig(f"{architecture}_{d_name}.png")
+        fig.savefig(
+            os.path.join(SAVE_PATH, f"{architecture}_{d_name}.{imgFileFormat}"),
+            dpi=DPI,
+            bbox_inches="tight",
+        )
     if show_fig:
         plt.show()
 
@@ -1148,7 +1370,7 @@ def plot_recall(show_fig: bool = True, save_fig: bool = False):
     a_pos = dict(zip(architectures, np.arange(num_arch)))
     p_pos = dict(zip(proteins, np.arange(num_prot)))
 
-    fig, ax = plt.subplots(num_arch, num_prot, figsize=(16,10))
+    fig, ax = plt.subplots(num_arch, num_prot, figsize=(7.5, 4.7))
     file = open("pub_result_files/plot_data/recall.txt", "r")
 
     c = 0.0
@@ -1183,55 +1405,72 @@ def plot_recall(show_fig: bool = True, save_fig: bool = False):
 
             c = 0.0
 
-        ax[i_0pos, i_1pos].plot(i_steps, i_data, label=i_size, color=c_c, alpha=c_a)
+        ax[i_0pos, i_1pos].plot(
+            i_steps, i_data, label=i_size, color=c_c, alpha=c_a, linewidth=LINE_WIDTH
+        )
         th = 0.6
         if i_size == "50":
             th_pos = np.argmin(np.abs(i_data - th))
             ax[i_0pos, i_1pos].scatter(
-                i_steps[th_pos], i_data[th_pos], marker="^", color="black"
+                i_steps[th_pos], i_data[th_pos], marker="^", color="black", s=10
             )
         if i_size == "500":
             th_pos = np.argmin(np.abs(i_data - th))
             ax[i_0pos, i_1pos].scatter(
-                i_steps[th_pos], i_data[th_pos], marker="d", color="black"
+                i_steps[th_pos], i_data[th_pos], marker="d", color="black", s=10
             )
         if i_size == "6000":
             th_pos = np.argmin(np.abs(i_data - th))
             ax[i_0pos, i_1pos].scatter(
-                i_steps[th_pos], i_data[th_pos], marker="s", color="black"
+                i_steps[th_pos], i_data[th_pos], marker="s", color="black", s=10
             )
 
         c += 1
 
     file.close()
     leg_lines, leg_labels = ax[-1, 0].get_legend_handles_labels()
-    fig.legend(leg_lines, leg_labels, loc="lower center", ncol=len(SET_SIZES) + 3)
-    plt.tight_layout(rect=[0, -0.3, 1, 1])
-    plt.subplots_adjust(bottom=0.13)
+    fig.legend(
+        leg_lines,
+        leg_labels,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0),
+        ncol=int((len(SET_SIZES) + 3) / 2),
+    )
+    fig.tight_layout(pad=1, w_pad=0.8, h_pad=0.1)
     if save_fig:
-        fig.savefig(f"recall.png")
+        fig.savefig(
+            os.path.join(SAVE_PATH, f"recall.{imgFileFormat}"),
+            dpi=DPI,
+            bbox_inches="tight",
+        )
     if show_fig:
         plt.show()
 
 
 if __name__ == "__main__":
     pass
+    if not os.path.isdir(SAVE_PATH):
+        os.mkdir(SAVE_PATH)
     """
-    plot_reruns(
-        "pab1",
-        "~/PycharmProjects/dms/pub_result_files/rr5/sep_conv_mix/pab1_results.csv",
-    )
+    for prot in ["pab1", "gb1", "avgfp"]:
+        for k in ["simple_model_imp", "dense_net2", "sep_conv_mix"]:
+            plot_reruns(
+                prot,
+                f"./pub_result_files/rr5/{k}/{prot}_results.csv",
+                save_fig=True,
+                show_fig=False,
+            )
     """
-
     """
-    prot = "pab1"
-    comparison_plot(
-        [
-            f"pub_result_files/rr5/simple_model_imp/{prot}_results.csv",
-            f"pub_result_files/rr5/dense_net2/{prot}_results.csv",
-            f"pub_result_files/rr5/sep_conv_mix/{prot}_results.csv",
-        ]
-    )
+    for prot in ["pab1", "gb1", "avgfp"]:
+        comparison_plot(
+            [
+                f"pub_result_files/rr5/simple_model_imp/{prot}_results.csv",
+                f"pub_result_files/rr5/dense_net2/{prot}_results.csv",
+                f"pub_result_files/rr5/sep_conv_mix/{prot}_results.csv",
+            ],
+            save_fig=True,
+        )
     """
     """
     best_setting_comp(
@@ -1241,11 +1480,10 @@ if __name__ == "__main__":
             "pub_result_files/rr5/sep_conv_mix",
         ],
         5,
+        save_fig=True,
     )
     """
-
-    """
-    trained_models = [
+    dense_trained_models = [
         "pub_result_files/saved_models/dense_net2_pretrained_gb1/gb1_fr_50_02_09_2022_132955/",
         "pub_result_files/saved_models/recall_fract_ds/dense_net2/nononsense_gb1_28_09_2022_140133/",
         "pub_result_files/saved_models/recall_fract_ds/dense_net2/nononsense_gb1_28_09_2022_140349/",
@@ -1256,9 +1494,7 @@ if __name__ == "__main__":
         "pub_result_files/saved_models/recall_fract_ds/dense_net2/nononsense_gb1_28_09_2022_142206/",
         "pub_result_files/saved_models/recall_whole_ds/nononsense_gb1_27_09_2022_144604/",
     ]
-    """
-    """
-    trained_models = [
+    simple_trained_models = [
         "pub_result_files/saved_models/simple_model_imp_pretrained_gb1/gb1_fr_50_05_09_2022_190713/",
         "pub_result_files/saved_models/recall_fract_ds/simple_model_imp/nononsense_gb1_28_09_2022_125924/",
         "pub_result_files/saved_models/recall_fract_ds/simple_model_imp/nononsense_gb1_28_09_2022_130124/",
@@ -1269,9 +1505,7 @@ if __name__ == "__main__":
         "pub_result_files/saved_models/recall_fract_ds/simple_model_imp/nononsense_gb1_28_09_2022_131308/",
         "pub_result_files/saved_models/recall_whole_ds/nononsense_gb1_27_09_2022_155847/",
     ]
-    """
-    """
-    trained_models = [
+    sep_trained_models = [
         "pub_result_files/saved_models/sep_conv_mix_pretrained_gb1/gb1_fr_50_07_10_2022_214400/",
         "pub_result_files/saved_models/recall_fract_ds/sep_conv_mix/nononsense_gb1_05_11_2022_114754/",
         "pub_result_files/saved_models/recall_fract_ds/sep_conv_mix/nononsense_gb1_05_11_2022_115133/",
@@ -1282,15 +1516,15 @@ if __name__ == "__main__":
         "pub_result_files/saved_models/recall_fract_ds/sep_conv_mix/nononsense_gb1_05_11_2022_121023/",
         "pub_result_files/saved_models/recall_whole_ds/nononsense_gb1_04_11_2022_115442/",
     ]
+    # """
+    sm_effect_heatmap("gb1", sep_trained_models, save_fig=True)
+    # """
     """
-    # sm_effect_heatmap("gb1", trained_models, save_fig=True)
-
-    """
-    for k in ["simple_model_imp" , "dense_net2", "sep_conv_mix"]:
+    for k in ["simple_model_imp", "dense_net2", "sep_conv_mix"]:
         for i in ["p", "s", "m"]:
             rr_metrics_combined(i, k, save_fig=True, show_fig=False)
-    
     """
+
     # generate_recall_data()
-    plot_recall(save_fig=True)
+    # plot_recall(save_fig=True)
     # generalization(save_fig=True)
