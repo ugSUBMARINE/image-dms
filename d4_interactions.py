@@ -7,8 +7,8 @@ from d4_utils import aa_dict
 def data_coord_extraction(
     target_pdb_file: str,
 ) -> tuple[
-    np.ndarray[tuple[int, int], np.dtype[any]],
-    np.ndarray[tuple[int, 3], np.dtype[float]],
+    np.ndarray[tuple[int, int], np.dtype[np.str_]],
+    np.ndarray[tuple[int, int], np.dtype[np.float64]],
 ]:
     """reads the pdb file and stores all coordinates and the residue data - changes
     *** CA of GLY to CB ***
@@ -63,9 +63,9 @@ def data_coord_extraction(
 
 
 def dist_calc(
-    arr1: np.ndarray[tuple[int, int], np.dtype[int | float]],
-    arr2: np.ndarray[tuple[int, int], np.dtype[int | float]],
-) -> np.ndarray[tuple[int, int], np.dtype[float]]:
+    arr1: np.ndarray[tuple[int, int], np.dtype[np.int64 | np.float64]],
+    arr2: np.ndarray[tuple[int, int], np.dtype[np.int64 | np.float64]],
+) -> np.ndarray[tuple[int, int], np.dtype[np.float64]]:
     """
     calculates euclidean distances between all points in two k-dimensional arrays
     'arr1' and 'arr2'
@@ -86,11 +86,11 @@ def dist_calc(
 
 
 def atom_interaction_matrix_d(
-    path_to_pdb_file: str, dist_th: int | str = 10.0, plot_matrices: bool = False
+    path_to_pdb_file: str, dist_th: float = 10.0, plot_matrices: bool = False
 ) -> tuple[
-    np.ndarray[tuple[int, int], np.dtype[float]],
-    np.ndarray[tuple[int, int], np.dtype[float]],
-    np.ndarray[tuple[int, int], np.dtype[bool]],
+    np.ndarray[tuple[int, int], np.dtype[np.float64]],
+    np.ndarray[tuple[int, int], np.dtype[np.float64]],
+    np.ndarray[tuple[int, int], np.dtype[np.bool_]],
 ]:
     """computes the adjacency matrix for a given pdb file based on the closest
     side chain atoms
@@ -189,8 +189,8 @@ def atom_interaction_matrix_d(
 
 
 def hydrophobicity_matrix(
-    converted: np.ndarray[tuple[int], np.dtype[float]], norm: float
-) -> np.ndarray[tuple[int, int], np.dtype[float]]:
+    converted: np.ndarray[tuple[int], np.dtype[np.float64]], norm: float
+) -> np.ndarray[tuple[int, int], np.dtype[np.float64]]:
     """matrix that represents how similar its pairs are in terms of hydrophobicity
     only for pairs that are true in res_bool_matrix
     :parameter
@@ -212,9 +212,9 @@ def hydrophobicity_matrix(
 
 
 def hbond_matrix(
-    converted: np.ndarray[tuple[int], np.dtype[int]],
-    valid_vals: np.ndarray[tuple[int], np.dtype[int]],
-) -> np.ndarray[tuple[int, int], np.dtype[float]]:
+    converted: np.ndarray[tuple[int], np.dtype[np.int64]],
+    valid_vals: np.ndarray[tuple[int], np.dtype[np.int64]],
+) -> np.ndarray[tuple[int, int], np.dtype[np.float64]]:
     """matrix that represents whether pairs can form H bonds (True) or not
     (False) only for pairs that are true in res_bool_matrix
      :parameter
@@ -235,8 +235,8 @@ def hbond_matrix(
 
 
 def charge_matrix(
-    converted: np.ndarray[tuple[int], np.dtype[int]]
-) -> np.ndarray[tuple[int, int], np.dtype[float]]:
+    converted: np.ndarray[tuple[int], np.dtype[np.int64]]
+) -> np.ndarray[tuple[int, int], np.dtype[np.float64]]:
     """matrix that represents whether pairs of amino acids are of the same charge (-1),
     of opposite charge (1), or one charged one neutral/ both uncharged (0)
     only for pairs that are true in res_bool_matrix
@@ -405,7 +405,7 @@ def check_structure(
         if not np.all(np.asarray(wt_seq_cs) == pdb_seq_ol_list):
             raise ValueError(
                 "Wild type sequence doesn't match the sequence derived from the pdb "
-                "file\n"
+                f"file\nWT SEQ: {''.join(wt_seq_cs)}\nPDB SEQ: {''.join(pdb_seq_ol_list)}"
             )
         else:
             if not silent:
@@ -628,10 +628,43 @@ if __name__ == "__main__":
     # r = np.random.randint(0, 75-size)
     # c = np.random.randint(0, 75-size)
     # a[r:r+size, c:c+size, 0] = np.random.uniform(0,1,size*size).reshape(size, size)
+    fig, ax = plt.subplots(3, 3, figsize=(7.5, 7.5))
     for i in range(7):
         # print(np.max(a[:,:,i]), np.min(a[:,:,i]))
-        print(i)
-        plt.imshow(a[:, :, i])
-        plt.colorbar()
-        plt.show()
-        # print(np.max(a[:,:,i]), np.min(a[:,:,i]))
+        if i < 3:
+            ax[0, i].imshow(a[:, :, i])
+            ax[0, i].set_xticks([])
+            ax[0, i].set_yticks([])
+        elif i > 2 and i < 6:
+            ax[1, i - 3].imshow(a[:, :, i])
+            ax[1, i - 3].set_xticks([])
+            ax[1, i - 3].set_yticks([])
+        else:
+            ax[2, i - 5].imshow(a[:, :, i])
+            ax[2, i - 5].set_xticks([])
+            ax[2, i - 5].set_yticks([])
+    ax[2, 0].imshow(dist_m)
+    ax[2, 2].imshow(comb_bool)
+    ax[2, 0].set_xticks([])
+    ax[2, 2].set_xticks([])
+    ax[2, 0].set_yticks([])
+    ax[2, 2].set_yticks([])
+    for cl, l in enumerate(
+        [
+            "(a) Hydrogen bonding matrix B",
+            "(b) Charge matrix C",
+            "(c) Hydrophobicity matrix H",
+            "(d) Interaction area matrix A",
+            "(e) Clash matrix X",
+            "(f) Evolution matrix E",
+            "(g) Distance matrix D",
+            "(h) Position matrix P",
+            "(i) Interaction Matrix M",
+        ]
+    ):
+        ax.flat[cl].set_xlabel(l)
+    fig.savefig(
+        "./plots/Fig_S1.png",
+        dpi=300,
+    )
+    plt.show()
