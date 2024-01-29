@@ -1,4 +1,5 @@
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 import numpy as np
 import pandas as pd
@@ -344,4 +345,8 @@ if __name__ == "__main__":
         "nononsense_gb1_28_09_2022_142206/",
     ))
     """
-    predict_score(**predict_dict())
+    param_dict = predict_dict()
+    predictions = predict_score(**param_dict)
+    print("variant_prediction")
+    for i, j in zip(param_dict["variant_s"], predictions):
+        print(f"{i}_{j}")
