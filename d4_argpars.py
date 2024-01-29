@@ -626,9 +626,9 @@ def predict_dict(p_dir: str = "") -> dict:
     parser.add_argument(
         "-fi",
         "--first_ind",
-        type=str,
+        type=int,
         required=False,
-        default=None,
+        default=0,
         help="int: offset of the start of the sequence (when sequence doesn't start "
         "with residue 0)",
     )
@@ -661,7 +661,7 @@ def predict_dict(p_dir: str = "") -> dict:
 
     pred_dict = {
         "protein_pdb": args.protein_pdb,
-        "protein_seq": args.wt_seq,
+        "protein_seq": list(args.wt_seq),
         "variant_s": variants,
         "model_filepath": args.model_filepath,
         "dist_th": args.dist_thr,
