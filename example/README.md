@@ -32,7 +32,7 @@ python3 d4_cmd_driver.py -h
 ```
 
 ## Training a network with experimental data
-In order to train a network on experimentally determined data use one of the methods mentioned below. 
+In order to train a network on experimentally determined data (`gb1_small_clean.csv` in this case) use one of the methods mentioned below. 
 
 This will train a network on a 0.7-0.15-0.05 training-validation-test split and save the trained model in `result_files/saved_models/gb1None_DD_MM_YYYY_HHMMSS/` as well as the used parameters in `result_files/log_file.csv` and the training and test statistics in `result_files/results.csv`.
 
