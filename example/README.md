@@ -53,7 +53,7 @@ python3 d4_cmd_driver.py --query_name gb1 --alignment_file example/gb1_1000_expe
 To make predictions for the variants `G1W` as well as `K42G,I24P` and get the predicted fitness score.
 
 ```sh
-d4_predict.py --model_filepath result_files/saved_models/gb1None_10_01_2024_110517_end/ --protein_pdb example/gb1.pdb --alignment_file example/gb1_1000_experimental.clustal --query_name gb1 --variant_s G1W_K42G,I24P --wt_seq MQYKLILNGKTLKGETTTEAVDAATAEKVFKQYANDNGVDGEWTYDDATKTFTVTE --first_ind 0
+python3 d4_predict.py --model_filepath result_files/saved_models/gb1None_10_01_2024_110517_end/ --protein_pdb example/gb1.pdb --alignment_file example/gb1_1000_experimental.clustal --query_name gb1 --variant_s G1W_K42G,I24P --wt_seq MQYKLILNGKTLKGETTTEAVDAATAEKVFKQYANDNGVDGEWTYDDATKTFTVTE --first_ind 0
 ```
 
 If only positive scores should be shown, one can pipe the output through the following commands:
