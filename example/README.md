@@ -62,3 +62,12 @@ If only positive scores should be shown, one can pipe the output through the fol
 | awk -F '_' '{print $1} $2 > 0' | grep _
 ```
  can be added if only positive scores shoud be shown (assumes a UNIX machine)
+
+The output will be '_' separated and look similar but possible with different values like this
+```
+CLUSTALW format detected
+Reduced size from 164 to 74 unique sequences for conservation table creation
+variant_prediction
+G1W_0.6243481636047363
+K42G,I24P_2.26535701751709
+```
