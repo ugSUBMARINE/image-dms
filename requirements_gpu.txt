@@ -2,5 +2,5 @@ matplotlib==3.8.2
 scikit_learn==1.4.0
 pandas==2.2.0
 scipy==1.12.0
-numpy==1.26.3
+numpy==1.26.4
 tensorflow_gpu==2.12.0
